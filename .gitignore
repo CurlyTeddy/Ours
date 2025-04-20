@@ -42,3 +42,7 @@ next-env.d.ts
 
 # ide
 .vscode/
+
+# development database
+prisma/dev.db
+prisma/dev.db-journal
