@@ -7,7 +7,7 @@ import {
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from './button';
-import { useActionState } from 'react';
+import { useActionState, useId } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { authenticate } from '../lib/actions';
 import Link from 'next/link';
@@ -15,6 +15,7 @@ import Link from 'next/link';
 export default function LoginForm() {
   const callbackUrl = useSearchParams().get('callbackUrl') || '/';
   const [errorMessage, formAction, isPending] = useActionState(authenticate, undefined);
+  const baseInputFormId = useId();
 
   return (
     <form action={formAction}>
@@ -26,18 +27,18 @@ export default function LoginForm() {
           <div>
             <label
               className="mb-3 mt-5 block text-xs font-medium text-gray-900"
-              htmlFor="username"
+              htmlFor={`${baseInputFormId}-email`}
             >
-              Username
+              Email
             </label>
             <div className="relative">
               <input
                 className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
-                id="username"
-                type="text"
-                name="username"
-                placeholder="Enter your username"
-                autoComplete="username"
+                id={`${baseInputFormId}-email`}
+                type="email"
+                name="email"
+                placeholder="Enter your email"
+                autoComplete="email"
                 required
               />
               <UserIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
