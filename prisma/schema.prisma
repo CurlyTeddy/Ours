@@ -11,8 +11,10 @@ datasource db {
 }
 
 model User {
-  user_id   String   @id @default(cuid())
+  userId    String   @id @default(cuid()) @map("user_id")
   email     String   @unique
   name      String
   password  String
+
+  @@map("user")
 }
