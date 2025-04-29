@@ -4,7 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/app/lib/database-client";
-import { User } from "@prisma/client";
+import { User } from "@/prisma/generated-client";
 import bcrypt from "bcryptjs";
 
 export const { auth, signIn, signOut } = NextAuth({

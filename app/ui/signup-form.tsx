@@ -1,10 +1,10 @@
 'use client';
 
 import { useActionState, useId } from "react";
-import { register, State } from "../lib/actions";
+import { register, State } from "@/app/lib/actions";
 import UserIcon from "@heroicons/react/24/outline/esm/UserIcon";
 import KeyIcon from "@heroicons/react/24/outline/esm/KeyIcon";
-import { Button } from "./button";
+import { Button } from "@/app/ui/button";
 import ExclamationCircleIcon from "@heroicons/react/24/outline/esm/ExclamationCircleIcon";
 import EnvelopeIcon from "@heroicons/react/24/outline/esm/EnvelopeIcon";
 import UserPlusIcon from "@heroicons/react/24/solid/esm/UserPlusIcon";

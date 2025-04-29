@@ -1,4 +1,4 @@
-import { auth } from "./middlewares/auth"
+import { auth } from "@/middlewares/auth"
 
 export default auth;
 
