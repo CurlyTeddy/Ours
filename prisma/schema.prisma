@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "generated-client"
 }
 
 datasource db {
@@ -11,10 +12,22 @@ datasource db {
 }
 
 model User {
-  userId    String   @id @default(cuid()) @map("user_id")
-  email     String   @unique
-  name      String
-  password  String
+  userId     String     @id @map("user_id")
+  email      String     @unique
+  name       String
+  password   String
+  inviteCode InviteCode @relation(fields: [userId], references: [usedById])
 
   @@map("user")
+}
+
+model InviteCode {
+  code      String    @id @default(cuid())
+  createdAt DateTime  @default(now()) @map("created_at")
+  expireAt  DateTime  @map("expire_at")
+  usedAt    DateTime? @map("used_at")
+  usedById  String?   @unique @map("used_by")
+  usedBy    User?
+
+  @@map("invite_code")
 }
