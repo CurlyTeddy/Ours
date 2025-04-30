@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useActionState, useId } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { authenticate } from '../lib/actions';
+import { authenticate } from '../../lib/actions';
 import Link from 'next/link';
 
 export default function LoginForm() {

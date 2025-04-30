@@ -3,7 +3,7 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import prisma from "@/app/lib/database-client";
+import prisma from "@/lib/database-client";
 import { User } from "@/prisma/generated-client";
 import bcrypt from "bcryptjs";
 

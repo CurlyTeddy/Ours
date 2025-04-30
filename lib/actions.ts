@@ -3,7 +3,7 @@
 import { signIn } from "@/middlewares/auth";
 import { AuthError } from "next-auth";
 import { z } from "zod";
-import prisma from "@/app/lib/database-client";
+import prisma from "@/lib/database-client";
 import { redirect } from "next/navigation";
 import { createId } from '@paralleldrive/cuid2';
 import bcrypt from "bcryptjs";
