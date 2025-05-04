@@ -3,5 +3,5 @@ export default function Page() {
     <main>
       A todo list
     </main>
-  )
+  );
 }

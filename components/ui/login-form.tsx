@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
 import {
   UserIcon,
   KeyIcon,
   ExclamationCircleIcon,
   ArrowRightIcon,
-} from '@heroicons/react/24/outline';
-import { Button } from '@/components/ui/button';
-import { useActionState, useId } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { authenticate } from '../../lib/actions';
-import Link from 'next/link';
+} from "@heroicons/react/24/outline";
+import { Button } from "@/components/ui/button";
+import { useActionState, useId } from "react";
+import { useSearchParams } from "next/navigation";
+import { authenticate } from "../../lib/actions";
+import Link from "next/link";
 
 export default function LoginForm() {
-  const callbackUrl = useSearchParams().get('callbackUrl') || '/';
+  const callbackUrl = useSearchParams().get("callbackUrl") ?? "/";
   const [errorMessage, formAction, isPending] = useActionState(authenticate, undefined);
   const baseInputFormId = useId();
 
@@ -70,8 +70,8 @@ export default function LoginForm() {
             Log in <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
           </Button>
           <div className="mt-6 text-sm text-gray-500 opacity-80">
-            <span className="text-gray-600">Have an invite code?</span>{' '}
-            <Link href={'/signup'} className="text-blue-600 underline hover:text-blue-800 transition-colors">Create an account</Link>
+            <span className="text-gray-600">Have an invite code?</span>{" "}
+            <Link href={"/signup"} className="text-blue-600 underline hover:text-blue-800 transition-colors">Create an account</Link>
           </div>
         </div>
         <div className="flex h-8 items-end space-x-1" aria-live="polite" aria-atomic="true">
@@ -84,5 +84,5 @@ export default function LoginForm() {
         </div>
       </div>
     </form>
-  )
+  );
 }

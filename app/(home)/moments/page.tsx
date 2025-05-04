@@ -3,5 +3,5 @@ export default function Page() {
     <main>
       Lots of moments here
     </main>
-  )
+  );
 }

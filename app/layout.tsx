@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { kalam } from '@/components/ui/fonts'
+import { kalam } from "@/components/ui/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
