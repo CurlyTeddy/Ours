@@ -14,10 +14,13 @@ export const { auth, signIn, signOut } = NextAuth({
   callbacks: {
     authorized({ request: { nextUrl }, auth }) {
       const isLoggedIn = !!auth?.user;
-      if (isLoggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup")) {
+      if (nextUrl.pathname !== "/login" && nextUrl.pathname !== "/signup") {
+        return isLoggedIn;
+      } else if (isLoggedIn) {
         return NextResponse.redirect(new URL("/moments", nextUrl));
       }
-      return isLoggedIn;
+      
+      return true;
     }
   },
   providers: [
