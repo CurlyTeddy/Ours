@@ -13,7 +13,7 @@ import { authenticate } from "../../lib/actions";
 import Link from "next/link";
 
 export default function LoginForm() {
-  const callbackUrl = useSearchParams().get("callbackUrl") ?? "/";
+  const callbackUrl = useSearchParams().get("callbackUrl") ?? "/moments";
   const [errorMessage, formAction, isPending] = useActionState(authenticate, undefined);
   const baseInputFormId = useId();
 
