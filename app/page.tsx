@@ -9,7 +9,7 @@ export default function Home() {
           href="/login"
           className="absolute bottom-32 left-1/2 -translate-x-1/2 rounded-lg px-6 py-3 font-medium transition-colors md:text-base"
         >
-          <span>Log in</span>
+          <span>Sign In</span>
         </Link>
       </Button>
     </div>

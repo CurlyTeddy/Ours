@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn } from "@/middlewares/auth";
+import { signIn, signOut } from "@/middlewares/auth";
 import { AuthError } from "next-auth";
 import { z } from "zod";
 import prisma from "@/lib/database-client";
@@ -23,6 +23,10 @@ export async function authenticate(previousState: string | undefined, formData: 
 
     throw error;
   }
+}
+
+export async function signOutAction() {
+  await signOut({ redirectTo: '/' });
 }
 
 export interface State {
