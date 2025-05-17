@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { kalam } from "@/components/ui/fonts";
-import "./globals.css";
+import "@/app/globals.css";
+import ThemeProviderWrapper from "@/app/theme-provider";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -13,11 +14,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${kalam.className} antialiased`}
       >
-        {children}
+        <ThemeProviderWrapper>
+          {children}
+        </ThemeProviderWrapper>
       </body>
     </html>
   );

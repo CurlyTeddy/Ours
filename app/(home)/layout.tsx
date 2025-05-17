@@ -6,6 +6,7 @@ import { PowerIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/lib/actions";
+import { DarkModeSwitch } from "@/components/ui/switch";
 
 export default function Layout({
   children,
@@ -14,7 +15,7 @@ export default function Layout({
 }>) {
   return (
     <>
-      <div className="flex items-center m-3">
+      <div className="flex items-center m-3 space-x-3">
         <div className="flex flex-1 justify-center">
           <NavigationMenu>
             <NavigationMenuList>
@@ -31,7 +32,11 @@ export default function Layout({
             </NavigationMenuList>
           </NavigationMenu>
         </div>
-        
+
+        <div className="flex space-x-2">
+          <DarkModeSwitch />
+        </div>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Avatar className="cursor-pointer">
