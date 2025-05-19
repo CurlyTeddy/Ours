@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import * as SwitchPrimitive from "@radix-ui/react-switch"
+import * as React from "react";
+import * as SwitchPrimitive from "@radix-ui/react-switch";
 
-import { cn } from "@/lib/utils"
-import { useTheme } from "next-themes"
+import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
 
 function Switch({
   className,
@@ -26,25 +26,25 @@ function Switch({
         )}
       />
     </SwitchPrimitive.Root>
-  )
+  );
 }
 
 function DarkModeSwitch() {
   const { theme, setTheme } = useTheme();
-  const [ mounted, setMounted ] = React.useState(false)
+  const [ mounted, setMounted ] = React.useState(false);
 
   React.useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   if (!mounted) {
     return null;
   }
 
   return (
-    <Switch checked={theme === "dark"} onCheckedChange={(newChecked) => setTheme(newChecked ? "dark" : "light")} id="dark-mode"/>
-  )
+    <Switch checked={theme === "dark"} onCheckedChange={(newChecked) => { setTheme(newChecked ? "dark" : "light"); }} id="dark-mode"/>
+  );
 }
 
 
-export { DarkModeSwitch }
+export { DarkModeSwitch };

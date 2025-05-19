@@ -26,7 +26,7 @@ export async function authenticate(previousState: string | undefined, formData: 
 }
 
 export async function signOutAction() {
-  await signOut({ redirectTo: '/' });
+  await signOut({ redirectTo: "/" });
 }
 
 export interface State {
