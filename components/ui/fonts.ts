@@ -1,3 +1,3 @@
-import { Kalam } from "next/font/google";
+import { Playpen_Sans } from "next/font/google";
 
-export const kalam = Kalam({ weight: "300" });
+export const kalam = Playpen_Sans({ weight: "300" });
