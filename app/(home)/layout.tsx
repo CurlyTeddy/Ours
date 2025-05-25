@@ -14,7 +14,7 @@ export default function Layout({
   children: React.ReactNode;
 }>) {
   return (
-    <>
+    <div className="flex flex-col h-screen">
       <div className="flex items-center m-3 space-x-3">
         <div className="flex flex-1 justify-center">
           <NavigationMenu>
@@ -56,7 +56,9 @@ export default function Layout({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {children}
-    </>
+      <div className="flex-1 overflow-auto">
+        {children}
+      </div>
+    </div>
   );
 }
