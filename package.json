@@ -10,7 +10,6 @@
     "lint": "next lint --fix"
   },
   "dependencies": {
-    "@heroicons/react": "^2.2.0",
     "@paralleldrive/cuid2": "^2.2.2",
     "@prisma/client": "^6.6.0",
     "@radix-ui/react-avatar": "^1.1.9",

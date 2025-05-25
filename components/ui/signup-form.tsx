@@ -2,13 +2,8 @@
 
 import { useActionState, useId } from "react";
 import { register, State } from "@/lib/actions";
-import UserIcon from "@heroicons/react/24/outline/esm/UserIcon";
-import KeyIcon from "@heroicons/react/24/outline/esm/KeyIcon";
 import { Button } from "@/components/ui/button";
-import ExclamationCircleIcon from "@heroicons/react/24/outline/esm/ExclamationCircleIcon";
-import EnvelopeIcon from "@heroicons/react/24/outline/esm/EnvelopeIcon";
-import UserPlusIcon from "@heroicons/react/24/solid/esm/UserPlusIcon";
-import AtSymbolIcon from "@heroicons/react/24/outline/esm/AtSymbolIcon";
+import { AtSign, CircleAlert, KeyRound, Mail, User, UserPlus } from "lucide-react";
 
 export default function SignupForm() {
   const initialState: State = { errors: {}, message: null };
@@ -41,7 +36,7 @@ export default function SignupForm() {
                 required
                 aria-describedby={`${baseInputFormId}-username-error`}
               />
-              <UserIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+              <User className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
             <div id={`${baseInputFormId}-username-error`} aria-live="polite" aria-atomic="true">
               {state.errors?.username?.map((error) => (
@@ -69,7 +64,7 @@ export default function SignupForm() {
                 required
                 aria-describedby={`${baseInputFormId}-email-error`}
               />
-              <AtSymbolIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+              <AtSign className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
             <div id={`${baseInputFormId}-email-error`} aria-live="polite" aria-atomic="true">
               {state.errors?.email?.map((error) => (
@@ -98,7 +93,7 @@ export default function SignupForm() {
                 minLength={8}
                 aria-describedby={`${baseInputFormId}-password-error`}
               />
-              <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
             <div id={`${baseInputFormId}-password-error`} aria-live="polite" aria-atomic="true">
               {state.errors?.password?.map((error) => (
@@ -124,17 +119,17 @@ export default function SignupForm() {
                 placeholder="Enter invite code"
                 required
               />
-              <EnvelopeIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
           </div>
           <Button className="mt-4 w-full" aria-disabled={isPending}>
-            Sign up <UserPlusIcon className="ml-auto h-5 w-5 text-gray-50" />
+            Sign up <UserPlus className="ml-auto h-5 w-5 text-gray-50" />
           </Button>
         </div>
         <div className="flex h-8 items-end space-x-1" aria-live="polite" aria-atomic="true">
           {state.message &&
             <div className="flex items-center space-x-1">
-              <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+              <CircleAlert className="h-5 w-5 text-red-500" />
               <p className="text-sm text-red-500">{state.message}</p>
             </div>
           }

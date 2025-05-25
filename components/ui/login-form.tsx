@@ -1,16 +1,11 @@
 "use client";
 
-import {
-  UserIcon,
-  KeyIcon,
-  ExclamationCircleIcon,
-  ArrowRightIcon,
-} from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { useActionState, useId } from "react";
 import { useSearchParams } from "next/navigation";
-import { authenticate } from "../../lib/actions";
+import { authenticate } from "@/lib/actions";
 import Link from "next/link";
+import { ArrowRight, CircleAlert, KeyRound, User } from "lucide-react";
 
 export default function LoginForm() {
   const callbackUrl = useSearchParams().get("callbackUrl") ?? "/moments";
@@ -41,7 +36,7 @@ export default function LoginForm() {
                 autoComplete="email"
                 required
               />
-              <UserIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+              <User className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
           </div>
           <div className="mt-4">
@@ -62,12 +57,12 @@ export default function LoginForm() {
                 required
                 minLength={8}
               />
-              <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
           </div>
           <input type="hidden" name="redirectTo" value={callbackUrl} />
           <Button className="mt-4 w-full" aria-disabled={isPending}>
-            Log in <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
+            Log in <ArrowRight className="ml-auto h-5 w-5 text-gray-50" />
           </Button>
           <div className="mt-6 text-sm text-gray-500 opacity-80">
             <span className="text-gray-600">Have an invite code?</span>{" "}
@@ -77,7 +72,7 @@ export default function LoginForm() {
         <div className="flex h-8 items-end space-x-1" aria-live="polite" aria-atomic="true">
           {errorMessage &&
             <div className="flex items-center space-x-1">
-              <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+              <CircleAlert className="h-5 w-5 text-red-500" />
               <p className="text-sm text-red-500">{errorMessage}</p>
             </div>
           }
