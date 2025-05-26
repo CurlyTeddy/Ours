@@ -1,9 +1,11 @@
 "use client";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ColumnDef, flexRender, getCoreRowModel, getPaginationRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
+import { ColumnDef, ColumnFilter, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { DataTablePagination } from "@/app/(home)/twodo/pagination";
 import { useState } from "react";
+import { useDebouncedCallback } from "use-debounce"
+import { Input } from "@/components/ui/input";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[],
@@ -15,6 +17,10 @@ export function DataTable<TData, TValue>({
   data,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
+  const handleFilterChange = useDebouncedCallback((value: string) => {
+    table.getColumn("title")?.setFilterValue(value);
+  }, 300);
 
   const table = useReactTable({
     data,
@@ -23,13 +29,23 @@ export function DataTable<TData, TValue>({
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnFiltersChange: setColumnFilters,
     state: {
-      sorting
+      sorting,
+      columnFilters
     },
   });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
+      <div className="flex items-center py-4">
+        <Input
+          placeholder="Filter titles..."
+          onChange={(event) => { handleFilterChange(event.target.value); }}
+          className="max-w-sm"
+        />
+      </div>
       <div className="rounded-md overflow-hidden border-2">
         <Table>
           <TableHeader>
