@@ -4,7 +4,7 @@ export const todos: Todo[] = [
     {
         id: 1,
         title: "Learn TypeScript",
-        createdAt: new Date().toISOString(),
+        createdAt: new Date("2023-10-01"),
         createdBy: "John Doe",
         description: "Understand the basics of TypeScript and its features",
         status: false,
@@ -12,7 +12,7 @@ export const todos: Todo[] = [
     {
         id: 2,
         title: "Build a Todo App",
-        createdAt: new Date().toISOString(),
+        createdAt: new Date("2023-10-04"),
         createdBy: "Jane Smith",
         description: "Create a simple Todo application using TypeScript",
         status: true,
@@ -20,7 +20,7 @@ export const todos: Todo[] = [
     {
         id: 3,
         title: "Deploy the App",
-        createdAt: new Date().toISOString(),
+        createdAt: new Date("2023-10-03"),
         createdBy: "John Doe",
         status: false,
     },
