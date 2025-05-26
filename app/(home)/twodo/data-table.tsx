@@ -21,6 +21,7 @@ export function DataTable<TData, TValue>({
   const handleFilterChange = useDebouncedCallback((value: string) => {
     table.getColumn("title")?.setFilterValue(value);
   }, 300);
+  const [rowSelection, setRowSelection] = useState({});
 
   const table = useReactTable({
     data,
@@ -31,9 +32,11 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     getFilteredRowModel: getFilteredRowModel(),
     onColumnFiltersChange: setColumnFilters,
+    onRowSelectionChange: setRowSelection,
     state: {
       sorting,
-      columnFilters
+      columnFilters,
+      rowSelection,
     },
   });
 
