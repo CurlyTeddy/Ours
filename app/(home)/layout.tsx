@@ -3,7 +3,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from "@/components/ui/navigation-menu";
 import { Avatar } from "@/components/ui/avatar";
 import { PowerIcon } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/lib/actions";
 import { DarkModeSwitch } from "@/components/ui/switch";
@@ -20,13 +19,13 @@ export default function Layout({
           <NavigationMenu>
             <NavigationMenuList>
               <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <Link href={"/moments"}>Moments</Link>
+                <NavigationMenuLink href={"/moments"}>
+                  Moments
                 </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <Link href={"/twodo"}>Two Do</Link>
+                <NavigationMenuLink href={"/twodo"}>
+                  Two Do
                 </NavigationMenuLink>
               </NavigationMenuItem>
             </NavigationMenuList>
