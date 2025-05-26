@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { kalam } from "@/components/ui/fonts";
+import { playpenSans } from "@/components/ui/fonts";
 import "@/app/globals.css";
 import ThemeProviderWrapper from "@/app/theme-provider";
 
@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${kalam.className} antialiased`}
+        className={`${playpenSans.className} antialiased`}
       >
         <ThemeProviderWrapper>
           {children}
