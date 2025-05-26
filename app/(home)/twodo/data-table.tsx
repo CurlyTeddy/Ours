@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ColumnDef, ColumnFilter, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { DataTablePagination } from "@/app/(home)/twodo/pagination";
 import { useState } from "react";
-import { useDebouncedCallback } from "use-debounce"
+import { useDebouncedCallback } from "use-debounce";
 import { Input } from "@/components/ui/input";
 
 interface DataTableProps<TData, TValue> {
