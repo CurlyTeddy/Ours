@@ -48,4 +48,4 @@ prisma/dev.db
 prisma/dev.db-journal
 
 # prisma auto-generated files
-prisma/generated-client
+lib/generated/*

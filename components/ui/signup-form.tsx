@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState, useId } from "react";
-import { register, State } from "@/lib/actions";
+import { register } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { AtSign, CircleAlert, KeyRound, Mail, User, UserPlus } from "lucide-react";
 
 export default function SignupForm() {
-  const initialState: State = { errors: {}, message: null };
+  const initialState = { errors: {}, message: null };
   const [state, formAction, isPending] = useActionState(register, initialState);
   const baseInputFormId = useId();
 

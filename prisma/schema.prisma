@@ -3,7 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "generated-client"
+  output   = "../lib/generated/prisma"
 }
 
 datasource db {
@@ -17,6 +17,7 @@ model User {
   name       String
   password   String
   inviteCode InviteCode @relation(fields: [userId], references: [usedById])
+  Todos      Todo[]
 
   @@map("user")
 }
@@ -30,4 +31,19 @@ model InviteCode {
   usedBy    User?
 
   @@map("invite_code")
+}
+
+model Todo {
+  todoId      String    @id @default(cuid()) @map("todo_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  createdBy   User      @relation(fields: [createdById], references: [userId], onUpdate: Cascade, onDelete: Cascade)
+  createdById String    @map("created_by")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  doneAt      DateTime? @map("done_at")
+  title       String
+  description String?
+  priority    Float     @unique
+
+  @@map("todo")
+  @@index([priority])
 }

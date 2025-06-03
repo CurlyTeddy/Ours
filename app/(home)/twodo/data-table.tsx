@@ -3,9 +3,10 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ColumnDef, ColumnFilter, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { DataTablePagination } from "@/app/(home)/twodo/pagination";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { Input } from "@/components/ui/input";
+import { CreateButton } from "@/app/(home)/twodo/create-button";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[],
@@ -40,6 +41,15 @@ export function DataTable<TData, TValue>({
     },
   });
 
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex items-center py-4">
@@ -48,6 +58,9 @@ export function DataTable<TData, TValue>({
           onChange={(event) => { handleFilterChange(event.target.value); }}
           className="max-w-sm"
         />
+        <div className="ml-auto flex items-center space-x-2">
+          <CreateButton />
+        </div>
       </div>
       <div className="rounded-md overflow-hidden border-2">
         <Table>

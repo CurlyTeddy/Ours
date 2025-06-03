@@ -6,11 +6,11 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, Circle, CircleCheck } from "lucide-react";
 
 export interface Todo {
-  id: number
+  id: string
   title: string
   createdAt: Date
   createdBy: string
-  description?: string
+  description: string | null
   status: boolean
 }
 
