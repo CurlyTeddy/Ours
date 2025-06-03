@@ -60,7 +60,7 @@ function TableRow({ className, isHeader = false, ...props }: TableRowProps) {
       data-slot="table-row"
       className={cn(
         "border-b transition-colors",
-        !isHeader && "hover:bg-muted/50 data-[state=selected]:bg-muted",
+        !isHeader && "hover:bg-primary/30 data-[state=selected]:bg-primary/30 dark:hover:bg-muted/50 dark:data-[state=selected]:bg-accent",
         className
       )}
       {...props}
