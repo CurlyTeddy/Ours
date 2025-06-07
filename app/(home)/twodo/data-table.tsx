@@ -1,19 +1,20 @@
 "use client";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ColumnDef, ColumnFilter, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
+import { ColumnDef, ColumnFilter, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, RowSelectionState, SortingState, useReactTable } from "@tanstack/react-table";
 import { DataTablePagination } from "@/app/(home)/twodo/pagination";
 import { useEffect, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { Input } from "@/components/ui/input";
 import { CreateButton } from "@/app/(home)/twodo/create-button";
+import DeleteButton from "@/app/(home)/twodo/delete-button";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[],
   data: TData[],
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends { id: string }, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
@@ -22,7 +23,7 @@ export function DataTable<TData, TValue>({
   const handleFilterChange = useDebouncedCallback((value: string) => {
     table.getColumn("title")?.setFilterValue(value);
   }, 300);
-  const [rowSelection, setRowSelection] = useState({});
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const table = useReactTable({
     data,
@@ -39,7 +40,10 @@ export function DataTable<TData, TValue>({
       columnFilters,
       rowSelection,
     },
+    getRowId: (row) => row.id,
   });
+
+  
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -60,6 +64,7 @@ export function DataTable<TData, TValue>({
         />
         <div className="ml-auto flex items-center space-x-2">
           <CreateButton />
+          <DeleteButton rowSelection={rowSelection} />
         </div>
       </div>
       <div className="rounded-md overflow-hidden border-2">

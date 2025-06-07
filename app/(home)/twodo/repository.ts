@@ -33,7 +33,7 @@ async function addTodo(previousMessage: string | undefined, formData: z.infer<ty
     });
   } catch (error) {
     console.error("Error creating todo:", error);
-    return "Database error: Failed to create a todo.";
+    return "Failed to create a todo. Please try again later.";
   }
 
   revalidatePath("/twodo");
@@ -58,4 +58,19 @@ async function getTodos(): Promise<Todo[]> {
   }));
 }
 
-export { addTodo, getTodos };
+async function deleteTodos(todoIds: string[]) {
+  try {
+    await prisma.todo.deleteMany({
+      where: {
+        todoId: { in: todoIds },
+      },
+    });
+  } catch (error) {
+    console.log("Error deleting todos:", error);
+    return "Failed to delete todos. Please try again later.";
+  }
+
+  revalidatePath("/twodo");
+}
+
+export { addTodo, getTodos, deleteTodos };
