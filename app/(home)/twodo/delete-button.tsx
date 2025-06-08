@@ -50,7 +50,9 @@ export default function DeleteButton({ rowSelection } : { rowSelection: RowSelec
         </AlertDialogHeader>
         <ErrorMessage message={errorMessage} />
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel asChild>
+            <Button variant="outline" className="cursor-pointer">Cancel</Button>
+          </AlertDialogCancel>
           <Button onClick={onDelete} variant={"destructive"} className="cursor-pointer" disabled={isPending}>Delete</Button>
         </AlertDialogFooter>
       </AlertDialogContent>
