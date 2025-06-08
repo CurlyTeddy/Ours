@@ -8,16 +8,15 @@ import { useDebouncedCallback } from "use-debounce";
 import { Input } from "@/components/ui/input";
 import { CreateButton } from "@/app/(home)/twodo/create-button";
 import DeleteButton from "@/app/(home)/twodo/delete-button";
+import { Todo } from "@/app/(home)/twodo/columns";
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[],
-  data: TData[],
-}
-
-export function DataTable<TData extends { id: string }, TValue>({
+export function DataTable<TValue>({
   columns,
   data,
-}: DataTableProps<TData, TValue>) {
+}: {
+  columns: ColumnDef<Todo, TValue>[],
+  data: Todo[],
+}) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
   const handleFilterChange = useDebouncedCallback((value: string) => {
@@ -42,8 +41,6 @@ export function DataTable<TData extends { id: string }, TValue>({
     },
     getRowId: (row) => row.id,
   });
-
-  
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {

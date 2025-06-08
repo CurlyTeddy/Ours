@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, Circle, CircleCheck } from "lucide-react";
+import { DateTime } from "luxon";
 
 export interface Todo {
   id: string
@@ -13,6 +14,8 @@ export interface Todo {
   description: string | null
   status: boolean
 }
+
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export const Columns: ColumnDef<Todo>[] = [
   {
@@ -46,6 +49,9 @@ export const Columns: ColumnDef<Todo>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
+    cell: ({ row }) => {
+      return DateTime.fromJSDate(row.getValue("createdAt"), { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm");
+    }
   },
   {
     accessorKey: "createdBy",
