@@ -7,7 +7,7 @@ import { createSchema } from "@/app/(home)/twodo/form-schemas";
 import { revalidatePath } from "next/cache";
 import { Todo } from "@/app/(home)/twodo/columns";
 
-async function addTodo(previousMessage: string | undefined, formData: z.infer<typeof createSchema>): Promise<string | undefined> {
+async function addTodo(formData: z.infer<typeof createSchema>): Promise<string | undefined> {
   const { title, description } = formData;
   const session = await auth();
 
