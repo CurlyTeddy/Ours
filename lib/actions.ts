@@ -36,7 +36,7 @@ export interface State {
     password?: string[];
     inviteCode?: string[];
   },
-  message?: string | null;
+  message?: string | undefined;
 }
 
 export async function register(previousState: State, formData: FormData): Promise<State> {

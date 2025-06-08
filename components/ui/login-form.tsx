@@ -5,7 +5,8 @@ import { useActionState, useId } from "react";
 import { useSearchParams } from "next/navigation";
 import { authenticate } from "@/lib/actions";
 import Link from "next/link";
-import { ArrowRight, CircleAlert, KeyRound, User } from "lucide-react";
+import { ArrowRight, KeyRound, User } from "lucide-react";
+import ErrorMessage from "@/components/ui/error-message";
 
 export default function LoginForm() {
   const callbackUrl = useSearchParams().get("callbackUrl") ?? "/moments";
@@ -69,14 +70,7 @@ export default function LoginForm() {
             <Link href={"/signup"} className="text-blue-600 underline hover:text-blue-800 transition-colors">Create an account</Link>
           </div>
         </div>
-        <div className="flex h-8 items-end space-x-1" aria-live="polite" aria-atomic="true">
-          {errorMessage &&
-            <div className="flex items-center space-x-1">
-              <CircleAlert className="h-5 w-5 text-red-500" />
-              <p className="text-sm text-red-500">{errorMessage}</p>
-            </div>
-          }
-        </div>
+        <ErrorMessage message={errorMessage} className="mt-2" />
       </div>
     </form>
   );

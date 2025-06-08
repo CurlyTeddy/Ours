@@ -3,10 +3,11 @@
 import { useActionState, useId } from "react";
 import { register } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
-import { AtSign, CircleAlert, KeyRound, Mail, User, UserPlus } from "lucide-react";
+import { AtSign, KeyRound, Mail, User, UserPlus } from "lucide-react";
+import ErrorMessage from "@/components/ui/error-message";
 
 export default function SignupForm() {
-  const initialState = { errors: {}, message: null };
+  const initialState = { errors: {}, message: undefined };
   const [state, formAction, isPending] = useActionState(register, initialState);
   const baseInputFormId = useId();
 
@@ -126,14 +127,7 @@ export default function SignupForm() {
             Sign up <UserPlus className="ml-auto h-5 w-5 text-gray-50" />
           </Button>
         </div>
-        <div className="flex h-8 items-end space-x-1" aria-live="polite" aria-atomic="true">
-          {state.message &&
-            <div className="flex items-center space-x-1">
-              <CircleAlert className="h-5 w-5 text-red-500" />
-              <p className="text-sm text-red-500">{state.message}</p>
-            </div>
-          }
-        </div>
+        <ErrorMessage message={state.message} className="mt-2" />
       </div>
     </form>
   );
