@@ -11,6 +11,8 @@ export interface Todo {
   title: string
   createdAt: Date
   createdBy: string
+  updatedAt: Date
+  doneAt: Date | null
   description: string | null
   status: boolean
 }

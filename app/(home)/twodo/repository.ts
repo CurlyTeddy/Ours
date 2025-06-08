@@ -53,6 +53,8 @@ async function getTodos(): Promise<Todo[]> {
     description: todo.description,
     createdAt: todo.createdAt,
     createdBy: todo.createdBy.name,
+    updatedAt: todo.updatedAt,
+    doneAt: todo.doneAt,
     status: !!todo.doneAt,
     priority: todo.priority,
   }));
