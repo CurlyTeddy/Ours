@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { CreateButton } from "@/app/(home)/twodo/create-button";
 import DeleteButton from "@/app/(home)/twodo/delete-button";
 import { Todo } from "@/app/(home)/twodo/columns";
+import EditDialog from "@/app/(home)/twodo/edit-dialog";
 
 export function DataTable<TValue>({
   columns,
@@ -41,6 +42,8 @@ export function DataTable<TValue>({
     },
     getRowId: (row) => row.id,
   });
+
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -79,7 +82,14 @@ export function DataTable<TValue>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.length ? table.getRowModel().rows.map(row => (
-              <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() && "selected"}
+                onClick={() => {
+                  setEditingTodo(row.original);
+                }}
+                className="cursor-pointer"
+              >
                 {row.getVisibleCells().map(cell => (
                   <TableCell key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -97,6 +107,10 @@ export function DataTable<TValue>({
         </Table>
       </div>
       <DataTablePagination table={table} />
+
+      {editingTodo && (
+        <EditDialog todo={editingTodo} setEditingTodo={setEditingTodo}  />
+      )}
     </div>
   );
 }

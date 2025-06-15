@@ -29,6 +29,20 @@ const FormFieldContext = React.createContext<FormFieldContextValue>(
   {} as FormFieldContextValue
 );
 
+const UncontrolledFormField = <
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
+>({
+  name,
+  children,
+}: FormFieldContextValue<TFieldValues, TName> & Readonly<{ children: React.ReactNode }>) => {
+  return (
+    <FormFieldContext.Provider value={{ name }}>
+      {children}
+    </FormFieldContext.Provider>
+  );
+};
+
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
@@ -118,6 +132,26 @@ function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
   );
 }
 
+function RegisteredFormControl({ ...props }: React.ComponentProps<typeof Slot>) {
+  const { name, error, formItemId, formDescriptionId, formMessageId } = useFormField();
+  const { register } = useFormContext();
+
+  return (
+    <Slot
+      data-slot="form-control"
+      id={formItemId}
+      aria-describedby={
+        !error
+          ? formDescriptionId
+          : `${formDescriptionId} ${formMessageId}`
+      }
+      aria-invalid={!!error}
+      {...register(name)}
+      {...props}
+    />
+  );
+}
+
 function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
   const { formDescriptionId } = useFormField();
 
@@ -160,4 +194,6 @@ export {
   FormDescription,
   FormMessage,
   FormField,
+  UncontrolledFormField,
+  RegisteredFormControl,
 };

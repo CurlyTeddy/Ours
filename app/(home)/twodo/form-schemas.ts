@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -5,4 +6,10 @@ const createSchema = z.object({
   description: z.string().optional(),
 });
 
-export { createSchema };
+const updateSchema = createSchema.extend({
+  doneAt: z.string().refine((date) => !date || DateTime.fromFormat(date, "MMM dd, yyyy").isValid, {
+    message: "Invalid date",
+  }),
+});
+
+export { createSchema, updateSchema };
