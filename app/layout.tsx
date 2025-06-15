@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { playpenSans } from "@/components/ui/fonts";
 import "@/app/globals.css";
-import ThemeProviderWrapper from "@/app/theme-provider";
+import ThemeProviderWrapper from "@/components/providers/theme-provider";
 import { TimeZoneProvider } from "@/components/providers/time-zone";
 
 export const metadata: Metadata = {
