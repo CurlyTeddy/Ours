@@ -19,7 +19,7 @@ export interface Todo {
 
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-export const Columns: ColumnDef<Todo>[] = [
+export const columns: ColumnDef<Todo>[] = [
   {
     id: "select",
     header: ({ table }) => (
