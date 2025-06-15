@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Dialog, DialogHeader, DialogTitle, DialogTrigger, DialogContent, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { addTodo } from "@/app/(home)/twodo/repository";
 import { createSchema } from "@/app/(home)/twodo/form-schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,20 +26,14 @@ function CreateButton() {
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (isPending || errorMessage !== undefined) {
-      return;
-    }
-
-    setOpen(false);
-    form.reset();
-  }, [isPending, errorMessage, form]);
-
-
   const onSubmit = (data: z.infer<typeof createSchema>) => {
     startTransition(async() => {
       const message = await addTodo(data);
       setErrorMessage(message);
+      if (!message) {
+        setOpen(false);
+        form.reset();
+      }
     });
   };
 
