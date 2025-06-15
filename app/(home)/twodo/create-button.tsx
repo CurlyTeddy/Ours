@@ -1,6 +1,6 @@
 "use client";
 
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormDescription, FormItem, FormLabel, FormMessage, RegisteredFormControl, UncontrolledFormField } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
@@ -61,38 +61,32 @@ function CreateButton() {
             onSubmit={(event) => void form.handleSubmit(onSubmit)(event)}
             className="space-y-4"
           >
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Have a Golden Retriever!" autoFocus {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Enter the title of the next excitement.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="e.g. Its name is Dory." rows={8} className="resize-y max-h-[250] scrollbar-hide" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Optionally, add a description for more details.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <UncontrolledFormField name="title">
+              <FormItem>
+                <FormLabel>Title</FormLabel>
+                <RegisteredFormControl>
+                  <Input placeholder="e.g. Have a Golden Retriever!" autoFocus />
+                </RegisteredFormControl>
+                <FormDescription>
+                  Enter the title of the next excitement.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            </UncontrolledFormField>
+
+            <UncontrolledFormField name="description">
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <RegisteredFormControl>
+                  <Textarea placeholder="e.g. Its name is Dory." rows={8} className="resize-y max-h-[250] scrollbar-hide" />
+                </RegisteredFormControl>
+                <FormDescription>
+                  Optionally, add a description for more details.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            </UncontrolledFormField>
+
             <ErrorMessage message={errorMessage} />
             <DialogFooter>
               <Button type="submit" disabled={isPending} className="cursor-pointer">Add Todo</Button>
