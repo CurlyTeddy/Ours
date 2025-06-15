@@ -11,7 +11,7 @@ import { useState, useEffect, useTransition } from "react";
 import { addTodo } from "@/app/(home)/twodo/repository";
 import { createSchema } from "@/app/(home)/twodo/form-schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CircleAlert } from "lucide-react";
+import ErrorMessage from "@/components/ui/error-message";
 
 function CreateButton() {
   const form = useForm<z.infer<typeof createSchema>>({
@@ -99,14 +99,7 @@ function CreateButton() {
                 </FormItem>
               )}
             />
-            <div className="flex items-end space-x-1" aria-live="polite" aria-atomic="true">
-              {errorMessage &&
-                <div className="flex items-center space-x-1">
-                  <CircleAlert className="h-5 w-5 text-red-500" />
-                  <p className="text-sm text-red-500">{errorMessage}</p>
-                </div>
-              }
-            </div>
+            <ErrorMessage message={errorMessage} />
             <DialogFooter>
               <Button type="submit" disabled={isPending} className="cursor-pointer">Add Todo</Button>
             </DialogFooter>
