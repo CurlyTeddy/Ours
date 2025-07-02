@@ -15,4 +15,15 @@ const updateSchema = createSchema.extend({
   }),
 });
 
+export interface Todo {
+  id: string
+  title: string
+  createdAt: string
+  createdBy: string
+  updatedAt: string
+  doneAt: string | null
+  description: string | null
+  status: boolean
+}
+
 export { createSchema, updateSchema, maxFileSize };

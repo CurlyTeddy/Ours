@@ -4,7 +4,7 @@ import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuL
 import { Avatar } from "@/components/ui/avatar";
 import { PowerIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { signOutAction } from "@/lib/actions";
+import { signOutAction } from "@/features/auth/actions";
 import { DarkModeSwitch } from "@/components/ui/switch";
 
 export default function Layout({

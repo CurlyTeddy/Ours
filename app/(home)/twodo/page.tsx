@@ -1,15 +1,14 @@
 "use client";
 
-import { columns } from "@/app/(home)/twodo/columns";
-import { DataTable } from "@/app/(home)/twodo/data-table";
-import { useTodos } from "@/app/(home)/twodo/hooks";
+import { DataTable } from "@/features/two-dos/components/data-table";
+import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 
 export default function Page() {
   const { todos } = useTodos();
 
   return (
     <main className="flex items-start justify-center p-10 h-full">
-      <DataTable columns={columns} data={todos} />
+      <DataTable data={todos} />
     </main>
   );
 }

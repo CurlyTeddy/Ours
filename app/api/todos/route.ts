@@ -1,5 +1,5 @@
 import prisma from "@/lib/database-client";
-import auth from "@/middleware";
+import { auth } from "@/features/auth/auth";
 import { createId } from "@paralleldrive/cuid2";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
@@ -8,23 +8,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import s3Client from "@/lib/s3-client";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { HttpErrorPayload } from "@/lib/error";
-
-interface TodoDto {
-  id: string;
-  title: string;
-  description: string | null;
-  createdAt: string;
-  updatedAt: string;
-  doneAt: string | null;
-  priority: number;
-  imageKeys: string[] | null;
-  createdById: string;
-  createdBy: string;
-}
-
-export interface TodoResponse {
-  todos: TodoDto[];
-}
+import { TodoCreateResponse, TodoDto, TodoResponse } from "@/features/two-dos/models/responses";
+import { TodoCreateRequest } from "@/features/two-dos/models/requests";
 
 async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
   let todos: TodoDto[] = [];
@@ -60,17 +45,6 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
   return NextResponse.json({ todos }, {
     status: 200,
   });
-}
-
-export interface TodoCreateRequest {
-  title: string;
-  description?: string;
-  imageNames: string[];
-}
-
-export interface TodoCreateResponse {
-  signedUrls: string[];
-  newTodo: TodoDto;
 }
 
 async function POST(request: NextRequest): Promise<NextResponse<TodoCreateResponse | HttpErrorPayload>> {

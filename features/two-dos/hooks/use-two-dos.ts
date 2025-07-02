@@ -1,10 +1,10 @@
 "use client";
 
-import { TodoResponse } from "@/app/api/todos/route";
 import ky from "ky";
 import { toast } from "sonner";
 import useSWR, { SWRConfiguration } from "swr";
-import { Todo } from "@/app/(home)/twodo/columns";
+import { Todo } from "@/features/two-dos/models/views";
+import { TodoResponse } from "@/features/two-dos/models/responses";
 
 function useTodos(config?: SWRConfiguration) {
   const { data, error, isLoading }: {

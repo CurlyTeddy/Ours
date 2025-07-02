@@ -1,6 +1,6 @@
 import { RowSelectionState } from "@tanstack/react-table";
 import { useEffect, useState, useTransition } from "react";
-import { deleteTodos } from "@/app/(home)/twodo/repository";
+import { deleteTodos } from "@/features/two-dos/repository";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import ErrorMessage from "@/components/ui/error-message";

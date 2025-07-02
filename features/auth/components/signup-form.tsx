@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useId } from "react";
-import { register } from "@/lib/actions";
+import { register } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import { AtSign, KeyRound, Mail, User, UserPlus } from "lucide-react";
 import ErrorMessage from "@/components/ui/error-message";

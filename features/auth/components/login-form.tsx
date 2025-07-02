@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useActionState, useId } from "react";
 import { useSearchParams } from "next/navigation";
-import { authenticate } from "@/lib/actions";
+import { authenticate } from "@/features/auth/actions";
 import Link from "next/link";
 import { ArrowRight, KeyRound, User } from "lucide-react";
 import ErrorMessage from "@/components/ui/error-message";

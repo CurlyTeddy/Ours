@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn, signOut } from "@/middlewares/auth";
+import { signIn, signOut } from "@/features/auth/auth";
 import { AuthError } from "next-auth";
 import { z } from "zod";
 import prisma from "@/lib/database-client";

@@ -1,13 +1,13 @@
-import { Todo } from "@/app/(home)/twodo/columns";
+import { Todo } from "@/features/two-dos/models/views";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { z } from "zod/v4";
-import { updateSchema } from "@/app/(home)/twodo/form-schemas";
+import { updateSchema } from "@/features/two-dos/models/views";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTimeZone } from "@/components/providers/time-zone";
 import { DateTime } from "luxon";
 import { useState, useTransition } from "react";
-import { updateTodo } from "@/app/(home)/twodo/repository";
+import { updateTodo } from "@/features/two-dos/repository";
 import { Form, FormItem, FormLabel, FormMessage, UncontrolledFormField, RegisteredFormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

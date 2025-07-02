@@ -8,14 +8,15 @@ import { z } from "zod/v4";
 import { Dialog, DialogHeader, DialogTitle, DialogTrigger, DialogContent, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useState, useTransition } from "react";
-import { createSchema, maxFileSize } from "@/app/(home)/twodo/form-schemas";
+import { createSchema, maxFileSize } from "@/features/two-dos/models/views";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ErrorMessage from "@/components/ui/error-message";
 import { FileUploader } from "@/components/ui/file-uploader";
 import ky, { HTTPError } from "ky";
-import { TodoCreateRequest, TodoCreateResponse } from "@/app/api/todos/route";
+import { TodoCreateRequest } from "@/features/two-dos/models/requests";
+import { TodoCreateResponse } from "@/features/two-dos/models/responses";
 import { HttpErrorPayload } from "@/lib/error";
-import { useTodos } from "@/app/(home)/twodo/hooks";
+import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 import { useSWRConfig } from "swr";
 
 function CreateButton() {

@@ -2,21 +2,24 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ColumnDef, ColumnFilter, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, RowSelectionState, SortingState, useReactTable } from "@tanstack/react-table";
-import { DataTablePagination } from "@/app/(home)/twodo/pagination";
-import { useEffect, useState } from "react";
+import { DataTablePagination } from "@/components/ui/pagination";
+import { useEffect, useMemo, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { Input } from "@/components/ui/input";
-import { CreateButton } from "@/app/(home)/twodo/create-button";
-import DeleteButton from "@/app/(home)/twodo/delete-button";
-import { Todo } from "@/app/(home)/twodo/columns";
-import EditDialog from "@/app/(home)/twodo/edit-dialog";
+import { CreateButton } from "@/features/two-dos/components/create-button";
+import DeleteButton from "@/features/two-dos/components/delete-button";
+import EditDialog from "@/features/two-dos/components/edit-dialog";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { ArrowUpDown, Circle, CircleCheck } from "lucide-react";
+import { useTimeZone } from "@/components/providers/time-zone";
+import { DateTime } from "luxon";
+import { Todo } from "@/features/two-dos/models/views";
 
-export function DataTable<TValue>({
-  columns,
+export function DataTable({
   data,
 }: {
-  columns: ColumnDef<Todo, TValue>[],
   data: Todo[],
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -25,6 +28,61 @@ export function DataTable<TValue>({
     table.getColumn("title")?.setFilterValue(value);
   }, 300);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const timeZone = useTimeZone();
+
+  const columns = useMemo(() => (
+    [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllRowsSelected() || table.getIsSomeRowsSelected() && "indeterminate"}
+            onCheckedChange={(value) => { table.toggleAllRowsSelected(!!value); }}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => { row.toggleSelected(!!value); }}
+            onClick={(event) => { event.stopPropagation(); }}
+            aria-label="Select row"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
+      {
+        accessorKey: "title",
+        header: "Title",
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <Button variant={"plain"} className="cursor-pointer" onClick={() => { column.toggleSorting(column.getIsSorted() === "asc"); }}>
+            Created At
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          return DateTime.fromISO(row.getValue<string>("createdAt"), { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm");
+        }
+      },
+      {
+        accessorKey: "createdBy",
+        header: "Created By",
+      },
+      {
+        accessorKey: "description",
+        header: "Description",
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (row.getValue("status") ? <CircleCheck className="text-green-500" /> : <Circle className="text-gray-400" />),
+      },
+    ] as ColumnDef<Todo>[]
+  ), [timeZone]);
 
   const table = useReactTable({
     data,
