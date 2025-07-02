@@ -1,17 +1,22 @@
 "use client";
 
-import { Form, FormDescription, FormItem, FormLabel, FormMessage, RegisteredFormControl, UncontrolledFormField } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, RegisteredFormControl, UncontrolledFormField } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { Dialog, DialogHeader, DialogTitle, DialogTrigger, DialogContent, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useState, useTransition } from "react";
-import { addTodo } from "@/app/(home)/twodo/repository";
-import { createSchema } from "@/app/(home)/twodo/form-schemas";
+import { createSchema, maxFileSize } from "@/app/(home)/twodo/form-schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ErrorMessage from "@/components/ui/error-message";
+import { FileUploader } from "@/components/ui/file-uploader";
+import ky, { HTTPError } from "ky";
+import { TodoCreateRequest, TodoCreateResponse } from "@/app/api/todos/route";
+import { HttpErrorPayload } from "@/lib/error";
+import { useTodos } from "@/app/(home)/twodo/hooks";
+import { useSWRConfig } from "swr";
 
 function CreateButton() {
   const form = useForm<z.infer<typeof createSchema>>({
@@ -19,21 +24,55 @@ function CreateButton() {
     defaultValues: {
       title: "",
       description: "",
+      images: [],
     },
   });
 
   const [open, setOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [isPending, startTransition] = useTransition();
+  const { todos } = useTodos({
+    revalidateIfStale: false,
+  });
+  const { mutate } = useSWRConfig();
 
-  const onSubmit = (data: z.infer<typeof createSchema>) => {
-    startTransition(async() => {
-      const message = await addTodo(data);
-      setErrorMessage(message);
-      if (!message) {
+  const onSubmit = (formData: z.infer<typeof createSchema>) => {
+    startTransition(async () => {
+      try {
+        const { newTodo, signedUrls } = await ky.post("/api/todos", {
+          json: {
+            title: formData.title,
+            description: formData.description,
+            imageNames: formData.images.map((file) => file.name),
+          } satisfies TodoCreateRequest,
+        }).json<TodoCreateResponse>();
+
+        await mutate("/api/todos", [...todos, newTodo], {
+          revalidate: false,
+        });
+
+        await Promise.all(signedUrls.map(
+          (url, index) => ky.put(
+            url,
+            {
+              headers: { "Content-Type": formData.images[index].type },
+              body: formData.images[index],
+            },
+          )
+        ));
+
         setOpen(false);
         form.reset();
-      }
+        setErrorMessage(undefined);
+      } catch (error) {
+        let errorMessage = "Failed to create todo. Please try again later.";
+        if (error instanceof HTTPError) {
+          const errorPayload = await error.response.json<HttpErrorPayload>();
+          errorMessage = errorPayload.message;
+        }
+        console.error("Error creating todo:", error);
+        setErrorMessage(errorMessage);
+      };
     });
   };
 
@@ -42,13 +81,16 @@ function CreateButton() {
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
-        setErrorMessage(undefined);
+        if (!nextOpen) {
+          form.reset();
+          setErrorMessage(undefined);
+        }
       }}
     >
       <DialogTrigger asChild>
         <Button className="cursor-pointer">Add Todo</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>Add Todo</DialogTitle>
           <DialogDescription>
@@ -78,7 +120,7 @@ function CreateButton() {
               <FormItem>
                 <FormLabel>Description</FormLabel>
                 <RegisteredFormControl>
-                  <Textarea placeholder="e.g. Its name is Dory." rows={8} className="resize-y max-h-[250] scrollbar-hide" />
+                  <Textarea placeholder="e.g. Its name is Dory." rows={3} className="resize-y max-h-[250] scrollbar-hide" />
                 </RegisteredFormControl>
                 <FormDescription>
                   Optionally, add a description for more details.
@@ -86,6 +128,28 @@ function CreateButton() {
                 <FormMessage />
               </FormItem>
             </UncontrolledFormField>
+
+            <FormField
+              name="images"
+              render={({ field }) => {
+                const { onChange, ...rest } = field;
+                return (
+                  <FormItem>
+                    <FormLabel>Images</FormLabel>
+                    <FormControl>
+                      <FileUploader
+                        {...rest}
+                        onValueChange={onChange}
+                        maxFiles={2}
+                        maxSize={maxFileSize}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
 
             <ErrorMessage message={errorMessage} />
             <DialogFooter>

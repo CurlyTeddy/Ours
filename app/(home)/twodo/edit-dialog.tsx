@@ -1,7 +1,7 @@
 import { Todo } from "@/app/(home)/twodo/columns";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { updateSchema } from "@/app/(home)/twodo/form-schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTimeZone } from "@/components/providers/time-zone";
@@ -28,7 +28,7 @@ export default function EditDialog({
     defaultValues: {
       title: todo.title,
       description: todo.description ?? "",
-      doneAt: todo.doneAt ? DateTime.fromJSDate(todo.doneAt, { zone: timeZone }).toFormat("MMM dd, yyyy") : "",
+      doneAt: todo.doneAt ? DateTime.fromISO(todo.doneAt, { zone: timeZone }).toFormat("MMM dd, yyyy") : "",
     },
   });
 
@@ -75,7 +75,7 @@ export default function EditDialog({
               <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm text-gray-600">
                 <div>
                   <dt>Created At</dt>
-                  <dd>{DateTime.fromJSDate(todo.createdAt, { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm")}</dd>
+                  <dd>{DateTime.fromISO(todo.createdAt, { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm")}</dd>
                 </div>
 
                 <div>
@@ -85,7 +85,7 @@ export default function EditDialog({
 
                 <div>
                   <dt>Last Updated</dt>
-                  <dd>{DateTime.fromJSDate(todo.updatedAt, { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm")}</dd>
+                  <dd>{DateTime.fromISO(todo.updatedAt, { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm")}</dd>
                 </div>
                 
                 <UncontrolledFormField name="doneAt">

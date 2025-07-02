@@ -1,9 +1,12 @@
 import { DateTime } from "luxon";
-import { z } from "zod";
+import { z } from "zod/v4";
+
+const maxFileSize = 1024 * 1024 * 1;
 
 const createSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
+  images: z.array(z.file().max(maxFileSize).mime(["image/gif", "image/jpeg", "image/png", "image/webp"])),
 });
 
 const updateSchema = createSchema.extend({
@@ -12,4 +15,4 @@ const updateSchema = createSchema.extend({
   }),
 });
 
-export { createSchema, updateSchema };
+export { createSchema, updateSchema, maxFileSize };

@@ -10,6 +10,7 @@ import { CreateButton } from "@/app/(home)/twodo/create-button";
 import DeleteButton from "@/app/(home)/twodo/delete-button";
 import { Todo } from "@/app/(home)/twodo/columns";
 import EditDialog from "@/app/(home)/twodo/edit-dialog";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 export function DataTable<TValue>({
   columns,
@@ -55,9 +56,10 @@ export function DataTable<TValue>({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-1 flex-col space-y-2">
       <div className="flex items-center py-4">
         <Input
+          name="title-filter"
           placeholder="Filter titles..."
           onChange={(event) => { handleFilterChange(event.target.value); }}
           className="max-w-sm"
@@ -68,43 +70,46 @@ export function DataTable<TValue>({
         </div>
       </div>
       <div className="rounded-md overflow-hidden border-2">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map(headerGroup => (
-              <TableRow isHeader key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length ? table.getRowModel().rows.map(row => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-                onClick={() => {
-                  setEditingTodo(row.original);
-                }}
-                className="cursor-pointer"
-              >
-                {row.getVisibleCells().map(cell => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        <ScrollArea className="h-full w-full">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map(headerGroup => (
+                <TableRow isHeader key={headerGroup.id}>
+                  {headerGroup.headers.map(header => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.length ? table.getRowModel().rows.map(row => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  onClick={() => {
+                    setEditingTodo(row.original);
+                  }}
+                  className="cursor-pointer"
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="text-center">
+                    No data available
                   </TableCell>
-                ))}
-              </TableRow>
-            )) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center">
-                  No data available
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
       <DataTablePagination table={table} />
 

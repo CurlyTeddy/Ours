@@ -15,9 +15,18 @@ export const { auth, signIn, signOut } = NextAuth({
   callbacks: {
     authorized({ request: { nextUrl }, auth }) {
       const isLoggedIn = !!auth?.user;
+      if (nextUrl.pathname.startsWith("/api")) {
+        return isLoggedIn ? NextResponse.next() : NextResponse.json(
+          { message: "Unauthorized" },
+          { status: 401 },
+        );
+      }
+
       if (nextUrl.pathname !== "/login" && nextUrl.pathname !== "/signup") {
         return isLoggedIn;
-      } else if (isLoggedIn) {
+      }
+      
+      if (isLoggedIn) {
         return NextResponse.redirect(new URL("/moments", nextUrl));
       }
       

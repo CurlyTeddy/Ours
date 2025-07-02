@@ -43,6 +43,7 @@ model Todo {
   title       String
   description String?
   priority    Float     @unique
+  imageKeys   String?   @map("image_keys")
 
   @@map("todo")
   @@index([priority])

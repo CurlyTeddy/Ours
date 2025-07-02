@@ -9,10 +9,10 @@ import { DateTime } from "luxon";
 export interface Todo {
   id: string
   title: string
-  createdAt: Date
+  createdAt: string
   createdBy: string
-  updatedAt: Date
-  doneAt: Date | null
+  updatedAt: string
+  doneAt: string | null
   description: string | null
   status: boolean
 }
@@ -53,7 +53,7 @@ export const columns: ColumnDef<Todo>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      return DateTime.fromJSDate(row.getValue("createdAt"), { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm");
+      return DateTime.fromISO(row.getValue("createdAt"), { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm");
     }
   },
   {

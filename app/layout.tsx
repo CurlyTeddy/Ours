@@ -3,6 +3,7 @@ import { playpenSans } from "@/components/ui/fonts";
 import "@/app/globals.css";
 import ThemeProviderWrapper from "@/components/providers/theme-provider";
 import { TimeZoneProvider } from "@/components/providers/time-zone";
+import { Toaster } from "@/components/providers/toaster";
 
 export const metadata: Metadata = {
   title: "Ours",
@@ -33,6 +34,7 @@ export default function RootLayout({
       >
         <ThemeProviderWrapper>
           <TimeZoneProvider>
+            <Toaster />
             {children}
           </TimeZoneProvider>
         </ThemeProviderWrapper>
