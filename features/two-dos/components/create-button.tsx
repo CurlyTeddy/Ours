@@ -52,6 +52,10 @@ function CreateButton() {
           revalidate: false,
         });
 
+        setOpen(false);
+        form.reset();
+        setErrorMessage(undefined);
+
         await Promise.all(signedUrls.map(
           (url, index) => ky.put(
             url,
@@ -61,10 +65,6 @@ function CreateButton() {
             },
           )
         ));
-
-        setOpen(false);
-        form.reset();
-        setErrorMessage(undefined);
       } catch (error) {
         let errorMessage = "Failed to create todo. Please try again later.";
         if (error instanceof HTTPError) {
