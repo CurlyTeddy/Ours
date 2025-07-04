@@ -17,7 +17,7 @@ interface TodoResponse {
 
 interface TodoCreateResponse {
   signedUrls: string[];
-  newTodo: TodoDto;
+  todo: TodoDto;
 }
 
 export type { TodoDto, TodoResponse, TodoCreateResponse };

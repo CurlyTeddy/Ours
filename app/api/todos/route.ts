@@ -88,7 +88,7 @@ async function POST(request: NextRequest): Promise<NextResponse<TodoCreateRespon
         _max: { priority: true },
       });
 
-      const todo = await txn.todo.create({
+      const newTodo = await txn.todo.create({
         include: {
           createdBy: {
             select: { name: true },
@@ -103,17 +103,17 @@ async function POST(request: NextRequest): Promise<NextResponse<TodoCreateRespon
         },
       });
 
-      const newTodo: TodoDto = {
-        id: todo.todoId,
-        title: todo.title,
-        description: todo.description,
-        createdAt: todo.createdAt.toISOString(),
-        updatedAt: todo.updatedAt.toISOString(),
-        doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
-        priority: todo.priority,
-        imageKeys: todo.imageKeys ? todo.imageKeys.split(",") : null,
-        createdById: todo.createdById,
-        createdBy: todo.createdBy.name,
+      const todo: TodoDto = {
+        id: newTodo.todoId,
+        title: newTodo.title,
+        description: newTodo.description,
+        createdAt: newTodo.createdAt.toISOString(),
+        updatedAt: newTodo.updatedAt.toISOString(),
+        doneAt: newTodo.doneAt ? newTodo.doneAt.toISOString() : null,
+        priority: newTodo.priority,
+        imageKeys: newTodo.imageKeys ? newTodo.imageKeys.split(",") : null,
+        createdById: newTodo.createdById,
+        createdBy: newTodo.createdBy.name,
       };
 
       const signedUrls = await Promise.all(imageKeys.map((key) => {
@@ -123,7 +123,7 @@ async function POST(request: NextRequest): Promise<NextResponse<TodoCreateRespon
         }), { expiresIn: 300 });
       }));
 
-      return { newTodo, signedUrls };
+      return { todo, signedUrls };
     });
 
     return NextResponse.json(payload, {

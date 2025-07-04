@@ -40,7 +40,7 @@ function CreateButton() {
   const onSubmit = (formData: z.infer<typeof createSchema>) => {
     startTransition(async () => {
       try {
-        const { newTodo, signedUrls } = await ky.post("/api/todos", {
+        const { todo: newTodo, signedUrls } = await ky.post("/api/todos", {
           json: {
             title: formData.title,
             description: formData.description,
