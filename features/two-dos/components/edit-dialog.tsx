@@ -1,4 +1,4 @@
-import { Todo } from "@/features/two-dos/models/views";
+import { timeFormat, Todo } from "@/features/two-dos/models/views";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { z } from "zod/v4";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import ErrorMessage from "@/components/ui/error-message";
-import PopoverCalendar from "@/components/ui/popover-calendar";
+import PopoverCalendar, { dateFormat } from "@/components/ui/popover-calendar";
 import ky, { HTTPError } from "ky";
 import { TodoUpdateResponse } from "@/features/two-dos/models/responses";
 import { useSWRConfig } from "swr";
@@ -32,7 +32,7 @@ export default function EditDialog({
     defaultValues: {
       title: todo.title,
       description: todo.description ?? "",
-      doneAt: todo.doneAt ? DateTime.fromISO(todo.doneAt, { zone: timeZone }).toFormat("MMM dd, yyyy") : null,
+      doneAt: todo.doneAt ? DateTime.fromISO(todo.doneAt, { zone: timeZone }).toFormat(dateFormat) : null,
     },
   });
 
@@ -47,7 +47,7 @@ export default function EditDialog({
           json: {
             title: data.title,
             description: data.description ?? null,
-            doneAt: !data.doneAt || data.doneAt.length === 0 ? null : DateTime.fromFormat(data.doneAt, "MMM dd, yyyy", { zone: timeZone }).toISO(),
+            doneAt: !data.doneAt || data.doneAt.length === 0 ? null : DateTime.fromFormat(data.doneAt, dateFormat, { zone: timeZone }).toISO(),
           } satisfies TodoUpdateRequest,
         }).json<TodoUpdateResponse>(), {
           populateCache: ({ todo: updatedTodo }, todos?: Todo[]) => {
@@ -105,7 +105,7 @@ export default function EditDialog({
               <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm text-gray-600">
                 <div>
                   <dt>Created At</dt>
-                  <dd>{DateTime.fromISO(todo.createdAt, { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm")}</dd>
+                  <dd>{DateTime.fromISO(todo.createdAt, { zone: timeZone }).toFormat(timeFormat)}</dd>
                 </div>
 
                 <div>
@@ -115,7 +115,7 @@ export default function EditDialog({
 
                 <div>
                   <dt>Last Updated</dt>
-                  <dd>{DateTime.fromISO(todo.updatedAt, { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm")}</dd>
+                  <dd>{DateTime.fromISO(todo.updatedAt, { zone: timeZone }).toFormat(timeFormat)}</dd>
                 </div>
                 
                 <UncontrolledFormField name="doneAt">

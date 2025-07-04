@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Circle, CircleCheck } from "lucide-react";
 import { useTimeZone } from "@/components/providers/time-zone";
 import { DateTime } from "luxon";
-import { Todo } from "@/features/two-dos/models/views";
+import { timeFormat, Todo } from "@/features/two-dos/models/views";
 
 export function DataTable({
   data,
@@ -65,7 +65,7 @@ export function DataTable({
           </Button>
         ),
         cell: ({ row }) => {
-          return DateTime.fromISO(row.getValue<string>("createdAt"), { zone: timeZone }).toFormat("yyyy-MM-dd HH:mm");
+          return DateTime.fromISO(row.getValue<string>("createdAt"), { zone: timeZone }).toFormat(timeFormat);
         }
       },
       {

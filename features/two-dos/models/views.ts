@@ -1,7 +1,10 @@
+import { dateFormat } from "@/components/ui/popover-calendar";
 import { DateTime } from "luxon";
 import { z } from "zod/v4";
 
 const maxFileSize = 1024 * 1024 * 1;
+
+const timeFormat = `${dateFormat} HH:mm`;
 
 const createSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -12,7 +15,7 @@ const createSchema = z.object({
 const updateSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  doneAt: z.string().refine((date) => !date || DateTime.fromFormat(date, "MMM dd, yyyy").isValid, {
+  doneAt: z.string().refine((date) => !date || DateTime.fromFormat(date, dateFormat).isValid, {
     message: "Invalid date",
   }).nullable(),
 });
@@ -28,4 +31,4 @@ export interface Todo {
   status: boolean
 }
 
-export { createSchema, updateSchema, maxFileSize };
+export { createSchema, updateSchema, maxFileSize, timeFormat };
