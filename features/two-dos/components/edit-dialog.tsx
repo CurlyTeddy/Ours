@@ -7,13 +7,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTimeZone } from "@/components/providers/time-zone";
 import { DateTime } from "luxon";
 import { useState, useTransition } from "react";
-import { updateTodo } from "@/features/two-dos/repository";
 import { Form, FormItem, FormLabel, FormMessage, UncontrolledFormField, RegisteredFormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import ErrorMessage from "@/components/ui/error-message";
 import PopoverCalendar from "@/components/ui/popover-calendar";
+import ky, { HTTPError } from "ky";
+import { TodoUpdateResponse } from "@/features/two-dos/models/responses";
+import { useSWRConfig } from "swr";
+import { HttpErrorPayload } from "@/lib/error";
+import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
 
 export default function EditDialog({
   todo,
@@ -28,22 +32,48 @@ export default function EditDialog({
     defaultValues: {
       title: todo.title,
       description: todo.description ?? "",
-      doneAt: todo.doneAt ? DateTime.fromISO(todo.doneAt, { zone: timeZone }).toFormat("MMM dd, yyyy") : "",
+      doneAt: todo.doneAt ? DateTime.fromISO(todo.doneAt, { zone: timeZone }).toFormat("MMM dd, yyyy") : null,
     },
   });
 
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
+  const { mutate } = useSWRConfig();
 
   const onSubmit = (data: z.infer<typeof updateSchema>) => {
     startTransition(async () => {
-      const message = await updateTodo(todo.id, {
-        ...data,
-        doneAt: data.doneAt ? DateTime.fromFormat(data.doneAt, "MMM dd, yyyy", { zone: timeZone }).toJSDate() : null,
-      });
-      setErrorMessage(message);
-      if (!message) {
+      try {
+        await mutate("/api/todos", ky.put(`/api/todos/${todo.id}`, {
+          json: {
+            title: data.title,
+            description: data.description ?? null,
+            doneAt: !data.doneAt || data.doneAt.length === 0 ? null : DateTime.fromFormat(data.doneAt, "MMM dd, yyyy", { zone: timeZone }).toISO(),
+          } satisfies TodoUpdateRequest,
+        }).json<TodoUpdateResponse>(), {
+          populateCache: ({ todo: updatedTodo }, todos?: Todo[]) => {
+            if (!todos) {
+              return [];
+            }
+
+            return todos.map((todo) => todo.id === updatedTodo.id ? {
+              ...todo,
+              title: updatedTodo.title,
+              description: updatedTodo.description,
+              doneAt: updatedTodo.doneAt,
+              updatedAt: updatedTodo.updatedAt,
+            } : todo);
+          }
+        });
+
+        setErrorMessage(undefined);
         setEditingTodo(null);
+      } catch (error) {
+        let errorMessage = "Failed to update todo. Please try again later.";
+        if (error instanceof HTTPError) {
+          const errorPayload = await error.response.json<HttpErrorPayload>();
+          errorMessage = errorPayload.message;
+        }
+        setErrorMessage(errorMessage);
       }
     });
   };

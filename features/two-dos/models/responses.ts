@@ -20,4 +20,8 @@ interface TodoCreateResponse {
   todo: TodoDto;
 }
 
-export type { TodoDto, TodoResponse, TodoCreateResponse };
+interface TodoUpdateResponse {
+  todo: TodoDto;
+}
+
+export type { TodoDto, TodoResponse, TodoCreateResponse, TodoUpdateResponse };

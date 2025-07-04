@@ -9,10 +9,12 @@ const createSchema = z.object({
   images: z.array(z.file().max(maxFileSize).mime(["image/gif", "image/jpeg", "image/png", "image/webp"])),
 });
 
-const updateSchema = createSchema.extend({
+const updateSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
   doneAt: z.string().refine((date) => !date || DateTime.fromFormat(date, "MMM dd, yyyy").isValid, {
     message: "Invalid date",
-  }),
+  }).nullable(),
 });
 
 export interface Todo {
