@@ -2,6 +2,7 @@ import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
 import { TodoUpdateResponse } from "@/features/two-dos/models/responses";
 import prisma from "@/lib/database-client";
 import { HttpErrorPayload } from "@/lib/error";
+import { Prisma } from "@/lib/generated/prisma";
 import { DateTime } from "luxon";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
@@ -74,4 +75,35 @@ async function PUT(request: NextRequest, { params }: { params: Promise<{ id: str
   }
 }
 
-export { PUT };
+async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse<null | HttpErrorPayload>> {
+  const { id } = await params;
+
+  try {
+    await prisma.todo.delete({
+      where: {
+        todoId: id,
+      },
+    });
+    
+    revalidatePath("/twodo");
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.error("Error deleting todos:", error);
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.json({
+        message: "Failed to delete todo. Cannot find the todo.",
+      }, {
+        status: 404,
+      });
+    }
+
+    return NextResponse.json({
+      message: "Failed to delete todo. Please try again later."
+    }, {
+      status: 500,
+    });
+  }
+}
+
+export { PUT, DELETE };

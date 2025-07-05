@@ -1,24 +1,38 @@
 import { RowSelectionState } from "@tanstack/react-table";
 import { useState, useTransition } from "react";
-import { deleteTodos } from "@/features/two-dos/repository";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import ErrorMessage from "@/components/ui/error-message";
+import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
+import ky, { HTTPError } from "ky";
+import { HttpErrorPayload } from "@/lib/error";
 
 export default function DeleteButton({ rowSelection } : { rowSelection: RowSelectionState }) {
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
+  const { key, mutate } = useTodos();
 
   const onDelete = () => {
     const selectTodoIds = Object.keys(rowSelection);
 
     startTransition(async () => {
-      if (selectTodoIds.length !== 0) {
-        const message = await deleteTodos(selectTodoIds);
-        setErrorMessage(message);
+      try {
+        await mutate(async (todos = []) => {
+          await Promise.all(selectTodoIds.map(id => ky.delete(`${key}/${id}`)));
+          return todos.filter((todo) => !(todo.id in rowSelection));
+        });
+        setOpen(false);
+        setErrorMessage(undefined);
+      } catch (error) {
+        let errorMessage = "Failed to delete todo. Please try again later.";
+        if (error instanceof HTTPError) {
+          const errorPayload = await error.response.json<HttpErrorPayload>();
+          errorMessage = errorPayload.message;
+        }
+
+        setErrorMessage(errorMessage);
       }
-      setOpen(false);
     });
   };
 
