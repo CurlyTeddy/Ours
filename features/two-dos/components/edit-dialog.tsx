@@ -98,7 +98,7 @@ export default function EditDialog({
             className="space-y-4"
           >
             <div className="border-b pb-4">
-              <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm text-gray-600">
+              <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm text-muted-foreground">
                 <div>
                   <dt>Created At</dt>
                   <dd>{DateTime.fromISO(todo.createdAt, { zone: timeZone }).toFormat(timeFormat)}</dd>
