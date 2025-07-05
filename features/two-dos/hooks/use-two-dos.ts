@@ -1,17 +1,13 @@
 "use client";
 
-import ky from "ky";
+import ky, { HTTPError } from "ky";
 import { toast } from "sonner";
 import useSWR, { SWRConfiguration } from "swr";
-import { Todo } from "@/features/two-dos/models/views";
 import { TodoResponse } from "@/features/two-dos/models/responses";
 
 function useTodos(config?: SWRConfiguration) {
-  const { data, error, isLoading }: {
-    data?: Todo[],
-    error?: Error,
-    isLoading: boolean
-  } = useSWR("/api/todos", async (url) => {
+  const key = "/api/todos";
+  const hook = useSWR(key, async (url: string) => {
     const response = await ky.get(url).json<TodoResponse>();
     return response.todos.map((todo) => ({
       id: todo.id,
@@ -25,16 +21,16 @@ function useTodos(config?: SWRConfiguration) {
     }));
   }, {
     errorRetryCount: 1,
-    onError: (error) => {
+    onError: (error: HTTPError) => {
       toast.error(error.message);
     },
     ...config,
   });
 
   return {
-    todos: data ?? [],
-    isLoading,
-    error,
+    key,
+    ...hook,
+    todos: hook.data ?? [],
   };
 }
 

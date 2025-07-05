@@ -15,9 +15,9 @@ import ErrorMessage from "@/components/ui/error-message";
 import PopoverCalendar, { dateFormat } from "@/components/ui/popover-calendar";
 import ky, { HTTPError } from "ky";
 import { TodoUpdateResponse } from "@/features/two-dos/models/responses";
-import { useSWRConfig } from "swr";
 import { HttpErrorPayload } from "@/lib/error";
 import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
+import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 
 export default function EditDialog({
   todo,
@@ -38,31 +38,27 @@ export default function EditDialog({
 
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
-  const { mutate } = useSWRConfig();
+  const { key, mutate } = useTodos();
 
   const onSubmit = (data: z.infer<typeof updateSchema>) => {
     startTransition(async () => {
       try {
-        await mutate("/api/todos", ky.put(`/api/todos/${todo.id}`, {
-          json: {
-            title: data.title,
-            description: data.description ?? null,
-            doneAt: !data.doneAt || data.doneAt.length === 0 ? null : DateTime.fromFormat(data.doneAt, dateFormat, { zone: timeZone }).toISO(),
-          } satisfies TodoUpdateRequest,
-        }).json<TodoUpdateResponse>(), {
-          populateCache: ({ todo: updatedTodo }, todos?: Todo[]) => {
-            if (!todos) {
-              return [];
-            }
+        await mutate(async (todos = []) => {
+          const { todo: updatedTodo } = await ky.put(`${key}/${todo.id}`, {
+            json: {
+              title: data.title,
+              description: data.description ?? null,
+              doneAt: !data.doneAt || data.doneAt.length === 0 ? null : DateTime.fromFormat(data.doneAt, dateFormat, { zone: timeZone }).toISO(),
+            } satisfies TodoUpdateRequest,
+          }).json<TodoUpdateResponse>();
 
-            return todos.map((todo) => todo.id === updatedTodo.id ? {
-              ...todo,
-              title: updatedTodo.title,
-              description: updatedTodo.description,
-              doneAt: updatedTodo.doneAt,
-              updatedAt: updatedTodo.updatedAt,
-            } : todo);
-          }
+          return todos.map((todo) => todo.id === updatedTodo.id ? {
+            ...todo,
+            title: updatedTodo.title,
+            description: updatedTodo.description,
+            doneAt: updatedTodo.doneAt,
+            updatedAt: updatedTodo.updatedAt,
+          } : todo);
         });
 
         setErrorMessage(undefined);

@@ -17,7 +17,6 @@ import { TodoCreateRequest } from "@/features/two-dos/models/requests";
 import { TodoCreateResponse } from "@/features/two-dos/models/responses";
 import { HttpErrorPayload } from "@/lib/error";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
-import { useSWRConfig } from "swr";
 
 function CreateButton() {
   const form = useForm<z.infer<typeof createSchema>>({
@@ -32,24 +31,28 @@ function CreateButton() {
   const [open, setOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [isPending, startTransition] = useTransition();
-  const { todos } = useTodos({
-    revalidateIfStale: false,
-  });
-  const { mutate } = useSWRConfig();
+  const { key, mutate } = useTodos();
 
   const onSubmit = (formData: z.infer<typeof createSchema>) => {
     startTransition(async () => {
       try {
-        const { todo: newTodo, signedUrls } = await ky.post("/api/todos", {
-          json: {
-            title: formData.title,
-            description: formData.description,
-            imageNames: formData.images.map((file) => file.name),
-          } satisfies TodoCreateRequest,
-        }).json<TodoCreateResponse>();
+        let signedUrls: string[] = [];
+        await mutate(async (todos = []) => {
+          const response = await ky.post(key, {
+            json: {
+              title: formData.title,
+              description: formData.description,
+              imageNames: formData.images.map((file) => file.name),
+            } satisfies TodoCreateRequest,
+          }).json<TodoCreateResponse>();
+          signedUrls = response.signedUrls;
 
-        await mutate("/api/todos", [...todos, newTodo], {
-          revalidate: false,
+          return [
+            ...todos, {
+              ...response.todo,
+              status: !!response.todo.doneAt,
+            }
+          ];
         });
 
         setOpen(false);
