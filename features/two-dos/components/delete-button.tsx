@@ -1,5 +1,5 @@
 import { RowSelectionState } from "@tanstack/react-table";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { deleteTodos } from "@/features/two-dos/repository";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -10,23 +10,15 @@ export default function DeleteButton({ rowSelection } : { rowSelection: RowSelec
   const [open, setOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    if (isPending || errorMessage !== undefined) {
-      return;
-    }
-    setOpen(false);
-  }, [isPending, errorMessage]);
-
   const onDelete = () => {
     const selectTodoIds = Object.keys(rowSelection);
-    if (selectTodoIds.length === 0) {
-      setOpen(false);
-      return;
-    }
 
     startTransition(async () => {
-      const message = await deleteTodos(selectTodoIds);
-      setErrorMessage(message);
+      if (selectTodoIds.length !== 0) {
+        const message = await deleteTodos(selectTodoIds);
+        setErrorMessage(message);
+      }
+      setOpen(false);
     });
   };
 
