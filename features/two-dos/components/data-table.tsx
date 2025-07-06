@@ -124,7 +124,7 @@ export function DataTable({
         />
         <div className="ml-auto flex items-center space-x-2">
           <CreateButton />
-          <DeleteButton rowSelection={rowSelection} />
+          <DeleteButton table={table} />
         </div>
       </div>
       <div className="rounded-md overflow-hidden border-2">
