@@ -6,7 +6,7 @@ interface TodoDto {
   updatedAt: string;
   doneAt: string | null;
   priority: number;
-  imageKeys: string[] | null;
+  imageKeys: string[];
   createdById: string;
   createdBy: string;
 }

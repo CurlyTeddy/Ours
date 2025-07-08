@@ -16,6 +16,7 @@ import { ArrowUpDown, Circle, CircleCheck } from "lucide-react";
 import { useTimeZone } from "@/components/providers/time-zone";
 import { DateTime } from "luxon";
 import { timeFormat, Todo } from "@/features/two-dos/models/views";
+import Image from "next/image";
 
 export function DataTable({
   data,
@@ -29,6 +30,7 @@ export function DataTable({
   }, 300);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const timeZone = useTimeZone();
+  const host = process.env.NEXT_PUBLIC_R2_ENDPOINT;
 
   const columns = useMemo(() => (
     [
@@ -51,6 +53,27 @@ export function DataTable({
         ),
         enableSorting: false,
         enableHiding: false,
+      },
+      {
+        id: "image",
+        header: "Image",
+        cell: ({ row }) => (
+          <div className="relative aspect-square">
+            {host && row.original.imageKeys.length > 0 ?
+            <Image
+              src={`${host}/two-do/${row.original.imageKeys[0]}`}
+              alt={row.original.title}
+              fill
+              unoptimized={row.original.imageKeys[0].endsWith("gif")}
+            /> : <Image
+            src={"/howl.gif"}
+            alt={"A default for two-do"}
+            fill
+            unoptimized
+            priority
+            />}
+          </div>
+        ),
       },
       {
         accessorKey: "title",
@@ -82,7 +105,7 @@ export function DataTable({
         cell: ({ row }) => (row.getValue("status") ? <CircleCheck className="text-green-500" /> : <Circle className="text-gray-400" />),
       },
     ] as ColumnDef<Todo>[]
-  ), [timeZone]);
+  ), [timeZone, host]);
 
   const table = useReactTable({
     data,

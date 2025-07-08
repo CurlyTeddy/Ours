@@ -54,7 +54,7 @@ async function PUT(request: NextRequest, { params }: { params: Promise<{ id: str
       updatedAt: updatedTodo.updatedAt.toISOString(),
       doneAt: updatedTodo.doneAt ? updatedTodo.doneAt.toISOString() : null,
       priority: updatedTodo.priority,
-      imageKeys: updatedTodo.imageKeys ? updatedTodo.imageKeys.split(",") : null,
+      imageKeys: updatedTodo.imageKeys ? updatedTodo.imageKeys.split(",") : [],
       createdById: updatedTodo.createdById,
       createdBy: updatedTodo.createdBy.name,
     };

@@ -29,7 +29,7 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
       updatedAt: todo.updatedAt.toISOString(),
       doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
       priority: todo.priority,
-      imageKeys: todo.imageKeys ? todo.imageKeys.split(",") : null,
+      imageKeys: todo.imageKeys ? todo.imageKeys.split(",") : [],
       createdById: todo.createdById,
       createdBy: todo.createdBy.name,
     }));
@@ -111,14 +111,14 @@ async function POST(request: NextRequest): Promise<NextResponse<TodoCreateRespon
         updatedAt: newTodo.updatedAt.toISOString(),
         doneAt: newTodo.doneAt ? newTodo.doneAt.toISOString() : null,
         priority: newTodo.priority,
-        imageKeys: newTodo.imageKeys ? newTodo.imageKeys.split(",") : null,
+        imageKeys: newTodo.imageKeys ? newTodo.imageKeys.split(",") : [],
         createdById: newTodo.createdById,
         createdBy: newTodo.createdBy.name,
       };
 
       const signedUrls = await Promise.all(imageKeys.map((key) => {
         return getSignedUrl(s3Client, new PutObjectCommand({
-          Bucket: `images-${process.env.ENVIRONMENT ?? "dev"}`,
+          Bucket: `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`,
           Key: `two-do/${key}`,
         }), { expiresIn: 300 });
       }));

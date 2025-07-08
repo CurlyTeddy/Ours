@@ -144,7 +144,7 @@ function CreateButton() {
                       <FileUploader
                         {...rest}
                         onValueChange={onChange}
-                        maxFiles={2}
+                        multiple={false}
                         maxSize={maxFileSize}
                         disabled={isPending}
                       />
