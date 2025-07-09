@@ -47,6 +47,16 @@ function CreateButton() {
           }).json<TodoCreateResponse>();
           signedUrls = response.signedUrls;
 
+          await Promise.all(signedUrls.map(
+          (url, index) => ky.put(
+            url,
+            {
+              headers: { "Content-Type": formData.images[index].type },
+              body: formData.images[index],
+            },
+          )
+        ));
+
           return [
             ...todos, {
               ...response.todo,
@@ -58,16 +68,6 @@ function CreateButton() {
         setOpen(false);
         form.reset();
         setErrorMessage(undefined);
-
-        await Promise.all(signedUrls.map(
-          (url, index) => ky.put(
-            url,
-            {
-              headers: { "Content-Type": formData.images[index].type },
-              body: formData.images[index],
-            },
-          )
-        ));
       } catch (error) {
         let errorMessage = "Failed to create todo. Please try again later.";
         if (error instanceof HTTPError) {
