@@ -3,6 +3,8 @@ import { TodoUpdateResponse } from "@/features/two-dos/models/responses";
 import prisma from "@/lib/database-client";
 import { HttpErrorPayload } from "@/lib/error";
 import { Prisma } from "@/lib/generated/prisma";
+import s3Client from "@/lib/s3-client";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { DateTime } from "luxon";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
@@ -79,11 +81,18 @@ async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
 
   try {
-    await prisma.todo.delete({
+    const todo = await prisma.todo.delete({
       where: {
         todoId: id,
       },
     });
+
+    if (todo.imageKeys !== null) {
+      await Promise.all(todo.imageKeys.split(",").map((key) => {
+        const command = new DeleteObjectCommand({ Bucket: `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`, Key: `two-do/${key}` });
+        return s3Client.send(command);
+      }));
+    }
     
     revalidatePath("/twodo");
     return new NextResponse(null, { status: 204 });
