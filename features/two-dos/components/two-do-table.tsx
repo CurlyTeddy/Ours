@@ -17,12 +17,9 @@ import { useTimeZone } from "@/components/providers/time-zone";
 import { DateTime } from "luxon";
 import { timeFormat, Todo } from "@/features/two-dos/models/views";
 import Image from "next/image";
+import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 
-export function DataTable({
-  data,
-}: {
-  data: Todo[],
-}) {
+export function TwodoTable() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
   const handleFilterChange = useDebouncedCallback((value: string) => {
@@ -30,7 +27,7 @@ export function DataTable({
   }, 300);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const timeZone = useTimeZone();
-  const host = process.env.NEXT_PUBLIC_R2_ENDPOINT;
+  const public_r2_host = process.env.NEXT_PUBLIC_R2_ENDPOINT;
 
   const columns = useMemo(() => (
     [
@@ -59,9 +56,9 @@ export function DataTable({
         header: "Image",
         cell: ({ row }) => (
           <div className="relative aspect-square">
-            {host && row.original.imageKeys.length > 0 ?
+            {public_r2_host && row.original.imageKeys.length > 0 ?
             <Image
-              src={`${host}/two-do/${row.original.imageKeys[0]}`}
+              src={`${public_r2_host}/two-do/${row.original.imageKeys[0]}`}
               alt={row.original.title}
               fill
               unoptimized={row.original.imageKeys[0].endsWith("gif")}
@@ -105,10 +102,12 @@ export function DataTable({
         cell: ({ row }) => (row.getValue("status") ? <CircleCheck className="text-green-500" /> : <Circle className="text-gray-400" />),
       },
     ] as ColumnDef<Todo>[]
-  ), [timeZone, host]);
+  ), [timeZone, public_r2_host]);
+
+  const { todos } = useTodos();
 
   const table = useReactTable({
-    data,
+    data: todos,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
