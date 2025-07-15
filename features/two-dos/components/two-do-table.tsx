@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { CreateButton } from "@/features/two-dos/components/create-button";
 import DeleteButton from "@/features/two-dos/components/delete-button";
 import EditDialog from "@/features/two-dos/components/edit-dialog";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Circle, CircleCheck } from "lucide-react";
@@ -149,10 +148,10 @@ export function TwodoTable() {
           <DeleteButton table={table} />
         </div>
       </div>
-      <div className="rounded-md overflow-hidden border-2">
-        <ScrollArea className="h-full w-full">
-          <Table>
-            <TableHeader>
+      <div className="relative flex flex-1">
+        <div className="absolute inset-0 flex rounded-md border-2 overflow-hidden">
+          <Table scrollable={false}>
+            <TableHeader className="sticky top-0 z-10">
               {table.getHeaderGroups().map(headerGroup => (
                 <TableRow isHeader key={headerGroup.id}>
                   {headerGroup.headers.map(header => (
@@ -188,9 +187,9 @@ export function TwodoTable() {
               )}
             </TableBody>
           </Table>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       </div>
+      
       <DataTablePagination table={table} />
 
       {editingTodo && (

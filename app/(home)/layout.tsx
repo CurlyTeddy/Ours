@@ -55,9 +55,7 @@ export default function Layout({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="flex-1 overflow-auto">
-        {children}
-      </div>
+      {children}
     </div>
   );
 }
