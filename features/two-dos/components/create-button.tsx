@@ -49,13 +49,13 @@ function CreateButton() {
 
           await Promise.all(signedUrls.map(
           (url, index) => ky.put(
-            url,
-            {
-              headers: { "Content-Type": formData.images[index].type },
-              body: formData.images[index],
-            },
-          )
-        ));
+              url,
+              {
+                headers: { "Content-Type": formData.images[index].type },
+                body: formData.images[index],
+              },
+            )
+          ));
 
           return [
             ...todos, {
@@ -63,6 +63,8 @@ function CreateButton() {
               status: !!response.todo.doneAt,
             }
           ];
+        }, {
+          revalidate: false,
         });
 
         setOpen(false);

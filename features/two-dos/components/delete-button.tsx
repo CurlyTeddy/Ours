@@ -16,14 +16,19 @@ export default function DeleteButton({ table } : { table: Table<Todo> }) {
 
   const onDelete = () => {
     const selectTodoIds = table.getSelectedRowModel().rows.map((row) => row.original.id);
+    const removeSet = new Set(selectTodoIds);
 
     startTransition(async () => {
       try {
         await mutate(async (todos = []) => {
           await Promise.all(selectTodoIds.map(id => ky.delete(`${key}/${id}`)));
           table.resetRowSelection();
-          const removeSet = new Set(selectTodoIds);
-          return todos.filter((todo) => !(todo.id in removeSet));
+          return todos.filter((todo) => !(removeSet.has(todo.id)));
+        }, {
+          optimisticData: (todos = []) => {
+            return todos.filter((todo) => !(removeSet.has(todo.id)));
+          },
+          revalidate: false,
         });
         setOpen(false);
         setErrorMessage(undefined);
