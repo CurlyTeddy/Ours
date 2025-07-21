@@ -26,15 +26,19 @@ const eslintConfig = [
   {
     files: ["**/*.ts", "**/*.tsx"],
     rules: {
-      "quotes": ["error", "double", { avoidEscape: true, allowTemplateLiterals: true }],
-      "semi": ["error", "always"],
+      quotes: [
+        "error",
+        "double",
+        { avoidEscape: true, allowTemplateLiterals: true },
+      ],
+      semi: ["error", "always"],
     },
     languageOptions: {
       parserOptions: {
         project: ["tsconfig.json"],
         projectService: true,
         tsconfigRootDir: __dirname,
-      }
+      },
     },
   },
   {
@@ -46,11 +50,7 @@ const eslintConfig = [
         {
           mode: "full",
           type: "shared",
-          pattern: [
-            "components/**/*",
-            "hooks/**/*",
-            "lib/**/*",
-          ]
+          pattern: ["components/**/*", "hooks/**/*", "lib/**/*"],
         },
         {
           mode: "full",
@@ -68,38 +68,42 @@ const eslintConfig = [
           mode: "full",
           type: "neverImport",
           pattern: ["*"],
-        }
-      ]
+        },
+      ],
     },
     rules: {
       "boundaries/no-unknown": [2],
-      "boundaries/element-types": [2, {
-        default: "disallow",
-        rules: [
-          {
-            from: ["shared"],
-            allow: ["shared"],
-          },
-          {
-            from: ["feature"],
-            allow: [
-              "shared",
-              ["feature", { "featureName": "${from.featureName}" }],
-            ]
-          },
-          {
-            from: ["app", "neverImport"],
-            allow: ["shared", "feature"],
-          },
-          {
-            from: ["app"],
-            allow:  [["app", { "fileName": "*.css" }]],
-          }
-        ],
-        message: "Files from ${from.type} cannot import modules from ${dependency.type}.",
-      }]
-    }
-  }
+      "boundaries/element-types": [
+        2,
+        {
+          default: "disallow",
+          rules: [
+            {
+              from: ["shared"],
+              allow: ["shared"],
+            },
+            {
+              from: ["feature"],
+              allow: [
+                "shared",
+                ["feature", { featureName: "${from.featureName}" }],
+              ],
+            },
+            {
+              from: ["app", "neverImport"],
+              allow: ["shared", "feature"],
+            },
+            {
+              from: ["app"],
+              allow: [["app", { fileName: "*.css" }]],
+            },
+          ],
+          message:
+            "Files from ${from.type} cannot import modules from ${dependency.type}.",
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

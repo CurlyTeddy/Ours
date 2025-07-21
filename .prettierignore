@@ -1,0 +1,10 @@
+# Ignore artifacts:
+build
+coverage
+.husky
+lib/generated
+prisma/migrations
+public
+.prettierignore
+package.json
+pnpm-lock.yaml

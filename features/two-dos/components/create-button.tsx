@@ -1,11 +1,29 @@
 "use client";
 
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, RegisteredFormControl, UncontrolledFormField } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  RegisteredFormControl,
+  UncontrolledFormField,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { z } from "zod/v4";
-import { Dialog, DialogHeader, DialogTitle, DialogTrigger, DialogContent, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useState, useTransition } from "react";
 import { createSchema, maxFileSize } from "@/features/two-dos/models/views";
@@ -29,7 +47,9 @@ function CreateButton() {
   });
 
   const [open, setOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(
+    undefined,
+  );
   const [isPending, startTransition] = useTransition();
   const { key, mutate } = useTodos();
 
@@ -37,35 +57,40 @@ function CreateButton() {
     startTransition(async () => {
       try {
         let signedUrls: string[] = [];
-        await mutate(async (todos = []) => {
-          const response = await ky.post(key, {
-            json: {
-              title: formData.title,
-              description: formData.description,
-              imageNames: formData.images.map((file) => file.name),
-            } satisfies TodoCreateRequest,
-          }).json<TodoCreateResponse>();
-          signedUrls = response.signedUrls;
+        await mutate(
+          async (todos = []) => {
+            const response = await ky
+              .post(key, {
+                json: {
+                  title: formData.title,
+                  description: formData.description,
+                  imageNames: formData.images.map((file) => file.name),
+                } satisfies TodoCreateRequest,
+              })
+              .json<TodoCreateResponse>();
+            signedUrls = response.signedUrls;
 
-          await Promise.all(signedUrls.map(
-          (url, index) => ky.put(
-              url,
+            await Promise.all(
+              signedUrls.map((url, index) =>
+                ky.put(url, {
+                  headers: { "Content-Type": formData.images[index].type },
+                  body: formData.images[index],
+                }),
+              ),
+            );
+
+            return [
+              ...todos,
               {
-                headers: { "Content-Type": formData.images[index].type },
-                body: formData.images[index],
+                ...response.todo,
+                status: !!response.todo.doneAt,
               },
-            )
-          ));
-
-          return [
-            ...todos, {
-              ...response.todo,
-              status: !!response.todo.doneAt,
-            }
-          ];
-        }, {
-          revalidate: false,
-        });
+            ];
+          },
+          {
+            revalidate: false,
+          },
+        );
 
         setOpen(false);
         form.reset();
@@ -78,7 +103,7 @@ function CreateButton() {
         }
         console.error("Error creating todo:", error);
         setErrorMessage(errorMessage);
-      };
+      }
     });
   };
 
@@ -113,7 +138,10 @@ function CreateButton() {
               <FormItem>
                 <FormLabel>Title</FormLabel>
                 <RegisteredFormControl>
-                  <Input placeholder="e.g. Have a Golden Retriever!" autoFocus />
+                  <Input
+                    placeholder="e.g. Have a Golden Retriever!"
+                    autoFocus
+                  />
                 </RegisteredFormControl>
                 <FormDescription>
                   Enter the title of the next excitement.
@@ -126,7 +154,11 @@ function CreateButton() {
               <FormItem>
                 <FormLabel>Description</FormLabel>
                 <RegisteredFormControl>
-                  <Textarea placeholder="e.g. Its name is Dory." rows={3} className="resize-y max-h-[250] scrollbar-hide" />
+                  <Textarea
+                    placeholder="e.g. Its name is Dory."
+                    rows={3}
+                    className="resize-y max-h-[250] scrollbar-hide"
+                  />
                 </RegisteredFormControl>
                 <FormDescription>
                   Optionally, add a description for more details.
@@ -159,7 +191,13 @@ function CreateButton() {
 
             <ErrorMessage message={errorMessage} />
             <DialogFooter>
-              <Button type="submit" disabled={isPending} className="cursor-pointer">Add Todo</Button>
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="cursor-pointer"
+              >
+                Add Todo
+              </Button>
             </DialogFooter>
           </form>
         </Form>

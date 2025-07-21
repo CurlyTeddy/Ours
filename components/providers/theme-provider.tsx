@@ -4,7 +4,7 @@ import { ThemeProvider } from "next-themes";
 
 export default function ThemeProviderWrapper({
   children,
-} : Readonly<{
+}: Readonly<{
   children: React.ReactNode;
 }>) {
   return (

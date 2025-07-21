@@ -10,15 +10,16 @@ import ErrorMessage from "@/components/ui/error-message";
 
 export default function LoginForm() {
   const callbackUrl = useSearchParams().get("callbackUrl") ?? "/moments";
-  const [errorMessage, formAction, isPending] = useActionState(authenticate, undefined);
+  const [errorMessage, formAction, isPending] = useActionState(
+    authenticate,
+    undefined,
+  );
   const baseInputFormId = useId();
 
   return (
     <form action={formAction}>
       <div className="flex-1 rounded-lg bg-gray-50 px-6 pb-4 pt-8">
-        <h1 className="mb-3 text-2xl">
-          Please log in to continue.
-        </h1>
+        <h1 className="mb-3 text-2xl">Please log in to continue.</h1>
         <div className="w-full space-y-5">
           <div>
             <label
@@ -67,7 +68,12 @@ export default function LoginForm() {
           </Button>
           <div className="mt-6 text-sm text-gray-500 opacity-80">
             <span className="text-gray-600">Have an invite code?</span>{" "}
-            <Link href={"/signup"} className="text-blue-600 underline hover:text-blue-800 transition-colors">Create an account</Link>
+            <Link
+              href={"/signup"}
+              className="text-blue-600 underline hover:text-blue-800 transition-colors"
+            >
+              Create an account
+            </Link>
           </div>
         </div>
         <ErrorMessage message={errorMessage} className="mt-2" />

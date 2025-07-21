@@ -11,13 +11,13 @@ function Progress({
   ...props
 }: React.ComponentProps<typeof ProgressPrimitive.Root>) {
   const xPercent = 100 - (value ?? 0);
-  
+
   return (
     <ProgressPrimitive.Root
       data-slot="progress"
       className={cn(
         "bg-primary/20 relative h-2 w-full overflow-hidden rounded-full",
-        className
+        className,
       )}
       {...props}
     >

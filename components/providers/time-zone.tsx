@@ -7,11 +7,7 @@ const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const TimeZoneContext = createContext<string>(timeZone);
 
 function TimeZoneProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <TimeZoneContext value={timeZone}>
-      {children}
-    </TimeZoneContext>
-  );
+  return <TimeZoneContext value={timeZone}>{children}</TimeZoneContext>;
 }
 
 function useTimeZone() {

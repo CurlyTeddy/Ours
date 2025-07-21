@@ -16,29 +16,34 @@ export const { auth, signIn, signOut } = NextAuth({
     authorized({ request: { nextUrl }, auth }) {
       const isLoggedIn = !!auth?.user;
       if (nextUrl.pathname.startsWith("/api")) {
-        return isLoggedIn ? NextResponse.next() : NextResponse.json(
-          { message: "Unauthorized" },
-          { status: 401 },
-        );
+        return isLoggedIn
+          ? NextResponse.next()
+          : NextResponse.json({ message: "Unauthorized" }, { status: 401 });
       }
 
       if (nextUrl.pathname !== "/login" && nextUrl.pathname !== "/signup") {
         return isLoggedIn;
       }
-      
+
       if (isLoggedIn) {
         return NextResponse.redirect(new URL("/moments", nextUrl));
       }
-      
+
       return true;
     },
-    jwt({ token, user } : { token: JWT; user?: User | AdapterUser }) {
+    jwt({ token, user }: { token: JWT; user?: User | AdapterUser }) {
       if (user) {
         token.id = user.id;
       }
       return token;
     },
-    session({ session, token } : { session: { user: AdapterUser;} & AdapterSession & Session, token?: JWT }) {
+    session({
+      session,
+      token,
+    }: {
+      session: { user: AdapterUser } & AdapterSession & Session;
+      token?: JWT;
+    }) {
       if (token) {
         session.user.id = token.id as string;
       }
@@ -48,10 +53,12 @@ export const { auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       async authorize(credentials): Promise<User | null> {
-        const parsedCredentials = z.object({
-          email: z.string().email(),
-          password: z.string().min(8),
-        }).safeParse(credentials);
+        const parsedCredentials = z
+          .object({
+            email: z.string().email(),
+            password: z.string().min(8),
+          })
+          .safeParse(credentials);
 
         if (!parsedCredentials.success) {
           return null;
@@ -59,10 +66,10 @@ export const { auth, signIn, signOut } = NextAuth({
 
         const { email, password } = parsedCredentials.data;
         const user = await prisma.user.findUnique({
-          where: { email: email }
+          where: { email: email },
         });
 
-        if (!user || !await bcrypt.compare(password, user.password)) {
+        if (!user || !(await bcrypt.compare(password, user.password))) {
           return null;
         }
 
@@ -71,7 +78,7 @@ export const { auth, signIn, signOut } = NextAuth({
           name: user.name,
           email: user.email,
         };
-      }
-    })
+      },
+    }),
   ],
 } satisfies NextAuthConfig);

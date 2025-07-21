@@ -22,11 +22,11 @@ interface FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > {
-  name: TName
+  name: TName;
 }
 
 const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue
+  {} as FormFieldContextValue,
 );
 
 const UncontrolledFormField = <
@@ -35,7 +35,8 @@ const UncontrolledFormField = <
 >({
   name,
   children,
-}: FormFieldContextValue<TFieldValues, TName> & Readonly<{ children: React.ReactNode }>) => {
+}: FormFieldContextValue<TFieldValues, TName> &
+  Readonly<{ children: React.ReactNode }>) => {
   return (
     <FormFieldContext.Provider value={{ name }}>
       {children}
@@ -76,11 +77,11 @@ const useFormField = () => {
 };
 
 interface FormItemContextValue {
-  id: string
+  id: string;
 }
 
 const FormItemContext = React.createContext<FormItemContextValue>(
-  {} as FormItemContextValue
+  {} as FormItemContextValue,
 );
 
 function FormItem({ className, ...props }: React.ComponentProps<"div">) {
@@ -115,16 +116,15 @@ function FormLabel({
 }
 
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
-  const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
+  const { error, formItemId, formDescriptionId, formMessageId } =
+    useFormField();
 
   return (
     <Slot
       data-slot="form-control"
       id={formItemId}
       aria-describedby={
-        !error
-          ? formDescriptionId
-          : `${formDescriptionId} ${formMessageId}`
+        !error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`
       }
       aria-invalid={!!error}
       {...props}
@@ -132,8 +132,11 @@ function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
   );
 }
 
-function RegisteredFormControl({ ...props }: React.ComponentProps<typeof Slot>) {
-  const { name, error, formItemId, formDescriptionId, formMessageId } = useFormField();
+function RegisteredFormControl({
+  ...props
+}: React.ComponentProps<typeof Slot>) {
+  const { name, error, formItemId, formDescriptionId, formMessageId } =
+    useFormField();
   const { register } = useFormContext();
 
   return (
@@ -141,9 +144,7 @@ function RegisteredFormControl({ ...props }: React.ComponentProps<typeof Slot>) 
       data-slot="form-control"
       id={formItemId}
       aria-describedby={
-        !error
-          ? formDescriptionId
-          : `${formDescriptionId} ${formMessageId}`
+        !error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`
       }
       aria-invalid={!!error}
       {...register(name)}

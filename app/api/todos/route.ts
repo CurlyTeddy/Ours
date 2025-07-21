@@ -8,20 +8,26 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import s3Client from "@/lib/s3-client";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { HttpErrorPayload } from "@/lib/error";
-import { TodoCreateResponse, TodoDto, TodoResponse } from "@/features/two-dos/models/responses";
+import {
+  TodoCreateResponse,
+  TodoDto,
+  TodoResponse,
+} from "@/features/two-dos/models/responses";
 import { TodoCreateRequest } from "@/features/two-dos/models/requests";
 
 async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
   let todos: TodoDto[] = [];
   try {
-    todos = (await prisma.todo.findMany({
-      orderBy: { priority: "asc" },
-      include: {
-        createdBy: {
-          select: { name: true },
-        }
-      }
-    })).map((todo) => ({
+    todos = (
+      await prisma.todo.findMany({
+        orderBy: { priority: "asc" },
+        include: {
+          createdBy: {
+            select: { name: true },
+          },
+        },
+      })
+    ).map((todo) => ({
       id: todo.todoId,
       title: todo.title,
       description: todo.description,
@@ -35,47 +41,63 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
     }));
   } catch (error) {
     console.error("Error fetching todos:", error);
-    return NextResponse.json({
-      message: "Failed to fetch todos. Please try again later.",
-    }, {
-      status: 500,
-    });
+    return NextResponse.json(
+      {
+        message: "Failed to fetch todos. Please try again later.",
+      },
+      {
+        status: 500,
+      },
+    );
   }
 
-  return NextResponse.json({ todos }, {
-    status: 200,
-  });
+  return NextResponse.json(
+    { todos },
+    {
+      status: 200,
+    },
+  );
 }
 
-async function POST(request: NextRequest): Promise<NextResponse<TodoCreateResponse | HttpErrorPayload>> {
-  const requestPayload = await request.json() as TodoCreateRequest;
+async function POST(
+  request: NextRequest,
+): Promise<NextResponse<TodoCreateResponse | HttpErrorPayload>> {
+  const requestPayload = (await request.json()) as TodoCreateRequest;
 
-  const validatedFields = z.object({
-    title: z.string().min(1, "Title is required"),
-    description: z.string().optional(),
-    imageNames: z.array(z.string()),
-  }).safeParse({
-    title: requestPayload.title,
-    description: requestPayload.description,
-    imageNames: requestPayload.imageNames,
-  });
+  const validatedFields = z
+    .object({
+      title: z.string().min(1, "Title is required"),
+      description: z.string().optional(),
+      imageNames: z.array(z.string()),
+    })
+    .safeParse({
+      title: requestPayload.title,
+      description: requestPayload.description,
+      imageNames: requestPayload.imageNames,
+    });
 
   if (!validatedFields.success) {
-    return NextResponse.json({
-      message: validatedFields.error.issues[0].message,
-      validationIssues: validatedFields.error.issues
-    }, {
-      status: 400,
-    });
+    return NextResponse.json(
+      {
+        message: validatedFields.error.issues[0].message,
+        validationIssues: validatedFields.error.issues,
+      },
+      {
+        status: 400,
+      },
+    );
   }
-  
+
   const session = await auth();
   if (session?.user?.id === undefined) {
-    return NextResponse.json({
-      message: "Unauthorized. Please log in to create a todo.",
-    }, {
-      status: 401,
-    });
+    return NextResponse.json(
+      {
+        message: "Unauthorized. Please log in to create a todo.",
+      },
+      {
+        status: 401,
+      },
+    );
   }
 
   const userId = session.user.id;
@@ -116,12 +138,18 @@ async function POST(request: NextRequest): Promise<NextResponse<TodoCreateRespon
         createdBy: newTodo.createdBy.name,
       };
 
-      const signedUrls = await Promise.all(imageKeys.map((key) => {
-        return getSignedUrl(s3Client, new PutObjectCommand({
-          Bucket: `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`,
-          Key: `two-do/${key}`,
-        }), { expiresIn: 300 });
-      }));
+      const signedUrls = await Promise.all(
+        imageKeys.map((key) => {
+          return getSignedUrl(
+            s3Client,
+            new PutObjectCommand({
+              Bucket: `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`,
+              Key: `two-do/${key}`,
+            }),
+            { expiresIn: 300 },
+          );
+        }),
+      );
 
       return { todo, signedUrls };
     });
@@ -134,11 +162,14 @@ async function POST(request: NextRequest): Promise<NextResponse<TodoCreateRespon
   }
 
   revalidatePath("/twodo");
-  return NextResponse.json({
-    message: "Failed to create a todo. Please try again later.",
-  }, {
-    status: 500,
-  });
+  return NextResponse.json(
+    {
+      message: "Failed to create a todo. Please try again later.",
+    },
+    {
+      status: 500,
+    },
+  );
 }
 
 export { GET, POST };

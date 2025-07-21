@@ -9,15 +9,12 @@ export const metadata: Metadata = {
   title: "Ours",
   description: "A place for me and my girlfriend to record our lives.",
   applicationName: "Ours",
-  keywords: [
-    "ours",
-    "twodo",
-  ],
+  keywords: ["ours", "twodo"],
   authors: [
     {
       name: "CurlyTeddy",
       url: "https://github.com/CurlyTeddy",
-    }
+    },
   ],
   generator: "Next.js",
 };
@@ -29,9 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${playpenSans.className} antialiased`}
-      >
+      <body className={`${playpenSans.className} antialiased`}>
         <ThemeProviderWrapper>
           <TimeZoneProvider>
             <Toaster />

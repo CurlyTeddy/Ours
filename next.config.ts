@@ -7,9 +7,9 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "pub-*.r2.dev",
         pathname: "/two-do/**",
-      }
+      },
     ],
-  }
+  },
 };
 
 export default nextConfig;

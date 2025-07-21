@@ -39,7 +39,11 @@ export default function SignupForm() {
               />
               <User className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
-            <div id={`${baseInputFormId}-username-error`} aria-live="polite" aria-atomic="true">
+            <div
+              id={`${baseInputFormId}-username-error`}
+              aria-live="polite"
+              aria-atomic="true"
+            >
               {state.errors?.username?.map((error) => (
                 <p className="mt-2 text-sm text-red-500" key={error}>
                   {error}
@@ -67,7 +71,11 @@ export default function SignupForm() {
               />
               <AtSign className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
-            <div id={`${baseInputFormId}-email-error`} aria-live="polite" aria-atomic="true">
+            <div
+              id={`${baseInputFormId}-email-error`}
+              aria-live="polite"
+              aria-atomic="true"
+            >
               {state.errors?.email?.map((error) => (
                 <p className="mt-2 text-sm text-red-500" key={error}>
                   {error}
@@ -96,7 +104,11 @@ export default function SignupForm() {
               />
               <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
-            <div id={`${baseInputFormId}-password-error`} aria-live="polite" aria-atomic="true">
+            <div
+              id={`${baseInputFormId}-password-error`}
+              aria-live="polite"
+              aria-atomic="true"
+            >
               {state.errors?.password?.map((error) => (
                 <p className="mt-2 text-sm text-red-500" key={error}>
                   {error}

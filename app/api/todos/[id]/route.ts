@@ -12,31 +12,42 @@ import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
-async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse<TodoUpdateResponse | HttpErrorPayload>> {
+async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse<TodoUpdateResponse | HttpErrorPayload>> {
   const { id } = await params;
-  const requestPayload = await request.json() as TodoUpdateRequest;
+  const requestPayload = (await request.json()) as TodoUpdateRequest;
 
-  const validatedFields = z.object({
-    title: z.string().min(1, "Title is required"),
-    description: z.string().nullable(),
-    doneAt: z.string().refine((date) => DateTime.fromISO(date).isValid, {
-      message: "Invalid date",
-    }).nullable(),
-    imageNames: z.array(z.string().min(1, "Unexpected empty image key")),
-  }).safeParse({
-    title: requestPayload.title,
-    description: requestPayload.description,
-    doneAt: requestPayload.doneAt,
-    imageNames: requestPayload.imageNames,
-  });
+  const validatedFields = z
+    .object({
+      title: z.string().min(1, "Title is required"),
+      description: z.string().nullable(),
+      doneAt: z
+        .string()
+        .refine((date) => DateTime.fromISO(date).isValid, {
+          message: "Invalid date",
+        })
+        .nullable(),
+      imageNames: z.array(z.string().min(1, "Unexpected empty image key")),
+    })
+    .safeParse({
+      title: requestPayload.title,
+      description: requestPayload.description,
+      doneAt: requestPayload.doneAt,
+      imageNames: requestPayload.imageNames,
+    });
 
   if (!validatedFields.success) {
-    return NextResponse.json({
-      message: validatedFields.error.issues[0].message,
-      errors: validatedFields.error.issues,
-    }, {
-      status: 400,
-    });
+    return NextResponse.json(
+      {
+        message: validatedFields.error.issues[0].message,
+        errors: validatedFields.error.issues,
+      },
+      {
+        status: 400,
+      },
+    );
   }
 
   try {
@@ -53,37 +64,62 @@ async function PUT(request: NextRequest, { params }: { params: Promise<{ id: str
       const { imageNames, ...rest } = validatedFields.data;
       const oldImageKeys = todo.imageKeys ? todo.imageKeys.split(",") : [];
       const oldImageSet = new Set(oldImageKeys);
-      const imageIntersection = new Set(imageNames.filter((name) => oldImageSet.has(name)));
-      const imagesToUpload = imageNames.map((name) => [name, `${name}-${createId()}`] as [string, string]);
-      const newImageKeys = new Map(imagesToUpload.filter(([name]) => !imageIntersection.has(name)));
+      const imageIntersection = new Set(
+        imageNames.filter((name) => oldImageSet.has(name)),
+      );
+      const imagesToUpload = imageNames.map(
+        (name) => [name, `${name}-${createId()}`] as [string, string],
+      );
+      const newImageKeys = new Map(
+        imagesToUpload.filter(([name]) => !imageIntersection.has(name)),
+      );
 
       // Database update must be before R2 operations to avoid side effect on R2 when the database update fails
       const updatedTodo = await txn.todo.update({
         where: { todoId: id },
         data: {
           ...rest,
-          imageKeys: imageNames.map((name) => newImageKeys.has(name) ? newImageKeys.get(name) : name).join(","),
+          imageKeys: imageNames
+            .map((name) =>
+              newImageKeys.has(name) ? newImageKeys.get(name) : name,
+            )
+            .join(","),
         },
         include: {
           createdBy: {
             select: { name: true },
-          }
-        }
+          },
+        },
       });
 
       const bucket = `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`;
-      await Promise.all(oldImageKeys.filter((key) => !imageIntersection.has(key)).map((key) => {
-        const command = new DeleteObjectCommand({ Bucket: bucket, Key: `two-do/${key}` });
-        return s3Client.send(command);
-      }));
+      await Promise.all(
+        oldImageKeys
+          .filter((key) => !imageIntersection.has(key))
+          .map((key) => {
+            const command = new DeleteObjectCommand({
+              Bucket: bucket,
+              Key: `two-do/${key}`,
+            });
+            return s3Client.send(command);
+          }),
+      );
 
       // Letting frontend to upload files can cause race condition. A user might delete an object
       // that is not yet uploaded by another user, this can be mitigated by adding retry mechanism
       // on the client side.
-      const signedUrls = await Promise.all(imagesToUpload.map(([, key]) => getSignedUrl(s3Client, new PutObjectCommand({
-        Bucket: bucket,
-        Key: `two-do/${key}`,
-      }), { expiresIn: 300 })));
+      const signedUrls = await Promise.all(
+        imagesToUpload.map(([, key]) =>
+          getSignedUrl(
+            s3Client,
+            new PutObjectCommand({
+              Bucket: bucket,
+              Key: `two-do/${key}`,
+            }),
+            { expiresIn: 300 },
+          ),
+        ),
+      );
 
       return {
         updatedTodo,
@@ -95,11 +131,14 @@ async function PUT(request: NextRequest, { params }: { params: Promise<{ id: str
     });
 
     if (payload === null) {
-      return NextResponse.json({
-        message: "Failed to upload todo. Cannot find the todo.",
-      }, {
-        status: 404,
-      });
+      return NextResponse.json(
+        {
+          message: "Failed to upload todo. Cannot find the todo.",
+        },
+        {
+          status: 404,
+        },
+      );
     }
 
     const { updatedTodo } = payload;
@@ -118,23 +157,32 @@ async function PUT(request: NextRequest, { params }: { params: Promise<{ id: str
     };
 
     revalidatePath("/twodo");
-    return NextResponse.json({
-      todo,
-      imagesToUpload: payload.imagesToUpload,
-    }, {
-      status: 200,
-    });
+    return NextResponse.json(
+      {
+        todo,
+        imagesToUpload: payload.imagesToUpload,
+      },
+      {
+        status: 200,
+      },
+    );
   } catch (error) {
     console.error("Error updating todo:", error);
-    return NextResponse.json({
-      message: "Failed to update todo. Please try again later.",
-    }, {
-      status: 500,
-    });
+    return NextResponse.json(
+      {
+        message: "Failed to update todo. Please try again later.",
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }
 
-async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse<null | HttpErrorPayload>> {
+async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse<null | HttpErrorPayload>> {
   const { id } = await params;
 
   try {
@@ -145,30 +193,44 @@ async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: 
     });
 
     if (todo.imageKeys !== null) {
-      await Promise.all(todo.imageKeys.split(",").map((key) => {
-        const command = new DeleteObjectCommand({ Bucket: `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`, Key: `two-do/${key}` });
-        return s3Client.send(command);
-      }));
+      await Promise.all(
+        todo.imageKeys.split(",").map((key) => {
+          const command = new DeleteObjectCommand({
+            Bucket: `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`,
+            Key: `two-do/${key}`,
+          });
+          return s3Client.send(command);
+        }),
+      );
     }
-    
+
     revalidatePath("/twodo");
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("Error deleting todos:", error);
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json({
-        message: "Failed to delete todo. Cannot find the todo.",
-      }, {
-        status: 404,
-      });
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return NextResponse.json(
+        {
+          message: "Failed to delete todo. Cannot find the todo.",
+        },
+        {
+          status: 404,
+        },
+      );
     }
 
-    return NextResponse.json({
-      message: "Failed to delete todo. Please try again later."
-    }, {
-      status: 500,
-    });
+    return NextResponse.json(
+      {
+        message: "Failed to delete todo. Please try again later.",
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }
 

@@ -8,7 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useFormContext, UseFormRegisterReturn } from "react-hook-form";
-import { useState } from "react"; 
+import { useState } from "react";
 import { DateTime } from "luxon";
 import { useTimeZone } from "@/components/providers/time-zone";
 
@@ -56,7 +56,12 @@ export default function PopoverCalendar({
             captionLayout="dropdown"
             onSelect={(date) => {
               if (props.name && date) {
-                setValue(props.name, DateTime.fromJSDate(date, { zone: timeZone }).toFormat(dateFormat));
+                setValue(
+                  props.name,
+                  DateTime.fromJSDate(date, { zone: timeZone }).toFormat(
+                    dateFormat,
+                  ),
+                );
               }
               setOpen(false);
             }}

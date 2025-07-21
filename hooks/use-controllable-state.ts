@@ -16,17 +16,19 @@ export function useControllableState<T>({
   defaultProp,
   onChange,
 }: UseControllableStateParams<T>): [T, SetStateFn<T>] {
-  const [uncontrolledProp, setUncontrolledProp, onChangeRef] = useUncontrolledState({
-    defaultProp,
-    onChange,
-  });
+  const [uncontrolledProp, setUncontrolledProp, onChangeRef] =
+    useUncontrolledState({
+      defaultProp,
+      onChange,
+    });
   const isControlled = prop !== undefined;
   const value = isControlled ? prop : uncontrolledProp;
 
   const setValue = React.useCallback<SetStateFn<T>>(
     (nextValue) => {
       if (isControlled) {
-        const value = nextValue instanceof Function ? nextValue(prop) : nextValue;
+        const value =
+          nextValue instanceof Function ? nextValue(prop) : nextValue;
         if (value !== prop) {
           onChangeRef.current?.(value);
         }
@@ -34,7 +36,7 @@ export function useControllableState<T>({
         setUncontrolledProp(nextValue);
       }
     },
-    [isControlled, prop, setUncontrolledProp, onChangeRef]
+    [isControlled, prop, setUncontrolledProp, onChangeRef],
   );
 
   return [value, setValue];

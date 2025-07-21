@@ -1,6 +1,16 @@
 import { AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from "@/components/ui/navigation-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+} from "@/components/ui/navigation-menu";
 import { Avatar } from "@/components/ui/avatar";
 import { PowerIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,9 +34,7 @@ export default function Layout({
                 </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <NavigationMenuLink href={"/twodo"}>
-                  Two Do
-                </NavigationMenuLink>
+                <NavigationMenuLink href={"/twodo"}>Two Do</NavigationMenuLink>
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
@@ -39,14 +47,21 @@ export default function Layout({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Avatar className="cursor-pointer">
-              <AvatarImage src="https://github.com/shadcn.png" alt="My account" />
+              <AvatarImage
+                src="https://github.com/shadcn.png"
+                alt="My account"
+              />
               <AvatarFallback>PC</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56">
             <DropdownMenuItem asChild className="p-0">
               <form action={signOutAction}>
-                <Button type="submit" variant={"ghost"} className="w-full justify-start cursor-pointer">
+                <Button
+                  type="submit"
+                  variant={"ghost"}
+                  className="w-full justify-start cursor-pointer"
+                >
                   <PowerIcon className="w-6" />
                   Sign Out
                 </Button>

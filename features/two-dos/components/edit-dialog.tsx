@@ -1,5 +1,12 @@
 import { maxFileSize, timeFormat, Todo } from "@/features/two-dos/models/views";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { z } from "zod/v4";
 import { updateSchema } from "@/features/two-dos/models/views";
@@ -7,7 +14,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTimeZone } from "@/components/providers/time-zone";
 import { DateTime } from "luxon";
 import { useEffect, useState, useTransition } from "react";
-import { Form, FormItem, FormLabel, FormMessage, UncontrolledFormField, RegisteredFormControl, FormField, FormControl } from "@/components/ui/form";
+import {
+  Form,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  UncontrolledFormField,
+  RegisteredFormControl,
+  FormField,
+  FormControl,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -33,13 +49,17 @@ export default function EditDialog({
     defaultValues: {
       title: todo.title,
       description: todo.description ?? "",
-      doneAt: todo.doneAt ? DateTime.fromISO(todo.doneAt, { zone: timeZone }).toFormat(dateFormat) : null,
+      doneAt: todo.doneAt
+        ? DateTime.fromISO(todo.doneAt, { zone: timeZone }).toFormat(dateFormat)
+        : null,
       images: [],
     },
   });
 
   const [isPending, startTransition] = useTransition();
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(
+    undefined,
+  );
   const { key, mutate } = useTodos();
 
   // Preload images for the form
@@ -52,54 +72,73 @@ export default function EditDialog({
     const r2Endpoint = process.env.NEXT_PUBLIC_R2_ENDPOINT;
 
     // An extra fetch for the two-do image, consider to optimize it if encounter performance issues
-    Promise.all(todo.imageKeys.map((key) => ky.get(`${r2Endpoint}/two-do/${key}`).blob()))
-      .then((blobs) => {
+    Promise.all(
+      todo.imageKeys.map((key) => ky.get(`${r2Endpoint}/two-do/${key}`).blob()),
+    ).then(
+      (blobs) => {
         const images = blobs.map((blob, index) => {
           return new File([blob], todo.imageKeys[index], { type: blob.type });
         });
         form.setValue("images", images);
-      }, () => {
+      },
+      () => {
         console.error("Unable to fetch images");
-      });
+      },
+    );
   }, [todo.imageKeys, form]);
 
   const onSubmit = (data: z.infer<typeof updateSchema>) => {
     startTransition(async () => {
       try {
-        await mutate(async (todos = []) => {
-          const response = await ky.put(`${key}/${todo.id}`, {
-            json: {
-              title: data.title,
-              description: data.description ?? null,
-              doneAt: !data.doneAt || data.doneAt.length === 0 ? null : DateTime.fromFormat(data.doneAt, dateFormat, { zone: timeZone }).toISO(),
-              imageNames: data.images.map((image) => image.name),
-            } satisfies TodoUpdateRequest,
-          }).json<TodoUpdateResponse>();
+        await mutate(
+          async (todos = []) => {
+            const response = await ky
+              .put(`${key}/${todo.id}`, {
+                json: {
+                  title: data.title,
+                  description: data.description ?? null,
+                  doneAt:
+                    !data.doneAt || data.doneAt.length === 0
+                      ? null
+                      : DateTime.fromFormat(data.doneAt, dateFormat, {
+                          zone: timeZone,
+                        }).toISO(),
+                  imageNames: data.images.map((image) => image.name),
+                } satisfies TodoUpdateRequest,
+              })
+              .json<TodoUpdateResponse>();
 
-          const imageByName = new Map(data.images.map((image) => [image.name, image]));
-          await Promise.all(
-            response.imagesToUpload.map(
-              ({name, signedUrl}) => ky.put(
-                signedUrl,
-                {
-                  headers: imageByName.get(name) ? { "Content-Type": imageByName.get(name)?.type } : undefined,
+            const imageByName = new Map(
+              data.images.map((image) => [image.name, image]),
+            );
+            await Promise.all(
+              response.imagesToUpload.map(({ name, signedUrl }) =>
+                ky.put(signedUrl, {
+                  headers: imageByName.get(name)
+                    ? { "Content-Type": imageByName.get(name)?.type }
+                    : undefined,
                   body: imageByName.get(name),
-                },
-              )
-            )
-          );
+                }),
+              ),
+            );
 
-          return todos.map((todo) => todo.id === response.todo.id ? {
-            ...todo,
-            title: response.todo.title,
-            description: response.todo.description,
-            doneAt: response.todo.doneAt,
-            updatedAt: response.todo.updatedAt,
-            imageKeys: response.todo.imageKeys,
-          } : todo);
-        }, {
-          revalidate: false,
-        });
+            return todos.map((todo) =>
+              todo.id === response.todo.id
+                ? {
+                    ...todo,
+                    title: response.todo.title,
+                    description: response.todo.description,
+                    doneAt: response.todo.doneAt,
+                    updatedAt: response.todo.updatedAt,
+                    imageKeys: response.todo.imageKeys,
+                  }
+                : todo,
+            );
+          },
+          {
+            revalidate: false,
+          },
+        );
 
         setErrorMessage(undefined);
         setEditingTodo(null);
@@ -142,7 +181,11 @@ export default function EditDialog({
               <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm text-muted-foreground">
                 <div>
                   <dt>Created At</dt>
-                  <dd>{DateTime.fromISO(todo.createdAt, { zone: timeZone }).toFormat(timeFormat)}</dd>
+                  <dd>
+                    {DateTime.fromISO(todo.createdAt, {
+                      zone: timeZone,
+                    }).toFormat(timeFormat)}
+                  </dd>
                 </div>
 
                 <div>
@@ -152,9 +195,13 @@ export default function EditDialog({
 
                 <div>
                   <dt>Last Updated</dt>
-                  <dd>{DateTime.fromISO(todo.updatedAt, { zone: timeZone }).toFormat(timeFormat)}</dd>
+                  <dd>
+                    {DateTime.fromISO(todo.updatedAt, {
+                      zone: timeZone,
+                    }).toFormat(timeFormat)}
+                  </dd>
                 </div>
-                
+
                 <UncontrolledFormField name="doneAt">
                   <FormItem>
                     <FormLabel>Done At</FormLabel>
@@ -181,7 +228,10 @@ export default function EditDialog({
               <FormItem>
                 <FormLabel>Description</FormLabel>
                 <RegisteredFormControl>
-                  <Textarea rows={8} className="resize-y max-h-[250] scrollbar-hide" />
+                  <Textarea
+                    rows={8}
+                    className="resize-y max-h-[250] scrollbar-hide"
+                  />
                 </RegisteredFormControl>
                 <FormMessage />
               </FormItem>
@@ -211,7 +261,13 @@ export default function EditDialog({
 
             <ErrorMessage message={errorMessage} />
             <DialogFooter>
-              <Button type="submit" disabled={isPending} className="cursor-pointer">Save</Button>
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="cursor-pointer"
+              >
+                Save
+              </Button>
             </DialogFooter>
           </form>
         </Form>

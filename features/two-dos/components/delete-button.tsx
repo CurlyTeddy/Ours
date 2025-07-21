@@ -1,6 +1,15 @@
 import { Table } from "@tanstack/react-table";
 import { useState, useTransition } from "react";
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import ErrorMessage from "@/components/ui/error-message";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
@@ -8,28 +17,37 @@ import ky, { HTTPError } from "ky";
 import { HttpErrorPayload } from "@/lib/error";
 import { Todo } from "@/features/two-dos/models/views";
 
-export default function DeleteButton({ table } : { table: Table<Todo> }) {
+export default function DeleteButton({ table }: { table: Table<Todo> }) {
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(
+    undefined,
+  );
   const { key, mutate } = useTodos();
 
   const onDelete = () => {
-    const selectTodoIds = table.getSelectedRowModel().rows.map((row) => row.original.id);
+    const selectTodoIds = table
+      .getSelectedRowModel()
+      .rows.map((row) => row.original.id);
     const removeSet = new Set(selectTodoIds);
 
     startTransition(async () => {
       try {
-        await mutate(async (todos = []) => {
-          await Promise.all(selectTodoIds.map(id => ky.delete(`${key}/${id}`)));
-          table.resetRowSelection();
-          return todos.filter((todo) => !(removeSet.has(todo.id)));
-        }, {
-          optimisticData: (todos = []) => {
-            return todos.filter((todo) => !(removeSet.has(todo.id)));
+        await mutate(
+          async (todos = []) => {
+            await Promise.all(
+              selectTodoIds.map((id) => ky.delete(`${key}/${id}`)),
+            );
+            table.resetRowSelection();
+            return todos.filter((todo) => !removeSet.has(todo.id));
           },
-          revalidate: false,
-        });
+          {
+            optimisticData: (todos = []) => {
+              return todos.filter((todo) => !removeSet.has(todo.id));
+            },
+            revalidate: false,
+          },
+        );
         setOpen(false);
         setErrorMessage(undefined);
       } catch (error) {
@@ -53,7 +71,14 @@ export default function DeleteButton({ table } : { table: Table<Todo> }) {
       }}
     >
       <AlertDialogTrigger asChild>
-        <Button onClick={() => { setOpen(true); }} className="cursor-pointer">Delete To-dos</Button>
+        <Button
+          onClick={() => {
+            setOpen(true);
+          }}
+          className="cursor-pointer"
+        >
+          Delete To-dos
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -65,9 +90,18 @@ export default function DeleteButton({ table } : { table: Table<Todo> }) {
         <ErrorMessage message={errorMessage} />
         <AlertDialogFooter>
           <AlertDialogCancel asChild>
-            <Button variant="outline" className="cursor-pointer">Cancel</Button>
+            <Button variant="outline" className="cursor-pointer">
+              Cancel
+            </Button>
           </AlertDialogCancel>
-          <Button onClick={onDelete} variant={"destructive"} className="cursor-pointer" disabled={isPending}>Delete</Button>
+          <Button
+            onClick={onDelete}
+            variant={"destructive"}
+            className="cursor-pointer"
+            disabled={isPending}
+          >
+            Delete
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

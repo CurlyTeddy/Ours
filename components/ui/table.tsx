@@ -4,7 +4,11 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-function Table({ className, scrollable = true, ...props }: React.ComponentProps<"table"> & { scrollable?: boolean }) {
+function Table({
+  className,
+  scrollable = true,
+  ...props
+}: React.ComponentProps<"table"> & { scrollable?: boolean }) {
   return (
     <div
       data-slot="table-container"
@@ -45,14 +49,14 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
       data-slot="table-footer"
       className={cn(
         "bg-muted/50 border-t font-medium [&>tr]:last:border-b-0",
-        className
+        className,
       )}
       {...props}
     />
   );
 }
 
-type TableRowProps = React.ComponentProps<"tr"> & {isHeader?: boolean};
+type TableRowProps = React.ComponentProps<"tr"> & { isHeader?: boolean };
 
 function TableRow({ className, isHeader = false, ...props }: TableRowProps) {
   return (
@@ -60,8 +64,9 @@ function TableRow({ className, isHeader = false, ...props }: TableRowProps) {
       data-slot="table-row"
       className={cn(
         "border-b transition-colors",
-        !isHeader && "hover:bg-primary/30 data-[state=selected]:bg-primary/30 dark:hover:bg-muted/50 dark:data-[state=selected]:bg-accent",
-        className
+        !isHeader &&
+          "hover:bg-primary/30 data-[state=selected]:bg-primary/30 dark:hover:bg-muted/50 dark:data-[state=selected]:bg-accent",
+        className,
       )}
       {...props}
     />
@@ -74,7 +79,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
       data-slot="table-head"
       className={cn(
         "text-primary-foreground dark:text-secondary-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-        className
+        className,
       )}
       {...props}
     />
@@ -87,7 +92,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
       data-slot="table-cell"
       className={cn(
         "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-        className
+        className,
       )}
       {...props}
     />

@@ -8,26 +8,30 @@ import { Todo } from "@/features/two-dos/models/views";
 
 function useTodos(config?: SWRConfiguration) {
   const key = "/api/todos";
-  const hook = useSWR<Todo[]>(key, async (url: string) => {
-    const response = await ky.get(url).json<TodoResponse>();
-    return response.todos.map((todo) => ({
-      id: todo.id,
-      imageKeys: todo.imageKeys,
-      title: todo.title,
-      description: todo.description,
-      doneAt: todo.doneAt,
-      createdAt: todo.createdAt,
-      createdBy: todo.createdBy,
-      updatedAt: todo.updatedAt,
-      status: !!todo.doneAt,
-    }));
-  }, {
-    errorRetryCount: 1,
-    onError: (error: HTTPError) => {
-      toast.error(error.message);
+  const hook = useSWR<Todo[]>(
+    key,
+    async (url: string) => {
+      const response = await ky.get(url).json<TodoResponse>();
+      return response.todos.map((todo) => ({
+        id: todo.id,
+        imageKeys: todo.imageKeys,
+        title: todo.title,
+        description: todo.description,
+        doneAt: todo.doneAt,
+        createdAt: todo.createdAt,
+        createdBy: todo.createdBy,
+        updatedAt: todo.updatedAt,
+        status: !!todo.doneAt,
+      }));
     },
-    ...config,
-  });
+    {
+      errorRetryCount: 1,
+      onError: (error: HTTPError) => {
+        toast.error(error.message);
+      },
+      ...config,
+    },
+  );
 
   return {
     key,
@@ -37,4 +41,3 @@ function useTodos(config?: SWRConfiguration) {
 }
 
 export { useTodos };
-
