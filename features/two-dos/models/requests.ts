@@ -8,6 +8,7 @@ interface TodoUpdateRequest {
   title: string;
   description: string | null;
   doneAt: string | null;
+  imageNames: string[];
 }
 
 export type { TodoCreateRequest, TodoUpdateRequest };

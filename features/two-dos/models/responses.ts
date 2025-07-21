@@ -22,6 +22,7 @@ interface TodoCreateResponse {
 
 interface TodoUpdateResponse {
   todo: TodoDto;
+  imagesToUpload: {name: string, signedUrl: string}[];
 }
 
 export type { TodoDto, TodoResponse, TodoCreateResponse, TodoUpdateResponse };

@@ -213,6 +213,14 @@ export function FileUploader(props: FileUploaderProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  React.useEffect(() => {
+    if (!valueProp?.some((file) => !isFileWithPreview(file))) {
+      return;
+    }
+
+    setFiles(valueProp.map((file) => isFileWithPreview(file) ? file : Object.assign(file, {"preview": URL.createObjectURL(file)})));
+  }, [valueProp, setFiles]);
+
   const isDisabled = disabled || files.length >= maxFiles;
 
   return (
