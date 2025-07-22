@@ -81,26 +81,32 @@ export function TwodoTable() {
         {
           id: "image",
           header: "Image",
-          cell: ({ row }) => (
-            <div className="relative aspect-square">
-              {public_r2_host && row.original.imageKeys.length > 0 ? (
-                <Image
-                  src={`${public_r2_host}/two-do/${row.original.imageKeys[0]}`}
-                  alt={row.original.title}
-                  fill
-                  unoptimized={row.original.imageKeys[0].endsWith("gif")}
-                />
-              ) : (
-                <Image
-                  src={"/howl.gif"}
-                  alt={"A default for two-do"}
-                  fill
-                  unoptimized
-                  priority
-                />
-              )}
-            </div>
-          ),
+          cell: ({ row }) => {
+            const imageKey = row.original.imageKeys[0];
+            return (
+              <div className="relative aspect-square">
+                {public_r2_host && row.original.imageKeys.length > 0 ? (
+                  <Image
+                    src={`${public_r2_host}/two-do/${row.original.imageKeys[0]}`}
+                    alt={row.original.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    unoptimized={imageKey
+                      .substring(0, imageKey.lastIndexOf("-"))
+                      .endsWith("gif")}
+                  />
+                ) : (
+                  <Image
+                    src={"/howl.gif"}
+                    alt={"A default for two-do"}
+                    fill
+                    unoptimized
+                    priority
+                  />
+                )}
+              </div>
+            );
+          },
         },
         {
           accessorKey: "title",
