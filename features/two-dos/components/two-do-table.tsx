@@ -44,7 +44,7 @@ export function TwodoTable() {
   }, 300);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const timeZone = useTimeZone();
-  const public_r2_host = process.env.NEXT_PUBLIC_R2_ENDPOINT;
+  const r2Endpoint = process.env.NEXT_PUBLIC_R2_ENDPOINT;
 
   const columns = useMemo(
     () =>
@@ -85,9 +85,9 @@ export function TwodoTable() {
             const imageKey = row.original.imageKeys[0];
             return (
               <div className="relative aspect-square">
-                {public_r2_host && row.original.imageKeys.length > 0 ? (
+                {r2Endpoint && row.original.imageKeys.length > 0 ? (
                   <Image
-                    src={`${public_r2_host}/two-do/${row.original.imageKeys[0]}`}
+                    src={`${r2Endpoint}/two-do/${row.original.imageKeys[0]}`}
                     alt={row.original.title}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -151,7 +151,7 @@ export function TwodoTable() {
             ),
         },
       ] as ColumnDef<Todo>[],
-    [timeZone, public_r2_host],
+    [timeZone, r2Endpoint],
   );
 
   const { todos } = useTodos();
