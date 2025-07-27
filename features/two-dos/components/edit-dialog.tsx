@@ -35,6 +35,7 @@ import { HttpErrorPayload } from "@/lib/error";
 import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 import { FileUploader } from "@/components/ui/file-uploader";
+import { env } from "@/lib/env";
 
 export default function EditDialog({
   todo,
@@ -64,16 +65,11 @@ export default function EditDialog({
 
   // Preload images for the form
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_R2_ENDPOINT === undefined) {
-      console.error("No object storage server is found.");
-      return;
-    }
-
-    const r2Endpoint = process.env.NEXT_PUBLIC_R2_ENDPOINT;
-
     // An extra fetch for the two-do image, consider to optimize it if encounter performance issues
     Promise.all(
-      todo.imageKeys.map((key) => ky.get(`${r2Endpoint}/two-do/${key}`).blob()),
+      todo.imageKeys.map((key) =>
+        ky.get(`${env.r2PublicEndpoint}/two-do/${key}`).blob(),
+      ),
     ).then(
       (blobs) => {
         const images = blobs.map((blob, index) => {

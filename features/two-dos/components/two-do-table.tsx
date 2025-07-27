@@ -35,6 +35,7 @@ import { DateTime } from "luxon";
 import { timeFormat, Todo } from "@/features/two-dos/models/views";
 import Image from "next/image";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
+import { env } from "@/lib/env";
 
 export function TwodoTable() {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -44,7 +45,6 @@ export function TwodoTable() {
   }, 300);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const timeZone = useTimeZone();
-  const r2Endpoint = process.env.NEXT_PUBLIC_R2_ENDPOINT;
 
   const columns = useMemo(
     () =>
@@ -85,9 +85,9 @@ export function TwodoTable() {
             const imageKey = row.original.imageKeys[0];
             return (
               <div className="relative aspect-square">
-                {r2Endpoint && row.original.imageKeys.length > 0 ? (
+                {row.original.imageKeys.length > 0 ? (
                   <Image
-                    src={`${r2Endpoint}/two-do/${row.original.imageKeys[0]}`}
+                    src={`${env.r2PublicEndpoint}/two-do/${row.original.imageKeys[0]}`}
                     alt={row.original.title}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -151,7 +151,7 @@ export function TwodoTable() {
             ),
         },
       ] as ColumnDef<Todo>[],
-    [timeZone, r2Endpoint],
+    [timeZone],
   );
 
   const { todos } = useTodos();
