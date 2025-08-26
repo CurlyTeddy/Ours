@@ -1,8 +1,11 @@
 import z from "zod/v4";
 
 const envSchema = z.object({
-  environment: z.enum(["dev", "prod"]),
-  r2PublicEndpoint: z.url(),
+  environment: z.enum(
+    ["dev", "prod"],
+    "Environment should be either dev or prod",
+  ),
+  r2PublicEndpoint: z.url("Invalid R2 url"),
 });
 
 const parsedEnv = envSchema.safeParse({
@@ -12,6 +15,7 @@ const parsedEnv = envSchema.safeParse({
 
 if (!parsedEnv.success) {
   console.error("Missing environment variables");
+  console.error(JSON.stringify(z.treeifyError(parsedEnv.error), null, 2));
   process.exit(1);
 }
 
