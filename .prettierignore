@@ -1,9 +1,9 @@
 # Ignore artifacts:
 build
-coverage
 .husky
+.gemini
 lib/generated
-prisma/migrations
+prisma
 public
 .prettierignore
 package.json
