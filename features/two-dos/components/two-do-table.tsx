@@ -87,7 +87,7 @@ export function TwodoTable() {
               <div className="relative aspect-square">
                 {row.original.imageKeys.length > 0 ? (
                   <Image
-                    src={`${env.r2PublicEndpoint}/two-do/${row.original.imageKeys[0]}`}
+                    src={`${env.NEXT_PUBLIC_R2_ENDPOINT}/two-do/${row.original.imageKeys[0]}`}
                     alt={row.original.title}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

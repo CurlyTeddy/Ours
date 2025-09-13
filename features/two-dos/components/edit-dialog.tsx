@@ -68,7 +68,7 @@ export default function EditDialog({
     // An extra fetch for the two-do image, consider to optimize it if encounter performance issues
     Promise.all(
       todo.imageKeys.map((key) =>
-        ky.get(`${env.r2PublicEndpoint}/two-do/${key}`).blob(),
+        ky.get(`${env.NEXT_PUBLIC_R2_ENDPOINT}/two-do/${key}`).blob(),
       ),
     ).then(
       (blobs) => {

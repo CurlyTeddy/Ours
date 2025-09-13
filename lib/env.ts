@@ -1,22 +1,25 @@
 import z from "zod/v4";
+import { createEnv } from "@t3-oss/env-nextjs";
 
-const envSchema = z.object({
-  environment: z.enum(
-    ["dev", "prod"],
-    "Environment should be either dev or prod",
-  ),
-  r2PublicEndpoint: z.url("Invalid R2 url"),
+export const env = createEnv({
+  server: {
+    R2_ENDPOINT: z.url(),
+    DATABASE_URL: z.string().min(1),
+    R2_ACCESS_KEY: z.string().min(1),
+    R2_SECRET_ACCESS_KEY: z.string().min(1),
+    TURSO_AUTH_TOKEN: z
+      .string()
+      .refine(
+        (token) =>
+          process.env.NEXT_PUBLIC_ENVIRONMENT === "dev" || token.length > 0,
+      ),
+  },
+  client: {
+    NEXT_PUBLIC_ENVIRONMENT: z.enum(["dev", "prod"]),
+    NEXT_PUBLIC_R2_ENDPOINT: z.url(),
+  },
+  experimental__runtimeEnv: {
+    NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
+    NEXT_PUBLIC_R2_ENDPOINT: process.env.NEXT_PUBLIC_R2_ENDPOINT,
+  },
 });
-
-const parsedEnv = envSchema.safeParse({
-  environment: process.env.NEXT_PUBLIC_ENVIRONMENT,
-  r2PublicEndpoint: process.env.NEXT_PUBLIC_R2_ENDPOINT,
-});
-
-if (!parsedEnv.success) {
-  console.error("Missing environment variables");
-  console.error(JSON.stringify(z.treeifyError(parsedEnv.error), null, 2));
-  process.exit(1);
-}
-
-export const env = parsedEnv.data;
