@@ -1,43 +1,99 @@
 "use server";
 
-import { signIn, signOut } from "@/features/auth/auth";
-import { AuthError } from "next-auth";
-import { z } from "zod";
+import { z } from "zod/v4";
 import prisma from "@/lib/database-client";
 import { redirect } from "next/navigation";
 import { createId } from "@paralleldrive/cuid2";
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
+import { env } from "@/lib/env";
+import { generateSessionToken } from "@/features/auth/session";
+import { encodeHexLowerCase } from "@oslojs/encoding";
+import { sha256 } from "@oslojs/crypto/sha2";
 
 export async function authenticate(
   previousState: string | undefined,
   formData: FormData,
 ) {
-  try {
-    await signIn("credentials", formData);
-  } catch (error) {
-    if (error instanceof AuthError) {
-      switch (error.type) {
-        case "CredentialsSignin":
-          return "Invalid credentials.";
-        default:
-          return "An unexpected error occurred. Please try again later.";
-      }
-    }
+  const parsedCredentials = z
+    .object({
+      email: z.email(),
+      password: z.string().min(8),
+    })
+    .safeParse(Object.fromEntries(formData));
 
-    throw error;
+  if (!parsedCredentials.success) {
+    return "Invalid credential format.";
   }
+
+  const { email, password } = parsedCredentials.data;
+  const user = await prisma.user.findUnique({
+    where: { email: email },
+  });
+
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    return "Invalid credential.";
+  }
+
+  const token = generateSessionToken();
+  const session = await prisma.session.create({
+    data: {
+      sessionId: encodeHexLowerCase(sha256(new TextEncoder().encode(token))),
+      userId: user.userId,
+      expireAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+    },
+  });
+
+  const cookiesStore = await cookies();
+  cookiesStore.set("session", token, {
+    httpOnly: true,
+    path: "/",
+    secure: env.NEXT_PUBLIC_ENVIRONMENT === "prod",
+    sameSite: "lax",
+    expires: session.expireAt,
+  });
+
+  const redirectTo = formData.get("redirectTo");
+  const redirectUrl = typeof redirectTo === "string" ? redirectTo : "/moments";
+  redirect(redirectUrl);
 }
 
 export async function signOutAction() {
-  await signOut({ redirectTo: "/" });
+  const cookiesStore = await cookies();
+  const token = cookiesStore.get("session");
+  if (token === undefined) {
+    console.info("User probably deletes session token manully.");
+    return;
+  }
+
+  await prisma.session.delete({
+    where: {
+      sessionId: encodeHexLowerCase(
+        sha256(new TextEncoder().encode(token.value)),
+      ),
+    },
+  });
+  cookiesStore.delete("session");
+  redirect("/login");
 }
 
 export interface State {
   errors?: {
-    email?: string[];
-    username?: string[];
-    password?: string[];
-    inviteCode?: string[];
+    errors: string[];
+    properties?: {
+      email?: {
+        errors: string[];
+      };
+      username?: {
+        errors: string[];
+      };
+      password?: {
+        errors: string[];
+      };
+      inviteCode?: {
+        errors: string[];
+      };
+    };
   };
   message?: string | undefined;
 }
@@ -48,7 +104,7 @@ export async function register(
 ): Promise<State> {
   const parsedCredentials = z
     .object({
-      email: z.string().email("Invalid email address."),
+      email: z.email("Invalid email address."),
       username: z
         .string()
         .min(6)
@@ -67,7 +123,7 @@ export async function register(
 
   if (!parsedCredentials.success) {
     return {
-      errors: parsedCredentials.error.flatten().fieldErrors,
+      errors: z.treeifyError(parsedCredentials.error),
       message: "Incorrect form format. Please check your input.",
     };
   }
@@ -82,7 +138,14 @@ export async function register(
       });
       if (!code || code.usedAt !== null || code.expireAt < now) {
         return {
-          errors: { inviteCode: ["Invalid invite code."] },
+          errors: {
+            errors: ["Invalid invite code."],
+            properties: {
+              inviteCode: {
+                errors: ["Invalid invite code."],
+              },
+            },
+          },
           message: "Invalid invite code. Please check your input.",
         };
       }

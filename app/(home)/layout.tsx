@@ -1,4 +1,3 @@
-import { AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,11 +10,12 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
 } from "@/components/ui/navigation-menu";
-import { Avatar } from "@/components/ui/avatar";
-import { PowerIcon } from "lucide-react";
+import { PowerIcon, UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/features/auth/actions";
 import { DarkModeSwitch } from "@/components/ui/switch";
+import Link from "next/link";
+import UserAvatar from "@/features/profile/components/user-avatar";
 
 export default function Layout({
   children,
@@ -46,15 +46,27 @@ export default function Layout({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Avatar className="cursor-pointer">
-              <AvatarImage
-                src="https://github.com/shadcn.png"
-                alt="My account"
-              />
-              <AvatarFallback>PC</AvatarFallback>
-            </Avatar>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-0 rounded-full hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+            >
+              <UserAvatar />
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56">
+            <DropdownMenuItem asChild className="p-0">
+              <Link href="/profile">
+                <Button
+                  type="button"
+                  variant={"ghost"}
+                  className="w-full justify-start cursor-pointer"
+                >
+                  <UserIcon className="w-6" />
+                  Profile
+                </Button>
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild className="p-0">
               <form action={signOutAction}>
                 <Button

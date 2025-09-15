@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 model User {
@@ -16,8 +16,10 @@ model User {
   email      String     @unique
   name       String
   password   String
+  image      String?
   inviteCode InviteCode @relation(fields: [userId], references: [usedById])
   Todos      Todo[]
+  session    Session[]
 
   @@map("user")
 }
@@ -45,6 +47,15 @@ model Todo {
   priority    Float     @unique
   imageKeys   String?   @map("image_keys")
 
-  @@map("todo")
   @@index([priority])
+  @@map("todo")
+}
+
+model Session {
+  sessionId String   @id @map("session_id")
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [userId], onUpdate: Cascade, onDelete: Cascade)
+  expireAt  DateTime @map("expire_at")
+
+  @@map("session")
 }

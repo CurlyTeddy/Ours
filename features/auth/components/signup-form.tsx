@@ -7,7 +7,7 @@ import { AtSign, KeyRound, Mail, User, UserPlus } from "lucide-react";
 import ErrorMessage from "@/components/ui/error-message";
 
 export default function SignupForm() {
-  const initialState = { errors: {}, message: undefined };
+  const initialState = { errors: undefined, message: undefined };
   const [state, formAction, isPending] = useActionState(register, initialState);
   const baseInputFormId = useId();
 
@@ -44,7 +44,7 @@ export default function SignupForm() {
               aria-live="polite"
               aria-atomic="true"
             >
-              {state.errors?.username?.map((error) => (
+              {state.errors?.properties?.username?.errors.map((error) => (
                 <p className="mt-2 text-sm text-red-500" key={error}>
                   {error}
                 </p>
@@ -76,7 +76,7 @@ export default function SignupForm() {
               aria-live="polite"
               aria-atomic="true"
             >
-              {state.errors?.email?.map((error) => (
+              {state.errors?.properties?.email?.errors.map((error) => (
                 <p className="mt-2 text-sm text-red-500" key={error}>
                   {error}
                 </p>
@@ -109,7 +109,7 @@ export default function SignupForm() {
               aria-live="polite"
               aria-atomic="true"
             >
-              {state.errors?.password?.map((error) => (
+              {state.errors?.properties?.password?.errors.map((error) => (
                 <p className="mt-2 text-sm text-red-500" key={error}>
                   {error}
                 </p>

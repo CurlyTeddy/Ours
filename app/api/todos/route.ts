@@ -1,5 +1,4 @@
 import prisma from "@/lib/database-client";
-import { auth } from "@/features/auth/auth";
 import { createId } from "@paralleldrive/cuid2";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
@@ -14,6 +13,8 @@ import {
   TodoResponse,
 } from "@/features/two-dos/models/responses";
 import { TodoCreateRequest } from "@/features/two-dos/models/requests";
+import { validateSessionToken } from "@/features/auth/session";
+import { cookies } from "next/headers";
 
 async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
   let todos: TodoDto[] = [];
@@ -88,11 +89,14 @@ async function POST(
     );
   }
 
-  const session = await auth();
-  if (session?.user?.id === undefined) {
+  const cookiesStore = await cookies();
+  const { user } = await validateSessionToken(
+    cookiesStore.get("session")?.value,
+  );
+  if (user === null) {
     return NextResponse.json(
       {
-        message: "Unauthorized. Please log in to create a todo.",
+        message: "Invalid or expired session.",
       },
       {
         status: 401,
@@ -100,7 +104,6 @@ async function POST(
     );
   }
 
-  const userId = session.user.id;
   const { title, description, imageNames } = validatedFields.data;
   const imageKeys = imageNames.map((name) => `${name}-${createId()}`);
 
@@ -119,7 +122,7 @@ async function POST(
         data: {
           title,
           description,
-          createdById: userId,
+          createdById: user.id,
           priority: (maxPriority._max.priority ?? 0) + 1,
           imageKeys: imageKeys.join(","),
         },
