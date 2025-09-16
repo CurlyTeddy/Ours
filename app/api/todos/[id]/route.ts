@@ -1,6 +1,7 @@
 import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
 import { TodoUpdateResponse } from "@/features/two-dos/models/responses";
 import prisma from "@/lib/database-client";
+import { env } from "@/lib/env";
 import { HttpErrorPayload } from "@/lib/error";
 import { Prisma } from "@/lib/generated/prisma";
 import s3Client from "@/lib/s3-client";
@@ -92,7 +93,7 @@ async function PUT(
         },
       });
 
-      const bucket = `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`;
+      const bucket = `images-${env.NEXT_PUBLIC_ENVIRONMENT}`;
       await Promise.all(
         oldImageKeys
           .filter((key) => !imageIntersection.has(key))
@@ -196,7 +197,7 @@ async function DELETE(
       await Promise.all(
         todo.imageKeys.split(",").map((key) => {
           const command = new DeleteObjectCommand({
-            Bucket: `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`,
+            Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
             Key: `two-do/${key}`,
           });
           return s3Client.send(command);

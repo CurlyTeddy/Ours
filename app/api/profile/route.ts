@@ -13,6 +13,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import s3Client from "@/lib/s3-client";
 import { cookies } from "next/headers";
+import { env } from "@/lib/env";
 
 export async function GET(
   request: NextRequest,
@@ -103,7 +104,7 @@ export async function PUT(
       return NextResponse.json({ profile }, { status: 200 });
     }
 
-    const bucket = `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`;
+    const bucket = `images-${env.NEXT_PUBLIC_ENVIRONMENT}`;
 
     const payload = await prisma.$transaction(async (txn) => {
       let imageKey = image;

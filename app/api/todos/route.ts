@@ -15,6 +15,7 @@ import {
 import { TodoCreateRequest } from "@/features/two-dos/models/requests";
 import { validateSessionToken } from "@/features/auth/session";
 import { cookies } from "next/headers";
+import { env } from "@/lib/env";
 
 async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
   let todos: TodoDto[] = [];
@@ -146,7 +147,7 @@ async function POST(
           return getSignedUrl(
             s3Client,
             new PutObjectCommand({
-              Bucket: `images-${process.env.NEXT_PUBLIC_ENVIRONMENT ?? "dev"}`,
+              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
               Key: `two-do/${key}`,
             }),
             { expiresIn: 300 },
