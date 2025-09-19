@@ -1,5 +1,4 @@
-import { Table } from "@tanstack/react-table";
-import { useState, useTransition } from "react";
+import { useState, useTransition, ReactNode } from "react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -12,46 +11,64 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import ErrorMessage from "@/components/ui/error-message";
-import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
-import ky, { HTTPError } from "ky";
+import { HTTPError } from "ky";
 import { HttpErrorPayload } from "@/lib/error";
-import { Todo } from "@/features/two-dos/models/views";
 
-export default function DeleteButton({ table }: { table: Table<Todo> }) {
+interface AlertDialogButtonProps {
+  children: ReactNode;
+  buttonVariant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
+  buttonClassName?: string;
+  disabled?: boolean;
+
+  alertTitle: string;
+  alertDescription: string;
+  confirmButtonText?: string;
+  confirmButtonVariant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
+  cancelButtonText?: string;
+
+  onConfirm: () => Promise<void>;
+  defaultErrorMessage?: string;
+}
+
+export default function AlertDialogButton({
+  children,
+  buttonVariant = "default",
+  buttonClassName = "cursor-pointer",
+  disabled = false,
+  alertTitle,
+  alertDescription,
+  confirmButtonText = "Confirm",
+  confirmButtonVariant = "destructive",
+  cancelButtonText = "Cancel",
+  onConfirm,
+  defaultErrorMessage = "An error occurred. Please try again later.",
+}: AlertDialogButtonProps) {
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(
     undefined,
   );
-  const { key, mutate } = useTodos();
 
-  const onDelete = () => {
-    const selectTodoIds = table
-      .getSelectedRowModel()
-      .rows.map((row) => row.original.id);
-    const removeSet = new Set(selectTodoIds);
-
+  const handleConfirm = () => {
     startTransition(async () => {
       try {
-        await mutate(
-          async (todos = []) => {
-            await Promise.all(
-              selectTodoIds.map((id) => ky.delete(`${key}/${id}`)),
-            );
-            table.resetRowSelection();
-            return todos.filter((todo) => !removeSet.has(todo.id));
-          },
-          {
-            optimisticData: (todos = []) => {
-              return todos.filter((todo) => !removeSet.has(todo.id));
-            },
-            revalidate: false,
-          },
-        );
+        await onConfirm();
         setOpen(false);
         setErrorMessage(undefined);
       } catch (error) {
-        let errorMessage = "Failed to delete todo. Please try again later.";
+        let errorMessage = defaultErrorMessage;
         if (error instanceof HTTPError) {
           const errorPayload = await error.response.json<HttpErrorPayload>();
           errorMessage = errorPayload.message;
@@ -75,32 +92,32 @@ export default function DeleteButton({ table }: { table: Table<Todo> }) {
           onClick={() => {
             setOpen(true);
           }}
-          className="cursor-pointer"
+          variant={buttonVariant}
+          className={buttonClassName}
+          disabled={disabled}
         >
-          Delete To-dos
+          {children}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action will delete the selected to-dos and cannot be undone.
-          </AlertDialogDescription>
+          <AlertDialogTitle>{alertTitle}</AlertDialogTitle>
+          <AlertDialogDescription>{alertDescription}</AlertDialogDescription>
         </AlertDialogHeader>
         <ErrorMessage message={errorMessage} />
         <AlertDialogFooter>
           <AlertDialogCancel asChild>
             <Button variant="outline" className="cursor-pointer">
-              Cancel
+              {cancelButtonText}
             </Button>
           </AlertDialogCancel>
           <Button
-            onClick={onDelete}
-            variant={"destructive"}
+            onClick={handleConfirm}
+            variant={confirmButtonVariant}
             className="cursor-pointer"
             disabled={isPending}
           >
-            Delete
+            {confirmButtonText}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

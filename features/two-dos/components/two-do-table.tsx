@@ -25,7 +25,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { Input } from "@/components/ui/input";
 import { CreateButton } from "@/features/two-dos/components/create-button";
-import DeleteButton from "@/features/two-dos/components/delete-button";
 import EditDialog from "@/features/two-dos/components/edit-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,8 @@ import { timeFormat, Todo } from "@/features/two-dos/models/views";
 import Image from "next/image";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 import { env } from "@/lib/env";
+import ky from "ky";
+import AlertDialogButton from "@/components/ui/alert-dialog-button";
 
 export function TwodoTable() {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -154,7 +155,7 @@ export function TwodoTable() {
     [timeZone],
   );
 
-  const { todos } = useTodos();
+  const { key, todos, mutate } = useTodos();
 
   const table = useReactTable({
     data: todos,
@@ -185,6 +186,27 @@ export function TwodoTable() {
     return null;
   }
 
+  const handleDelete = async () => {
+    const selectTodoIds = table
+      .getSelectedRowModel()
+      .rows.map((row) => row.original.id);
+    const removeSet = new Set(selectTodoIds);
+
+    await mutate(
+      async (todos = []) => {
+        await Promise.all(selectTodoIds.map((id) => ky.delete(`${key}/${id}`)));
+        table.resetRowSelection();
+        return todos.filter((todo) => !removeSet.has(todo.id));
+      },
+      {
+        optimisticData: (todos = []) => {
+          return todos.filter((todo) => !removeSet.has(todo.id));
+        },
+        revalidate: false,
+      },
+    );
+  };
+
   return (
     <div className="flex flex-1 flex-col space-y-2">
       <div className="flex items-center py-4">
@@ -198,11 +220,19 @@ export function TwodoTable() {
         />
         <div className="ml-auto flex items-center space-x-2">
           <CreateButton />
-          <DeleteButton table={table} />
+          <AlertDialogButton
+            alertTitle="Are you sure?"
+            alertDescription="This action will delete the selected to-dos and cannot be undone."
+            confirmButtonText="Delete"
+            onConfirm={handleDelete}
+            defaultErrorMessage="Failed to delete todo. Please try again later."
+          >
+            Delete To-dos
+          </AlertDialogButton>
         </div>
       </div>
-      <div className="relative flex flex-1">
-        <div className="absolute inset-0 flex rounded-md border-2 overflow-hidden">
+      <div className="relative flex-1">
+        <div className="absolute inset-0 rounded-md border-2 overflow-hidden">
           <Table scrollable={false}>
             <TableHeader className="sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
