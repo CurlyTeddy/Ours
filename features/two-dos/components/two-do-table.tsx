@@ -98,7 +98,7 @@ export function TwodoTable() {
                   />
                 ) : (
                   <Image
-                    src={"/howl.gif"}
+                    src="/howl.gif"
                     alt={"A default for two-do"}
                     fill
                     unoptimized
@@ -254,35 +254,51 @@ export function TwodoTable() {
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    onClick={() => {
-                      setEditingTodo(row.original);
-                    }}
-                    className="cursor-pointer"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center">
-                    No data available
-                  </TableCell>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  onClick={() => {
+                    setEditingTodo(row.original);
+                  }}
+                  className="cursor-pointer"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
+          {table.getRowModel().rows.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="relative w-32 h-32">
+                  <Image
+                    src={"/poor_golden.png"}
+                    alt="Cute dog waiting for todos"
+                    fill
+                    className="object-cover"
+                    loading="eager"
+                    sizes="w-32 h-32"
+                  />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-muted-foreground">
+                    No to-dos yet!
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    This cute pup is waiting for you to add some tasks
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
