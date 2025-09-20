@@ -1,6 +1,7 @@
-import { useState, useTransition, ReactNode } from "react";
+import { useTransition, ReactNode } from "react";
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -10,9 +11,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import ErrorMessage from "@/components/ui/error-message";
 import { HTTPError } from "ky";
 import { HttpErrorPayload } from "@/lib/error";
+import { toast } from "sonner";
 
 interface AlertDialogButtonProps {
   children: ReactNode;
@@ -23,6 +24,7 @@ interface AlertDialogButtonProps {
     | "secondary"
     | "ghost"
     | "link";
+  buttonSize?: "default" | "sm" | "lg" | "icon";
   buttonClassName?: string;
   disabled?: boolean;
 
@@ -39,12 +41,15 @@ interface AlertDialogButtonProps {
   cancelButtonText?: string;
 
   onConfirm: () => Promise<void>;
+  onOpen?: () => void | Promise<void>;
+  onClose?: () => void | Promise<void>;
   defaultErrorMessage?: string;
 }
 
 export default function AlertDialogButton({
   children,
   buttonVariant = "default",
+  buttonSize = "default",
   buttonClassName = "cursor-pointer",
   disabled = false,
   alertTitle,
@@ -53,46 +58,45 @@ export default function AlertDialogButton({
   confirmButtonVariant = "destructive",
   cancelButtonText = "Cancel",
   onConfirm,
+  onOpen,
+  onClose,
   defaultErrorMessage = "An error occurred. Please try again later.",
 }: AlertDialogButtonProps) {
   const [isPending, startTransition] = useTransition();
-  const [open, setOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(
-    undefined,
-  );
 
   const handleConfirm = () => {
     startTransition(async () => {
       try {
         await onConfirm();
-        setOpen(false);
-        setErrorMessage(undefined);
       } catch (error) {
         let errorMessage = defaultErrorMessage;
         if (error instanceof HTTPError) {
           const errorPayload = await error.response.json<HttpErrorPayload>();
           errorMessage = errorPayload.message;
         }
-
-        setErrorMessage(errorMessage);
+        toast.error(errorMessage);
       }
     });
   };
 
   return (
     <AlertDialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        setErrorMessage(undefined);
+      onOpenChange={(open) => {
+        if (open && onOpen !== undefined) {
+          Promise.resolve(onOpen()).catch((reason: unknown) => {
+            console.error(reason);
+          });
+        } else if (!open && onClose !== undefined) {
+          Promise.resolve(onClose()).catch((reason: unknown) => {
+            console.error(reason);
+          });
+        }
       }}
     >
       <AlertDialogTrigger asChild>
         <Button
-          onClick={() => {
-            setOpen(true);
-          }}
           variant={buttonVariant}
+          size={buttonSize}
           className={buttonClassName}
           disabled={disabled}
         >
@@ -104,21 +108,21 @@ export default function AlertDialogButton({
           <AlertDialogTitle>{alertTitle}</AlertDialogTitle>
           <AlertDialogDescription>{alertDescription}</AlertDialogDescription>
         </AlertDialogHeader>
-        <ErrorMessage message={errorMessage} />
         <AlertDialogFooter>
           <AlertDialogCancel asChild>
             <Button variant="outline" className="cursor-pointer">
               {cancelButtonText}
             </Button>
           </AlertDialogCancel>
-          <Button
-            onClick={handleConfirm}
-            variant={confirmButtonVariant}
-            className="cursor-pointer"
-            disabled={isPending}
-          >
-            {confirmButtonText}
-          </Button>
+          <AlertDialogAction asChild variant={confirmButtonVariant}>
+            <Button
+              onClick={handleConfirm}
+              className="cursor-pointer"
+              disabled={isPending}
+            >
+              {confirmButtonText}
+            </Button>
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

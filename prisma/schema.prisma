@@ -12,14 +12,15 @@ datasource db {
 }
 
 model User {
-  userId     String     @id @map("user_id")
-  email      String     @unique
-  name       String
-  password   String
-  image      String?
-  inviteCode InviteCode @relation(fields: [userId], references: [usedById])
-  Todos      Todo[]
-  session    Session[]
+  userId           String            @id @map("user_id")
+  email            String            @unique
+  name             String
+  password         String
+  image            String?
+  inviteCode       InviteCode        @relation(fields: [userId], references: [usedById])
+  Todos            Todo[]
+  session          Session[]
+  bulletinMessages BulletinMessage[]
 
   @@map("user")
 }
@@ -58,4 +59,23 @@ model Session {
   expireAt  DateTime @map("expire_at")
 
   @@map("session")
+}
+
+model MomentPhoto {
+  photoId   String   @id @default(cuid()) @map("photo_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  imageKey  String   @map("image_key")
+
+  @@map("moment_photo")
+}
+
+model BulletinMessage {
+  messageId String   @id @default(cuid()) @map("message_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  authorId  String   @map("author_id")
+  author    User     @relation(fields: [authorId], references: [userId], onUpdate: Cascade, onDelete: Cascade)
+  content   String
+
+  @@map("bulletin_message")
 }
