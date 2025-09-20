@@ -28,7 +28,7 @@ import { CreateButton } from "@/features/two-dos/components/create-button";
 import EditDialog from "@/features/two-dos/components/edit-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, Circle, CircleCheck } from "lucide-react";
+import { ArrowUpDown, Circle, CircleCheck, Trash2 } from "lucide-react";
 import { useTimeZone } from "@/components/providers/time-zone";
 import { DateTime } from "luxon";
 import { timeFormat, Todo } from "@/features/two-dos/models/views";
@@ -209,7 +209,7 @@ export function TwodoTable() {
 
   return (
     <div className="flex flex-1 flex-col space-y-2">
-      <div className="flex items-center py-4">
+      <div className="flex items-center py-4 space-x-2">
         <Input
           name="title-filter"
           placeholder="Filter titles..."
@@ -226,8 +226,11 @@ export function TwodoTable() {
             confirmButtonText="Delete"
             onConfirm={handleDelete}
             defaultErrorMessage="Failed to delete todo. Please try again later."
+            buttonClassName="cursor-pointer hover:text-destructive"
+            buttonVariant="outline"
           >
-            Delete To-dos
+            <Trash2 />
+            <span className="hidden sm:inline">Delete</span>
           </AlertDialogButton>
         </div>
       </div>

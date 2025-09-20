@@ -181,7 +181,7 @@ export default function Page() {
                     onClick={() => fileInput.current?.click()}
                   >
                     <Upload className="h-4 w-4" />
-                    <span className="hidden sm:inline ml-2">
+                    <span className="hidden sm:inline">
                       {isUploading ? "Uploading..." : "Upload"}
                     </span>
                   </Button>
@@ -203,7 +203,7 @@ export default function Page() {
                     alertDescription="You will delete the current photo on carousel. The action cannot be undone."
                   >
                     <Trash2 className="h-4 w-4" />
-                    <span className="hidden sm:inline ml-2">Delete</span>
+                    <span className="hidden sm:inline">Delete</span>
                   </AlertDialogButton>
                 </div>
               </div>
@@ -349,7 +349,7 @@ export default function Page() {
                   className="bg-primary hover:bg-primary/90 px-4"
                 >
                   <Send className="h-4 w-4" />
-                  <span className="ml-2 hidden sm:inline">
+                  <span className="hidden sm:inline">
                     {isSending ? "Sending..." : "Send"}
                   </span>
                 </Button>

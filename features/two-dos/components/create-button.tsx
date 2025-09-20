@@ -35,6 +35,7 @@ import { TodoCreateRequest } from "@/features/two-dos/models/requests";
 import { TodoCreateResponse } from "@/features/two-dos/models/responses";
 import { HttpErrorPayload } from "@/lib/error";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
+import { Plus } from "lucide-react";
 
 function CreateButton() {
   const form = useForm<z.infer<typeof createSchema>>({
@@ -119,13 +120,16 @@ function CreateButton() {
       }}
     >
       <DialogTrigger asChild>
-        <Button className="cursor-pointer">Add Todo</Button>
+        <Button className="cursor-pointer">
+          <Plus />
+          <span className="hidden sm:inline">Add</span>
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
-          <DialogTitle>Add Todo</DialogTitle>
+          <DialogTitle>Add Two Dos</DialogTitle>
           <DialogDescription>
-            Add a new todo item. It will have the lowest priority.
+            Add a new two do item. It will have the lowest priority.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
