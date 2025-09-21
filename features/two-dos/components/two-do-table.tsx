@@ -28,7 +28,7 @@ import { CreateButton } from "@/features/two-dos/components/create-button";
 import EditDialog from "@/features/two-dos/components/edit-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, Circle, CircleCheck, Trash2 } from "lucide-react";
+import { ArrowUpDown, Circle, CircleCheck, Plus, Trash2 } from "lucide-react";
 import { useTimeZone } from "@/components/providers/time-zone";
 import { DateTime } from "luxon";
 import { timeFormat, Todo } from "@/features/two-dos/models/views";
@@ -37,6 +37,112 @@ import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 import { env } from "@/lib/env";
 import ky from "ky";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function TwodoTableSkeleton() {
+  // Create skeleton rows
+  const skeletonRows = Array.from({ length: 5 }, (_, index) => (
+    <TableRow key={index}>
+      {/* Select checkbox */}
+      <TableCell>
+        <Skeleton className="h-4 w-4" />
+      </TableCell>
+      {/* Image */}
+      <TableCell>
+        <div className="relative aspect-square">
+          <Skeleton className="h-full w-full" />
+        </div>
+      </TableCell>
+      {/* Title */}
+      <TableCell>
+        <Skeleton className="h-4 w-32" />
+      </TableCell>
+      {/* Created At */}
+      <TableCell>
+        <Skeleton className="h-4 w-24" />
+      </TableCell>
+      {/* Created By */}
+      <TableCell>
+        <Skeleton className="h-4 w-20" />
+      </TableCell>
+      {/* Description */}
+      <TableCell>
+        <Skeleton className="h-4 w-40" />
+      </TableCell>
+      {/* Status */}
+      <TableCell>
+        <Skeleton className="h-4 w-4 rounded-full" />
+      </TableCell>
+    </TableRow>
+  ));
+
+  return (
+    <div className="flex flex-1 flex-col space-y-2">
+      <div className="flex items-center py-4 space-x-2">
+        <Skeleton className="h-10 w-60" />
+        <div className="ml-auto flex items-center space-x-2">
+          <Button disabled>
+            <Plus />
+            <span className="hidden sm:inline">Add</span>
+          </Button>
+          <Button variant="outline" disabled>
+            <Trash2 />
+            <span className="hidden sm:inline">Delete</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Table container */}
+      <div className="relative flex-1">
+        <div className="absolute inset-0 rounded-md border-2 overflow-hidden">
+          <Table scrollable={false}>
+            <TableHeader className="sticky top-0 z-10">
+              <TableRow isHeader>
+                <TableHead>
+                  <Skeleton className="h-4 w-4" />
+                </TableHead>
+                <TableHead>Image</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>
+                  <Button variant={"plain"} className="cursor-pointer" disabled>
+                    Created At
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>Created By</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>{skeletonRows}</TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {/* Pagination skeleton */}
+      <div className="flex items-center justify-between px-2">
+        <div className="flex-1 text-sm text-muted-foreground">
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-8 w-16" />
+          </div>
+          <div className="flex w-20 items-center justify-center text-sm font-medium">
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function TwodoTable() {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -155,7 +261,7 @@ export function TwodoTable() {
     [timeZone],
   );
 
-  const { key, todos, mutate } = useTodos();
+  const { key, todos, isLoading, mutate } = useTodos();
 
   const table = useReactTable({
     data: todos,
@@ -206,6 +312,10 @@ export function TwodoTable() {
       },
     );
   };
+
+  if (isLoading) {
+    return <TwodoTableSkeleton />;
+  }
 
   return (
     <div className="flex flex-1 flex-col space-y-2">
