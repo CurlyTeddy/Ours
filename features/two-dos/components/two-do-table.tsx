@@ -325,6 +325,7 @@ export function TwodoTable() {
             alertTitle="Are you sure?"
             alertDescription="This action will delete the selected to-dos and cannot be undone."
             confirmButtonText="Delete"
+            disabled={table.getSelectedRowModel().rows.length === 0}
             onConfirm={handleDelete}
             defaultErrorMessage="Failed to delete todo. Please try again later."
             buttonClassName="cursor-pointer hover:text-destructive"
