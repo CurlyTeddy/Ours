@@ -1,6 +1,12 @@
 "use client";
 
-import { ChangeEventHandler, useRef, useState, useTransition } from "react";
+import {
+  ChangeEventHandler,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import Image from "next/image";
 import { Upload, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,9 +49,17 @@ export default function Page() {
     Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true }),
   );
   const fileInput = useRef<HTMLInputElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const daysTogether = useRef<number>(
     Math.trunc((Date.now() - Date.UTC(2022, 10, 1)) / (1000 * 60 * 60 * 24)),
   );
+
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const onPhotoUpload: ChangeEventHandler<HTMLInputElement> = (event) => {
     if (!event.target.files?.length) {
@@ -279,7 +293,10 @@ export default function Page() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-4 h-65 overflow-y-auto scrollbar-hide pr-2">
+              <div
+                ref={messagesContainerRef}
+                className="space-y-4 h-65 overflow-y-auto scrollbar-hide pr-2"
+              >
                 {messages.length > 0 ? (
                   messages.map((message: BulletinMessage) => (
                     <div
