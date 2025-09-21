@@ -21,7 +21,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/ui/pagination";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { Input } from "@/components/ui/input";
 import { CreateButton } from "@/features/two-dos/components/create-button";
@@ -282,15 +282,6 @@ export function TwodoTable() {
   });
 
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
-
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    return null;
-  }
 
   const handleDelete = async () => {
     const selectTodoIds = table
