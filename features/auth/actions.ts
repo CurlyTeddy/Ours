@@ -10,6 +10,10 @@ import { env } from "@/lib/env";
 import { generateSessionToken } from "@/features/auth/session";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
+import { Throttler } from "@/lib/rate-limit";
+import { formatTime } from "@/lib/utils";
+
+const throttler = new Throttler<string>([0, 0, 60, 300, 1800, 3600]);
 
 export async function authenticate(
   previousState: string | undefined,
@@ -27,6 +31,11 @@ export async function authenticate(
   }
 
   const { email, password } = parsedCredentials.data;
+  const waitTime = throttler.consume(email);
+  if (waitTime !== 0) {
+    return `Too many requests. Wait ${formatTime(waitTime)} to make another attempt.`;
+  }
+
   const user = await prisma.user.findUnique({
     where: { email: email },
   });
@@ -34,6 +43,7 @@ export async function authenticate(
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return "Invalid credential.";
   }
+  throttler.reset(email);
 
   const token = generateSessionToken();
   const session = await prisma.session.create({

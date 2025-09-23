@@ -15,6 +15,9 @@ import ky from "ky";
 import { MessageCreateRequest } from "@/features/moments/models/requests";
 import { env } from "@/lib/env";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DateTime } from "luxon";
+import { useTimeZone } from "@/components/providers/time-zone";
+import { formatTime } from "@/lib/utils";
 
 function MessageBoardSkeleton() {
   return (
@@ -62,6 +65,8 @@ export function MessageBoard() {
     }
   }, [messages]);
 
+  const timezone = useTimeZone();
+
   const handleSendMessage = () => {
     const trimmedMessage = newMessage.trim();
     if (trimmedMessage.length === 0) {
@@ -88,24 +93,6 @@ export function MessageBoard() {
     });
   };
 
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) return "just now";
-    if (diffInSeconds < 3600)
-      return `${Math.floor(diffInSeconds / 60).toString()}m ago`;
-    if (diffInSeconds < 86400)
-      return `${Math.floor(diffInSeconds / 3600).toString()}h ago`;
-    if (diffInSeconds < 604800) {
-      const days = Math.floor(diffInSeconds / 86400);
-      return `${days.toString()} day${days > 1 ? "s" : ""} ago`;
-    }
-
-    return date.toLocaleDateString();
-  };
-
   if (isLoading) {
     return <MessageBoardSkeleton />;
   }
@@ -121,39 +108,47 @@ export function MessageBoard() {
           className="space-y-4 h-65 overflow-y-auto scrollbar-hide pr-2"
         >
           {messages.length > 0 ? (
-            messages.map((message: BulletinMessage) => (
-              <div
-                key={message.messageId}
-                className="flex p-2 items-center gap-3"
-              >
-                <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-border">
-                  <AvatarImage
-                    src={
-                      message.authorImage
-                        ? `${env.NEXT_PUBLIC_R2_ENDPOINT}/avatar/${message.authorImage}`
-                        : undefined
-                    }
-                    alt={message.author}
-                  />
-                  <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">
-                    {message.author[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-semibold text-foreground truncate">
-                      {message.author}
-                    </span>
-                    <span className="text-xs text-muted-foreground flex-shrink-0">
-                      {formatTimeAgo(message.createdAt)}
-                    </span>
+            messages.map((message: BulletinMessage) => {
+              const secondsBetween =
+                (Date.now() - new Date(message.createdAt).getTime()) / 1000;
+              return (
+                <div
+                  key={message.messageId}
+                  className="flex p-2 items-center gap-3"
+                >
+                  <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-border">
+                    <AvatarImage
+                      src={
+                        message.authorImage
+                          ? `${env.NEXT_PUBLIC_R2_ENDPOINT}/avatar/${message.authorImage}`
+                          : undefined
+                      }
+                      alt={message.author}
+                    />
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">
+                      {message.author[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-semibold text-foreground truncate">
+                        {message.author}
+                      </span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                        {secondsBetween > 604800
+                          ? DateTime.fromISO(message.createdAt, {
+                              zone: timezone,
+                            }).toFormat("yyyy-MM-dd")
+                          : `${formatTime(secondsBetween)} ago`}
+                      </span>
+                    </div>
+                    <p className="text-sm text-foreground leading-relaxed break-words">
+                      {message.content}
+                    </p>
                   </div>
-                  <p className="text-sm text-foreground leading-relaxed break-words">
-                    {message.content}
-                  </p>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-center py-12">
               <div className="text-muted-foreground/50 mb-3">
