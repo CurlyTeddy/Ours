@@ -1,15 +1,20 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useActionState, useId } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useActionState, useId } from "react";
 import { authenticate } from "@/features/auth/actions";
 import Link from "next/link";
 import { ArrowRight, KeyRound, User } from "lucide-react";
 import ErrorMessage from "@/components/ui/error-message";
+import { useSearchParams } from "next/navigation";
+
+function RedirectInput() {
+  const callbackUrl = useSearchParams().get("callbackUrl") ?? "/moments";
+
+  return <input type="hidden" name="redirectTo" value={callbackUrl} />;
+}
 
 export default function LoginForm() {
-  const callbackUrl = useSearchParams().get("callbackUrl") ?? "/moments";
   const [errorMessage, formAction, isPending] = useActionState(
     authenticate,
     undefined,
@@ -62,7 +67,9 @@ export default function LoginForm() {
               <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
           </div>
-          <input type="hidden" name="redirectTo" value={callbackUrl} />
+          <Suspense>
+            <RedirectInput />
+          </Suspense>
           <Button className="mt-4 w-full" aria-disabled={isPending}>
             Log in <ArrowRight className="ml-auto h-5 w-5 text-gray-50" />
           </Button>
