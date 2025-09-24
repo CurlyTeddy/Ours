@@ -3,6 +3,9 @@
 import { useActionState, useId } from "react";
 import { register } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import { AtSign, KeyRound, Mail, User, UserPlus } from "lucide-react";
 import ErrorMessage from "@/components/ui/error-message";
 
@@ -13,134 +16,114 @@ export default function SignupForm() {
 
   return (
     <form action={formAction}>
-      <div className="flex-1 rounded-lg bg-gray-50 px-6 pb-4 pt-8">
-        <h1 className="mb-3 text-2xl">
+      <Card className="flex-1 p-8">
+        <h1 className="mb-8 text-2xl font-semibold text-foreground">
           Welcome to our secret base! Please sign up to continue.
         </h1>
-        <div className="w-full space-y-5">
-          <div>
-            <label
-              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
-              htmlFor={`${baseInputFormId}-username`}
-            >
+        <div className="w-full space-y-8">
+          <div className="space-y-3">
+            <Label htmlFor={`${baseInputFormId}-username`}>
+              <User className="h-4 w-4" />
               Username
-            </label>
-            <div className="relative">
-              <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
-                id={`${baseInputFormId}-username`}
-                type="text"
-                name="username"
-                placeholder="At least 6 letters or numbers. e.g. ruru123"
-                autoComplete="username"
-                minLength={6}
-                required
-                aria-describedby={`${baseInputFormId}-username-error`}
-              />
-              <User className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
-            </div>
+            </Label>
+            <Input
+              id={`${baseInputFormId}-username`}
+              type="text"
+              name="username"
+              placeholder="At least 6 letters or numbers. e.g. ruru123"
+              autoComplete="username"
+              minLength={6}
+              required
+              aria-describedby={`${baseInputFormId}-username-error`}
+              className="h-11 px-4 py-3"
+            />
             <div
               id={`${baseInputFormId}-username-error`}
               aria-live="polite"
               aria-atomic="true"
             >
               {state.errors?.properties?.username?.errors.map((error) => (
-                <p className="mt-2 text-sm text-red-500" key={error}>
+                <p className="mt-2 text-sm text-destructive" key={error}>
                   {error}
                 </p>
               ))}
             </div>
           </div>
-          <div className="mt-4">
-            <label
-              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
-              htmlFor={`${baseInputFormId}-email`}
-            >
+          <div className="space-y-3">
+            <Label htmlFor={`${baseInputFormId}-email`}>
+              <AtSign className="h-4 w-4" />
               Email
-            </label>
-            <div className="relative">
-              <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
-                id={`${baseInputFormId}-email`}
-                type="email"
-                name="email"
-                placeholder="e.g. ruru@gmail.com"
-                autoComplete="email"
-                required
-                aria-describedby={`${baseInputFormId}-email-error`}
-              />
-              <AtSign className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
-            </div>
+            </Label>
+            <Input
+              id={`${baseInputFormId}-email`}
+              type="email"
+              name="email"
+              placeholder="e.g. ruru@gmail.com"
+              autoComplete="email"
+              required
+              aria-describedby={`${baseInputFormId}-email-error`}
+              className="h-11 px-4 py-3"
+            />
             <div
               id={`${baseInputFormId}-email-error`}
               aria-live="polite"
               aria-atomic="true"
             >
               {state.errors?.properties?.email?.errors.map((error) => (
-                <p className="mt-2 text-sm text-red-500" key={error}>
+                <p className="mt-2 text-sm text-destructive" key={error}>
                   {error}
                 </p>
               ))}
             </div>
           </div>
-          <div className="mt-4">
-            <label
-              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
-              htmlFor={`${baseInputFormId}-password`}
-            >
+          <div className="space-y-3">
+            <Label htmlFor={`${baseInputFormId}-password`}>
+              <KeyRound className="h-4 w-4" />
               Password
-            </label>
-            <div className="relative">
-              <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
-                id={`${baseInputFormId}-password`}
-                type="password"
-                name="password"
-                placeholder="At least 8 characters. e.g. 5/4u83bj6"
-                autoComplete="current-password"
-                required
-                minLength={8}
-                aria-describedby={`${baseInputFormId}-password-error`}
-              />
-              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
-            </div>
+            </Label>
+            <Input
+              id={`${baseInputFormId}-password`}
+              type="password"
+              name="password"
+              placeholder="At least 8 characters. e.g. 5/4u83bj6"
+              autoComplete="current-password"
+              required
+              minLength={8}
+              aria-describedby={`${baseInputFormId}-password-error`}
+              className="h-11 px-4 py-3"
+            />
             <div
               id={`${baseInputFormId}-password-error`}
               aria-live="polite"
               aria-atomic="true"
             >
               {state.errors?.properties?.password?.errors.map((error) => (
-                <p className="mt-2 text-sm text-red-500" key={error}>
+                <p className="mt-2 text-sm text-destructive" key={error}>
                   {error}
                 </p>
               ))}
             </div>
           </div>
-          <div className="mt-4">
-            <label
-              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
-              htmlFor={`${baseInputFormId}-invite-code`}
-            >
+          <div className="space-y-3">
+            <Label htmlFor={`${baseInputFormId}-invite-code`}>
+              <Mail className="h-4 w-4" />
               Invite Code
-            </label>
-            <div className="relative">
-              <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
-                id={`${baseInputFormId}-invite-code`}
-                type="text"
-                name="inviteCode"
-                placeholder="Enter invite code"
-                required
-              />
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
-            </div>
+            </Label>
+            <Input
+              id={`${baseInputFormId}-invite-code`}
+              type="text"
+              name="inviteCode"
+              placeholder="Enter invite code"
+              required
+              className="h-11 px-4 py-3"
+            />
           </div>
-          <Button className="mt-4 w-full" aria-disabled={isPending}>
-            Sign up <UserPlus className="ml-auto h-5 w-5 text-gray-50" />
+          <Button className="w-full h-11 mt-2" aria-disabled={isPending}>
+            Sign up <UserPlus className="ml-auto h-5 w-5" />
           </Button>
         </div>
-        <ErrorMessage message={state.message} className="mt-2" />
-      </div>
+        <ErrorMessage message={state.message} className="mt-6" />
+      </Card>
     </form>
   );
 }
