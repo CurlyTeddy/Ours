@@ -19,7 +19,9 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   }
 
   if (session === null || user === null) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(
+      new URL(`/login?callbackUrl=${request.nextUrl.pathname}`, request.url),
+    );
   }
 
   if (request.method === "GET") {

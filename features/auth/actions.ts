@@ -23,6 +23,7 @@ export async function authenticate(
     .object({
       email: z.email(),
       password: z.string().min(8),
+      redirectTo: z.string(),
     })
     .safeParse(Object.fromEntries(formData));
 
@@ -30,7 +31,7 @@ export async function authenticate(
     return "Invalid credential format.";
   }
 
-  const { email, password } = parsedCredentials.data;
+  const { email, password, redirectTo } = parsedCredentials.data;
   const waitTime = throttler.consume(email);
   if (waitTime !== 0) {
     return `Too many requests. Wait ${formatTime(waitTime)} to make another attempt.`;
@@ -63,7 +64,6 @@ export async function authenticate(
     expires: session.expireAt,
   });
 
-  const redirectTo = formData.get("redirectTo");
   const redirectUrl = typeof redirectTo === "string" ? redirectTo : "/moments";
   redirect(redirectUrl);
 }
