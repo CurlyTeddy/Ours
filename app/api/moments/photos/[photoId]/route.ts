@@ -4,7 +4,7 @@ import s3Client from "@/lib/s3-client";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { HttpErrorPayload } from "@/lib/error";
 import { env } from "@/lib/env";
-import { Prisma } from "@/lib/generated/prisma";
+import { Prisma } from "@prisma/client";
 
 interface DeleteResponse {
   success: boolean;
