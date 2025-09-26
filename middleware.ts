@@ -42,6 +42,10 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return response;
   }
 
+  if (request.nextUrl.pathname === "/api/invite-code") {
+    return NextResponse.next();
+  }
+
   const originHeader = request.headers.get("Origin");
   const forbiddenResponse = NextResponse.json(
     {
