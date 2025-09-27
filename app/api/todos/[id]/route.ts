@@ -88,7 +88,10 @@ async function PUT(
         },
         include: {
           createdBy: {
-            select: { name: true },
+            select: {
+              name: true,
+              image: true,
+            },
           },
         },
       });
@@ -154,7 +157,7 @@ async function PUT(
       priority: updatedTodo.priority,
       imageKeys: updatedTodo.imageKeys ? updatedTodo.imageKeys.split(",") : [],
       createdById: updatedTodo.createdById,
-      createdBy: updatedTodo.createdBy.name,
+      createdBy: updatedTodo.createdBy,
     };
 
     revalidatePath("/twodo");

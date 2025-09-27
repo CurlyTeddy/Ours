@@ -38,6 +38,7 @@ import { env } from "@/lib/env";
 import ky from "ky";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function TwodoTableSkeleton() {
   // Create skeleton rows
@@ -240,8 +241,27 @@ export function TwodoTable() {
           },
         },
         {
-          accessorKey: "createdBy",
+          accessorKey: "createdBy.image",
           header: "Created By",
+          cell: ({ row }) => {
+            const userName = row.original.createdBy.name;
+            const userImage = row.original.createdBy.image;
+            return (
+              <Avatar>
+                <AvatarImage
+                  src={
+                    userImage
+                      ? `${env.NEXT_PUBLIC_R2_ENDPOINT}/avatar/${userImage}`
+                      : undefined
+                  }
+                  alt={userName}
+                />
+                <AvatarFallback className="font-semibold bg-gradient-to-br from-primary/10 to-primary/20 text-primary">
+                  {userName.length > 0 ? userName[0].toUpperCase() : "U"}
+                </AvatarFallback>
+              </Avatar>
+            );
+          },
         },
         {
           accessorKey: "description",

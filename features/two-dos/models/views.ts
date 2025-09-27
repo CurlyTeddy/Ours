@@ -32,7 +32,10 @@ export interface Todo {
   imageKeys: string[];
   title: string;
   createdAt: string;
-  createdBy: string;
+  createdBy: {
+    name: string;
+    image: string | null;
+  };
   updatedAt: string;
   doneAt: string | null;
   description: string | null;

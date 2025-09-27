@@ -7,8 +7,10 @@ interface TodoDto {
   doneAt: string | null;
   priority: number;
   imageKeys: string[];
-  createdById: string;
-  createdBy: string;
+  createdBy: {
+    name: string;
+    image: string | null;
+  };
 }
 
 interface TodoResponse {

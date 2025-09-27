@@ -18,14 +18,16 @@ import { cookies } from "next/headers";
 import { env } from "@/lib/env";
 
 async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
-  let todos: TodoDto[] = [];
   try {
-    todos = (
+    const todos = (
       await prisma.todo.findMany({
         orderBy: { priority: "asc" },
         include: {
           createdBy: {
-            select: { name: true },
+            select: {
+              name: true,
+              image: true,
+            },
           },
         },
       })
@@ -38,9 +40,14 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
       doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
       priority: todo.priority,
       imageKeys: todo.imageKeys ? todo.imageKeys.split(",") : [],
-      createdById: todo.createdById,
-      createdBy: todo.createdBy.name,
+      createdBy: todo.createdBy,
     }));
+    return NextResponse.json(
+      { todos },
+      {
+        status: 200,
+      },
+    );
   } catch (error) {
     console.error("Error fetching todos:", error);
     return NextResponse.json(
@@ -52,13 +59,6 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
       },
     );
   }
-
-  return NextResponse.json(
-    { todos },
-    {
-      status: 200,
-    },
-  );
 }
 
 async function POST(
@@ -117,7 +117,10 @@ async function POST(
       const newTodo = await txn.todo.create({
         include: {
           createdBy: {
-            select: { name: true },
+            select: {
+              name: true,
+              image: true,
+            },
           },
         },
         data: {
@@ -138,8 +141,7 @@ async function POST(
         doneAt: newTodo.doneAt ? newTodo.doneAt.toISOString() : null,
         priority: newTodo.priority,
         imageKeys: newTodo.imageKeys ? newTodo.imageKeys.split(",") : [],
-        createdById: newTodo.createdById,
-        createdBy: newTodo.createdBy.name,
+        createdBy: newTodo.createdBy,
       };
 
       const signedUrls = await Promise.all(

@@ -186,7 +186,7 @@ export default function EditDialog({
 
                 <div>
                   <dt>Created By</dt>
-                  <dd>{todo.createdBy}</dd>
+                  <dd>{todo.createdBy.name}</dd>
                 </div>
 
                 <div>
