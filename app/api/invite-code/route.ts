@@ -1,7 +1,7 @@
 import prisma from "@/lib/database-client";
 import { NextResponse } from "next/server";
 
-async function PUT() {
+async function POST() {
   try {
     const inviteCode = await prisma.inviteCode.create({
       data: {
@@ -30,4 +30,4 @@ async function PUT() {
   }
 }
 
-export { PUT };
+export { POST };
