@@ -267,6 +267,22 @@ export function TwodoTable() {
         {
           accessorKey: "description",
           header: "Description",
+          cell: ({ row }) => {
+            if (row.original.description === null) {
+              return;
+            }
+
+            const content = row.original.description;
+
+            return (
+              <div
+                className="max-w-16 sm:max-w-24 md:max-w-32 lg:max-w-48 xl:max-w-xs truncate"
+                title={content}
+              >
+                {content}
+              </div>
+            );
+          },
         },
         {
           accessorKey: "status",
