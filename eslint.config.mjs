@@ -1,29 +1,35 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-import js from "@eslint/js";
 import boundaries from "eslint-plugin-boundaries";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-});
+import nextPlugin from "@next/eslint-plugin-next";
+import reactHooks from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
 
 const eslintConfig = [
+  ...tseslint.configs.strict,
+  ...tseslint.configs.stylistic,
   {
-    ignores: ["eslint.config.mjs", "lib/generated/**/*"],
+    ignores: ["lib/generated/**/*"],
   },
-  ...compat.extends(
-    "next/core-web-vitals",
-    "next/typescript",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:@typescript-eslint/strict-type-checked",
-    "plugin:@typescript-eslint/stylistic-type-checked",
-  ),
   {
+    name: "Next Plugins",
+    plugins: {
+      "@next/next": nextPlugin,
+    },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+    },
+  },
+  {
+    name: "Hook Plugins",
+    plugins: {
+      "react-hooks": reactHooks,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+    },
+  },
+  {
+    name: "Style Check",
     files: ["**/*.ts", "**/*.tsx"],
     rules: {
       quotes: [
@@ -33,15 +39,9 @@ const eslintConfig = [
       ],
       semi: ["error", "always"],
     },
-    languageOptions: {
-      parserOptions: {
-        project: ["tsconfig.json"],
-        projectService: true,
-        tsconfigRootDir: __dirname,
-      },
-    },
   },
   {
+    name: "Dependency Check",
     plugins: {
       boundaries,
     },
