@@ -235,7 +235,7 @@ export function TwodoTable() {
             </Button>
           ),
           cell: ({ row }) => {
-            return DateTime.fromISO(row.getValue<string>("createdAt"), {
+            return DateTime.fromISO(row.original.createdAt, {
               zone: timeZone,
             }).toFormat(timeFormat);
           },
@@ -271,7 +271,7 @@ export function TwodoTable() {
           accessorKey: "status",
           header: "Status",
           cell: ({ row }) =>
-            row.getValue("status") ? (
+            row.original.status ? (
               <CircleCheck className="text-green-500" />
             ) : (
               <Circle className="text-gray-400" />
