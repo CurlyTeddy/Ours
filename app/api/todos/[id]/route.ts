@@ -62,17 +62,16 @@ async function PUT(
         return null;
       }
 
-      const { imageNames, ...rest } = validatedFields.data;
+      const { imageNames: newImageNames, ...rest } = validatedFields.data;
       const oldImageKeys = todo.imageKeys ? todo.imageKeys.split(",") : [];
       const oldImageSet = new Set(oldImageKeys);
       const imageIntersection = new Set(
-        imageNames.filter((name) => oldImageSet.has(name)),
-      );
-      const imagesToUpload = imageNames.map(
-        (name) => [name, `${name}-${createId()}`] as [string, string],
+        newImageNames.filter((name) => oldImageSet.has(name)),
       );
       const newImageKeys = new Map(
-        imagesToUpload.filter(([name]) => !imageIntersection.has(name)),
+        newImageNames
+          .filter((name) => !imageIntersection.has(name))
+          .map((name) => [name, `${name}-${createId()}`]),
       );
 
       // Database update must be before R2 operations to avoid side effect on R2 when the database update fails
@@ -80,7 +79,7 @@ async function PUT(
         where: { todoId: id },
         data: {
           ...rest,
-          imageKeys: imageNames
+          imageKeys: newImageNames
             .map((name) =>
               newImageKeys.has(name) ? newImageKeys.get(name) : name,
             )
@@ -112,25 +111,24 @@ async function PUT(
       // Letting frontend to upload files can cause race condition. A user might delete an object
       // that is not yet uploaded by another user, this can be mitigated by adding retry mechanism
       // on the client side.
-      const signedUrls = await Promise.all(
-        imagesToUpload.map(([, key]) =>
-          getSignedUrl(
-            s3Client,
-            new PutObjectCommand({
-              Bucket: bucket,
-              Key: `two-do/${key}`,
-            }),
-            { expiresIn: 300 },
-          ),
-        ),
-      );
-
       return {
         updatedTodo,
-        imagesToUpload: imagesToUpload.map(([name], index) => ({
-          name,
-          signedUrl: signedUrls[index],
-        })),
+        imagesToUpload: await Promise.all(
+          newImageKeys
+            .entries()
+            .toArray()
+            .map(async ([name, key]) => ({
+              name,
+              signedUrl: await getSignedUrl(
+                s3Client,
+                new PutObjectCommand({
+                  Bucket: bucket,
+                  Key: `two-do/${key}`,
+                }),
+                { expiresIn: 300 },
+              ),
+            })),
+        ),
       };
     });
 
