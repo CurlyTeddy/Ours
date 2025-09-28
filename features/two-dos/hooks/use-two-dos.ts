@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import useSWR, { SWRConfiguration } from "swr";
 import { TodoResponse } from "@/features/two-dos/models/responses";
 import { Todo } from "@/features/two-dos/models/views";
+import { DateTime } from "luxon";
 
 function useTodos(config?: SWRConfiguration) {
   const key = "/api/todos";
@@ -21,7 +22,10 @@ function useTodos(config?: SWRConfiguration) {
         createdAt: todo.createdAt,
         createdBy: todo.createdBy,
         updatedAt: todo.updatedAt,
-        status: !!todo.doneAt,
+        status:
+          todo.doneAt !== null
+            ? DateTime.fromISO(todo.doneAt) < DateTime.utc()
+            : false,
       }));
     },
     {
