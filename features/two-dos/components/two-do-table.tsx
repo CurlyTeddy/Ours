@@ -202,6 +202,7 @@ export function TwodoTable() {
                     unoptimized={imageKey
                       .substring(0, imageKey.lastIndexOf("-"))
                       .endsWith("gif")}
+                    loading="eager"
                   />
                 ) : (
                   <Image
