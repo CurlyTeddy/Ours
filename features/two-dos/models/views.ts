@@ -2,7 +2,7 @@ import { dateFormat } from "@/components/ui/popover-calendar";
 import { DateTime } from "luxon";
 import { z } from "zod/v4";
 
-const maxFileSize = 1024 * 1024 * 1;
+const maxFileSize = 1024 * 1024 * 5;
 
 const timeFormat = `${dateFormat} HH:mm`;
 
