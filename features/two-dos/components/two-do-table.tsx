@@ -206,7 +206,7 @@ export function TwodoTable() {
                   />
                 ) : (
                   <Image
-                    src="/howl.gif"
+                    src="/blue-heart.png"
                     alt={"A default for two-do"}
                     fill
                     unoptimized
