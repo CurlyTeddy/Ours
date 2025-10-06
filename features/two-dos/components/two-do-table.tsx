@@ -203,6 +203,7 @@ export function TwodoTable() {
                       .substring(0, imageKey.lastIndexOf("-"))
                       .endsWith("gif")}
                     loading="eager"
+                    className="rounded-lg object-cover"
                   />
                 ) : (
                   <Image
@@ -211,6 +212,7 @@ export function TwodoTable() {
                     fill
                     unoptimized
                     priority
+                    className="rounded-lg object-cover"
                   />
                 )}
               </div>
