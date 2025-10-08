@@ -32,8 +32,8 @@ function PhotoGallerySkeleton() {
             Photo Gallery
           </CardTitle>
           <div className="flex gap-2">
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-9 sm:w-20" />
+            <Skeleton className="h-9 w-9 sm:w-20" />
           </div>
         </div>
       </CardHeader>

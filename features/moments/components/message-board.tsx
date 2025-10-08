@@ -44,7 +44,7 @@ function MessageBoardSkeleton() {
 
         <div className="flex gap-2 pt-4 border-t border-border">
           <Skeleton className="flex-1 h-10" />
-          <Skeleton className="h-10 w-16" />
+          <Skeleton className="h-9 w-9 sm:h-10 sm:w-16" />
         </div>
       </CardContent>
     </Card>
