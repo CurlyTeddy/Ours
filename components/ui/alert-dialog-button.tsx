@@ -40,7 +40,7 @@ interface AlertDialogButtonProps {
     | "link";
   cancelButtonText?: string;
 
-  onConfirm: () => Promise<void>;
+  onConfirm: () => void | Promise<void>;
   onOpen?: () => void | Promise<void>;
   onClose?: () => void | Promise<void>;
   defaultErrorMessage?: string;
