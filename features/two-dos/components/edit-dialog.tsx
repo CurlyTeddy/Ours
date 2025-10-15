@@ -194,8 +194,14 @@ function CarouselUploader({
         )}
         {previewImages.length > 1 && (
           <>
-            <CarouselPrevious className="left-4 bg-white/80 hover:bg-white border-0 shadow-md" />
-            <CarouselNext className="right-4 bg-white/80 hover:bg-white border-0 shadow-md" />
+            <CarouselPrevious
+              className="left-4 bg-white/80 hover:bg-white border-0 shadow-md"
+              type="button"
+            />
+            <CarouselNext
+              className="right-4 bg-white/80 hover:bg-white border-0 shadow-md"
+              type="button"
+            />
           </>
         )}
       </Carousel>
