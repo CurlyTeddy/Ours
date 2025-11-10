@@ -1,11 +1,18 @@
 import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
-import { TodoUpdateResponse } from "@/features/two-dos/models/responses";
+import {
+  TodoDto,
+  TodoUpdateResponse,
+} from "@/features/two-dos/models/responses";
 import prisma from "@/lib/database-client";
 import { env } from "@/lib/env";
 import { HttpErrorPayload } from "@/lib/error";
 import { Prisma } from "@prisma/client";
 import s3Client from "@/lib/s3-client";
-import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createId } from "@paralleldrive/cuid2";
 import { DateTime } from "luxon";
@@ -79,11 +86,14 @@ async function PUT(
         where: { todoId: id },
         data: {
           ...rest,
-          imageKeys: newImageNames
-            .map((name) =>
-              newImageKeys.has(name) ? newImageKeys.get(name) : name,
-            )
-            .join(","),
+          imageKeys:
+            newImageNames.length > 0
+              ? newImageNames
+                  .map((name) =>
+                    newImageKeys.has(name) ? newImageKeys.get(name) : name,
+                  )
+                  .join(",")
+              : null,
         },
         include: {
           createdBy: {
@@ -142,7 +152,7 @@ async function PUT(
 
     const { updatedTodo } = payload;
 
-    const todo = {
+    const todo: TodoDto = {
       id: updatedTodo.todoId,
       title: updatedTodo.title,
       description: updatedTodo.description,
@@ -150,9 +160,39 @@ async function PUT(
       updatedAt: updatedTodo.updatedAt.toISOString(),
       doneAt: updatedTodo.doneAt ? updatedTodo.doneAt.toISOString() : null,
       priority: updatedTodo.priority,
-      imageKeys: updatedTodo.imageKeys ? updatedTodo.imageKeys.split(",") : [],
-      createdById: updatedTodo.createdById,
-      createdBy: updatedTodo.createdBy,
+      images: await Promise.all(
+        updatedTodo.imageKeys !== null
+          ? updatedTodo.imageKeys.split(",").map(async (key) => ({
+              key,
+              url: await getSignedUrl(
+                s3Client,
+                new GetObjectCommand({
+                  Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                  Key: `two-do/${key}`,
+                }),
+                {
+                  expiresIn: 300,
+                },
+              ),
+            }))
+          : [],
+      ),
+      createdBy: {
+        name: updatedTodo.createdBy.name,
+        imageUrl:
+          updatedTodo.createdBy.image !== null
+            ? await getSignedUrl(
+                s3Client,
+                new GetObjectCommand({
+                  Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                  Key: `avatar/${updatedTodo.createdBy.image}`,
+                }),
+                {
+                  expiresIn: 300,
+                },
+              )
+            : null,
+      },
     };
 
     revalidatePath("/twodo");

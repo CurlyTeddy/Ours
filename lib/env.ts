@@ -7,24 +7,12 @@ export const env = createEnv({
     R2_ACCESS_KEY: z.string().min(1),
     R2_SECRET_ACCESS_KEY: z.string().min(1),
     LIBSQL_DATABASE_URL: z.string().min(1),
-    LIBSQL_DATABASE_TOKEN: z
-      .string()
-      .optional()
-      .refine(
-        (token) =>
-          process.env.NEXT_PUBLIC_ENVIRONMENT === "dev" ||
-          (token !== undefined && token.length > 0),
-        {
-          message: "TURSO_AUTH_TOKEN is required in production environment",
-        },
-      ),
+    LIBSQL_DATABASE_TOKEN: z.string().min(1),
   },
   client: {
     NEXT_PUBLIC_ENVIRONMENT: z.enum(["dev", "prod"]),
-    NEXT_PUBLIC_R2_ENDPOINT: z.url(),
   },
   experimental__runtimeEnv: {
     NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
-    NEXT_PUBLIC_R2_ENDPOINT: process.env.NEXT_PUBLIC_R2_ENDPOINT,
   },
 });

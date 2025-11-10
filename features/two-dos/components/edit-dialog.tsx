@@ -42,7 +42,6 @@ import { TodoUpdateResponse } from "@/features/two-dos/models/responses";
 import { HttpErrorPayload } from "@/lib/error";
 import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
-import { env } from "@/lib/env";
 import {
   Carousel,
   CarouselContent,
@@ -222,9 +221,7 @@ export default function EditDialog({
     resolver: zodResolver(updateSchema),
     defaultValues: async () => {
       const blobs = await Promise.all(
-        todo.imageKeys.map((key) =>
-          ky.get(`${env.NEXT_PUBLIC_R2_ENDPOINT}/two-do/${key}`).blob(),
-        ),
+        todo.images.map((image) => ky.get(image.url).blob()),
       );
 
       return {
@@ -237,7 +234,7 @@ export default function EditDialog({
           : null,
         images: blobs.map(
           (blob, index) =>
-            new File([blob], todo.imageKeys[index], { type: blob.type }),
+            new File([blob], todo.images[index].key, { type: blob.type }),
         ),
       };
     },
@@ -292,7 +289,7 @@ export default function EditDialog({
                     description: response.todo.description,
                     doneAt: response.todo.doneAt,
                     updatedAt: response.todo.updatedAt,
-                    imageKeys: response.todo.imageKeys,
+                    images: response.todo.images,
                   }
                 : todo,
             );

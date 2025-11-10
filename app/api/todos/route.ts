@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import s3Client from "@/lib/s3-client";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { HttpErrorPayload } from "@/lib/error";
 import {
   TodoCreateResponse,
@@ -31,7 +31,7 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
           },
         },
       })
-    ).map((todo) => ({
+    ).map(async (todo) => ({
       id: todo.todoId,
       title: todo.title,
       description: todo.description,
@@ -39,11 +39,43 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
       updatedAt: todo.updatedAt.toISOString(),
       doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
       priority: todo.priority,
-      imageKeys: todo.imageKeys ? todo.imageKeys.split(",") : [],
-      createdBy: todo.createdBy,
+      images: await Promise.all(
+        todo.imageKeys !== null
+          ? todo.imageKeys.split(",").map(async (key) => ({
+              key,
+              url: await getSignedUrl(
+                s3Client,
+                new GetObjectCommand({
+                  Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                  Key: `two-do/${key}`,
+                }),
+                {
+                  expiresIn: 300,
+                },
+              ),
+            }))
+          : [],
+      ),
+      createdBy: {
+        name: todo.createdBy.name,
+        imageUrl:
+          todo.createdBy.image !== null
+            ? await getSignedUrl(
+                s3Client,
+                new GetObjectCommand({
+                  Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                  Key: `avatar/${todo.createdBy.image}`,
+                }),
+                {
+                  expiresIn: 300,
+                },
+              )
+            : null,
+      },
     }));
+
     return NextResponse.json(
-      { todos },
+      { todos: await Promise.all(todos) },
       {
         status: 200,
       },
@@ -140,8 +172,39 @@ async function POST(
         updatedAt: newTodo.updatedAt.toISOString(),
         doneAt: newTodo.doneAt ? newTodo.doneAt.toISOString() : null,
         priority: newTodo.priority,
-        imageKeys: newTodo.imageKeys ? newTodo.imageKeys.split(",") : [],
-        createdBy: newTodo.createdBy,
+        images: await Promise.all(
+          newTodo.imageKeys !== null
+            ? newTodo.imageKeys.split(",").map(async (key) => ({
+                key,
+                url: await getSignedUrl(
+                  s3Client,
+                  new GetObjectCommand({
+                    Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                    Key: `two-do/${key}`,
+                  }),
+                  {
+                    expiresIn: 300,
+                  },
+                ),
+              }))
+            : [],
+        ),
+        createdBy: {
+          name: newTodo.createdBy.name,
+          imageUrl:
+            newTodo.createdBy.image !== null
+              ? await getSignedUrl(
+                  s3Client,
+                  new GetObjectCommand({
+                    Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                    Key: `avatar/${newTodo.createdBy.image}`,
+                  }),
+                  {
+                    expiresIn: 300,
+                  },
+                )
+              : null,
+        },
       };
 
       const signedUrls = await Promise.all(

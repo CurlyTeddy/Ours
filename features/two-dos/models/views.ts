@@ -29,12 +29,15 @@ const updateSchema = z.object({
 
 export interface Todo {
   id: string;
-  imageKeys: string[];
+  images: {
+    key: string;
+    url: string;
+  }[];
   title: string;
   createdAt: string;
   createdBy: {
     name: string;
-    image: string | null;
+    imageUrl: string | null;
   };
   updatedAt: string;
   doneAt: string | null;

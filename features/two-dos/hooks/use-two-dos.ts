@@ -15,7 +15,7 @@ function useTodos(config?: SWRConfiguration) {
       const response = await ky.get(url).json<TodoResponse>();
       return response.todos.map((todo) => ({
         id: todo.id,
-        imageKeys: todo.imageKeys,
+        images: todo.images,
         title: todo.title,
         description: todo.description,
         doneAt: todo.doneAt,

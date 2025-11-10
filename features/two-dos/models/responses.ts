@@ -6,10 +6,13 @@ interface TodoDto {
   updatedAt: string;
   doneAt: string | null;
   priority: number;
-  imageKeys: string[];
+  images: {
+    url: string;
+    key: string;
+  }[];
   createdBy: {
     name: string;
-    image: string | null;
+    imageUrl: string | null;
   };
 }
 

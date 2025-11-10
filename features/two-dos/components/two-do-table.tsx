@@ -34,7 +34,6 @@ import { DateTime } from "luxon";
 import { timeFormat, Todo } from "@/features/two-dos/models/views";
 import Image from "next/image";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
-import { env } from "@/lib/env";
 import ky from "ky";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -190,17 +189,17 @@ export function TwodoTable() {
           id: "image",
           header: "Image",
           cell: ({ row }) => {
-            const imageKey = row.original.imageKeys[0];
+            const images = row.original.images;
             return (
               <div className="relative aspect-square">
-                {row.original.imageKeys.length > 0 ? (
+                {images.length > 0 ? (
                   <Image
-                    src={`${env.NEXT_PUBLIC_R2_ENDPOINT}/two-do/${row.original.imageKeys[0]}`}
+                    src={images[0].url}
                     alt={row.original.title}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    unoptimized={imageKey
-                      .substring(0, imageKey.lastIndexOf("-"))
+                    unoptimized={images[0].key
+                      .substring(0, images[0].key.lastIndexOf("-"))
                       .endsWith("gif")}
                     loading="eager"
                     className="rounded-lg object-cover"
@@ -248,15 +247,11 @@ export function TwodoTable() {
           header: "Created By",
           cell: ({ row }) => {
             const userName = row.original.createdBy.name;
-            const userImage = row.original.createdBy.image;
+            const userImage = row.original.createdBy.imageUrl;
             return (
               <Avatar>
                 <AvatarImage
-                  src={
-                    userImage
-                      ? `${env.NEXT_PUBLIC_R2_ENDPOINT}/avatar/${userImage}`
-                      : undefined
-                  }
+                  src={userImage ? userImage : undefined}
                   alt={userName}
                 />
                 <AvatarFallback className="font-semibold bg-gradient-to-br from-primary/10 to-primary/20 text-primary">
