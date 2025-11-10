@@ -123,16 +123,15 @@ export async function PUT(
             name: profile.name,
             email: profile.email,
             imageKey: image,
-            imageUrl:
-              image !== null
-                ? await getSignedUrl(
-                    s3Client,
-                    new GetObjectCommand({
-                      Bucket: bucket,
-                      Key: `avatar/${image}`,
-                    }),
-                  )
-                : null,
+            imageUrl: image
+              ? await getSignedUrl(
+                  s3Client,
+                  new GetObjectCommand({
+                    Bucket: bucket,
+                    Key: `avatar/${image}`,
+                  }),
+                )
+              : null,
           },
         },
         { status: 200 },
@@ -173,16 +172,15 @@ export async function PUT(
           name: profile.name,
           email: profile.email,
           imageKey: profile.image,
-          imageUrl:
-            profile.image !== null
-              ? await getSignedUrl(
-                  s3Client,
-                  new GetObjectCommand({
-                    Bucket: bucket,
-                    Key: `avatar/${profile.image}`,
-                  }),
-                )
-              : null,
+          imageUrl: profile.image
+            ? await getSignedUrl(
+                s3Client,
+                new GetObjectCommand({
+                  Bucket: bucket,
+                  Key: `avatar/${profile.image}`,
+                }),
+              )
+            : null,
         },
         signedUrl,
       };

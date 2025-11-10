@@ -40,7 +40,7 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
       doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
       priority: todo.priority,
       images: await Promise.all(
-        todo.imageKeys !== null
+        todo.imageKeys
           ? todo.imageKeys.split(",").map(async (key) => ({
               key,
               url: await getSignedUrl(
@@ -160,7 +160,7 @@ async function POST(
           description,
           createdById: user.id,
           priority: (maxPriority._max.priority ?? 0) + 1,
-          imageKeys: imageKeys.join(","),
+          imageKeys: imageKeys.length > 0 ? imageKeys.join(",") : null,
         },
       });
 
