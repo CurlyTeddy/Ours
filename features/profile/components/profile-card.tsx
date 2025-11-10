@@ -27,10 +27,13 @@ import ky from "ky";
 import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod/v4";
-import { env } from "@/lib/env";
 import { Trash2, User, Mail, Save, Camera } from "lucide-react";
-import { ProfileUpdateResponse } from "@/features/profile/models/responses";
+import {
+  Profile,
+  ProfileUpdateResponse,
+} from "@/features/profile/models/responses";
 import { useUser } from "@/features/profile/hooks/user";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -38,16 +41,54 @@ const profileSchema = z.object({
   image: z.file().nullable(),
 });
 
-interface ProfileClientProps {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    image: string | null;
-  };
+function ProfileSkeleton() {
+  return (
+    <main className="my-auto bg-background p-4">
+      <Card className="mx-auto max-w-2xl pt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-6 h-6" />
+            Personal Information
+          </CardTitle>
+          <CardDescription>
+            Update your profile picture and personal details
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-8">
+          <div className="space-y-6">
+            <div className="flex flex-col items-center space-y-6">
+              <Skeleton className="size-32 rounded-full" />
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-4 w-60" />
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex justify-end">
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </CardContent>
+      </Card>
+    </main>
+  );
 }
 
-export default function ProfileCard({ user }: ProfileClientProps) {
+function ProfileCard({ user }: { user: Profile }) {
   const { mutate } = useUser();
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,7 +98,7 @@ export default function ProfileCard({ user }: ProfileClientProps) {
 
   const form = useForm<z.infer<typeof profileSchema>>({
     defaultValues: async () => {
-      if (user.image === null) {
+      if (user.imageKey === null || user.imageUrl === null) {
         return {
           name: name,
           email: user.email,
@@ -65,13 +106,12 @@ export default function ProfileCard({ user }: ProfileClientProps) {
         };
       }
 
-      const imageUrl = `${env.NEXT_PUBLIC_R2_ENDPOINT}/avatar/${user.image}`;
-      const blob = await ky.get(imageUrl).blob();
-      setPreview(imageUrl);
+      const blob = await ky.get(user.imageUrl).blob();
+      setPreview(user.imageUrl);
       return {
         name: name,
         email: user.email,
-        image: new File([blob], user.image, { type: blob.type }),
+        image: new File([blob], user.imageKey, { type: blob.type }),
       };
     },
     resolver: zodResolver(profileSchema),
@@ -106,7 +146,7 @@ export default function ProfileCard({ user }: ProfileClientProps) {
         }
 
         setName(profile.name);
-        await mutate({ id: user.id, ...profile }, { revalidate: false });
+        await mutate({ ...profile }, { revalidate: false });
         toast.success("Profile updated successfully!");
       } catch {
         toast.error("Failed to update profile");
@@ -269,3 +309,5 @@ export default function ProfileCard({ user }: ProfileClientProps) {
     </main>
   );
 }
+
+export { ProfileSkeleton, ProfileCard };

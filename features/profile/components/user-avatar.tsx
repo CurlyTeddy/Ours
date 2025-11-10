@@ -1,7 +1,6 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { env } from "@/lib/env";
 import { useUser } from "@/features/profile/hooks/user";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -19,11 +18,7 @@ export default function UserAvatar() {
   return (
     <Avatar className="cursor-pointer">
       <AvatarImage
-        src={
-          user?.image
-            ? `${env.NEXT_PUBLIC_R2_ENDPOINT}/avatar/${user.image}`
-            : undefined
-        }
+        src={user?.imageUrl ? user.imageUrl : undefined}
         alt="My account"
       />
       <AvatarFallback className="font-semibold bg-gradient-to-br from-primary/10 to-primary/20 text-primary">

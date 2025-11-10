@@ -2,7 +2,7 @@ import { validateSessionToken } from "@/features/auth/session";
 import { NextRequest, NextResponse } from "next/server";
 import { HttpErrorPayload } from "@/lib/error";
 import {
-  ProfileResponse,
+  Profile,
   ProfileUpdateResponse,
 } from "@/features/profile/models/responses";
 import z from "zod";
@@ -10,14 +10,18 @@ import prisma from "@/lib/database-client";
 import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
 import s3Client from "@/lib/s3-client";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
 
 export async function GET(
   request: NextRequest,
-): Promise<NextResponse<ProfileResponse | HttpErrorPayload>> {
+): Promise<NextResponse<Profile | HttpErrorPayload>> {
   try {
     const sessionToken = request.cookies.get("session")?.value;
 
@@ -30,14 +34,24 @@ export async function GET(
       );
     }
 
-    const userResponse: ProfileResponse = {
-      id: user.id,
+    return NextResponse.json({
       name: user.name,
       email: user.email,
-      image: user.image,
-    };
-
-    return NextResponse.json(userResponse);
+      imageKey: user.image,
+      imageUrl:
+        user.image !== null
+          ? await getSignedUrl(
+              s3Client,
+              new GetObjectCommand({
+                Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                Key: `avatar/${user.image}`,
+              }),
+              {
+                expiresIn: 300,
+              },
+            )
+          : null,
+    });
   } catch (error) {
     console.error("Error fetching user:", error);
     return NextResponse.json(
@@ -94,6 +108,8 @@ export async function PUT(
         })
       )?.image ?? null;
 
+    const bucket = `images-${env.NEXT_PUBLIC_ENVIRONMENT}`;
+
     if (image === currentImage) {
       const profile = await prisma.user.update({
         where: { userId: user.id },
@@ -101,16 +117,30 @@ export async function PUT(
         select: { name: true, email: true, image: true },
       });
       revalidatePath(`/profile`);
-      return NextResponse.json({ profile }, { status: 200 });
+      return NextResponse.json(
+        {
+          profile: {
+            name: profile.name,
+            email: profile.email,
+            imageKey: image,
+            imageUrl:
+              image !== null
+                ? await getSignedUrl(
+                    s3Client,
+                    new GetObjectCommand({
+                      Bucket: bucket,
+                      Key: `avatar/${image}`,
+                    }),
+                  )
+                : null,
+          },
+        },
+        { status: 200 },
+      );
     }
 
-    const bucket = `images-${env.NEXT_PUBLIC_ENVIRONMENT}`;
-
     const payload = await prisma.$transaction(async (txn) => {
-      let imageKey = image;
-      if (image !== null) {
-        imageKey = `${image}-${createId()}`;
-      }
+      const imageKey = image !== null ? `${image}-${createId()}` : null;
 
       const profile = await txn.user.update({
         where: { userId: user.id },
@@ -118,16 +148,16 @@ export async function PUT(
         select: { name: true, email: true, image: true },
       });
 
-      let signedUrl: string | undefined = undefined;
-      if (imageKey !== null) {
-        signedUrl = await getSignedUrl(
-          s3Client,
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: `avatar/${imageKey}`,
-          }),
-        );
-      }
+      const signedUrl =
+        imageKey !== null
+          ? await getSignedUrl(
+              s3Client,
+              new PutObjectCommand({
+                Bucket: bucket,
+                Key: `avatar/${imageKey}`,
+              }),
+            )
+          : undefined;
 
       if (currentImage !== null) {
         await s3Client.send(
@@ -138,7 +168,24 @@ export async function PUT(
         );
       }
 
-      return { profile, signedUrl };
+      return {
+        profile: {
+          name: profile.name,
+          email: profile.email,
+          imageKey: profile.image,
+          imageUrl:
+            profile.image !== null
+              ? await getSignedUrl(
+                  s3Client,
+                  new GetObjectCommand({
+                    Bucket: bucket,
+                    Key: `avatar/${profile.image}`,
+                  }),
+                )
+              : null,
+        },
+        signedUrl,
+      };
     });
 
     revalidatePath(`/profile`);

@@ -4,7 +4,7 @@ import useSWR, { SWRConfiguration } from "swr";
 import ky, { HTTPError } from "ky";
 import { toast } from "sonner";
 import { HttpErrorPayload } from "@/lib/error";
-import { ProfileResponse } from "@/features/profile/models/responses";
+import { Profile } from "@/features/profile/models/responses";
 
 export function useUser(config?: SWRConfiguration) {
   const {
@@ -12,9 +12,9 @@ export function useUser(config?: SWRConfiguration) {
     error,
     isLoading,
     mutate,
-  } = useSWR<ProfileResponse, HTTPError<HttpErrorPayload>>(
+  } = useSWR<Profile, HTTPError<HttpErrorPayload>>(
     "/api/profile",
-    async (url: string) => await ky.get<ProfileResponse>(url).json(),
+    async (url: string) => await ky.get<Profile>(url).json(),
     {
       revalidateOnFocus: false,
       dedupingInterval: 60000,

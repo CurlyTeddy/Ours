@@ -1,24 +1,20 @@
-import { validateSessionToken } from "@/features/auth/session";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import ProfileCard from "@/features/profile/components/profile-card";
+"use client";
 
-export default async function Page() {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session")?.value;
+import {
+  ProfileSkeleton,
+  ProfileCard,
+} from "@/features/profile/components/profile-card";
+import { useUser } from "@/features/profile/hooks/user";
 
-  const { session, user } = await validateSessionToken(sessionToken);
-
-  if (!session || !user) {
-    redirect("/login");
+export default function Page() {
+  const { user, isLoading } = useUser();
+  if (user === undefined && isLoading) {
+    return <ProfileSkeleton />;
   }
 
-  const userData = {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    image: user.image,
-  };
+  if (user === undefined || user === null) {
+    throw Error("Code execution should not reach here");
+  }
 
-  return <ProfileCard user={userData} />;
+  return <ProfileCard user={user} />;
 }

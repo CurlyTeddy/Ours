@@ -1,17 +1,13 @@
-interface ProfileResponse {
-  id: string;
+interface Profile {
   name: string;
   email: string;
-  image: string | null;
+  imageKey: string | null;
+  imageUrl: string | null;
 }
 
 interface ProfileUpdateResponse {
-  profile: {
-    name: string;
-    email: string;
-    image: string | null;
-  };
+  profile: Profile;
   signedUrl?: string;
 }
 
-export type { ProfileResponse, ProfileUpdateResponse };
+export type { Profile, ProfileUpdateResponse };
