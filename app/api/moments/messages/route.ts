@@ -9,6 +9,10 @@ import {
   BulletinMessageResponse,
 } from "@/features/moments/models/responses";
 import { MessageCreateRequest } from "@/features/moments/models/requests";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import s3Client from "@/lib/s3-client";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { env } from "@/lib/env";
 
 async function GET(): Promise<
   NextResponse<BulletinMessageResponse | HttpErrorPayload>
@@ -26,15 +30,43 @@ async function GET(): Promise<
       orderBy: { createdAt: "asc" },
     });
 
+    const uniqueNames = new Map<string, string>();
+    for (const message of messages) {
+      if (
+        message.author.image !== null &&
+        !uniqueNames.has(message.author.image)
+      ) {
+        uniqueNames.set(
+          message.author.image,
+          await getSignedUrl(
+            s3Client,
+            new GetObjectCommand({
+              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+              Key: `avatar/${message.author.image}`,
+            }),
+            {
+              expiresIn: 300,
+            },
+          ),
+        );
+      }
+    }
+
     return NextResponse.json({
-      messages: messages.map((message) => ({
-        messageId: message.messageId,
-        createdAt: message.createdAt.toISOString(),
-        updateAt: message.updatedAt.toISOString(),
-        content: message.content,
-        author: message.author.name,
-        authorImage: message.author.image,
-      })),
+      messages: messages.map((message) => {
+        let signedUrl: string | null = null;
+        if (message.author.image !== null) {
+          signedUrl = uniqueNames.get(message.author.image) ?? null;
+        }
+        return {
+          messageId: message.messageId,
+          createdAt: message.createdAt.toISOString(),
+          updateAt: message.updatedAt.toISOString(),
+          content: message.content,
+          author: message.author.name,
+          authorImage: signedUrl,
+        };
+      }),
     });
   } catch {
     return NextResponse.json(

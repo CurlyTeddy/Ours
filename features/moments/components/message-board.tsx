@@ -13,7 +13,6 @@ import {
 import { toast } from "sonner";
 import ky from "ky";
 import { MessageCreateRequest } from "@/features/moments/models/requests";
-import { env } from "@/lib/env";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DateTime } from "luxon";
 import { useTimeZone } from "@/components/providers/time-zone";
@@ -119,9 +118,7 @@ export function MessageBoard() {
                   <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-border">
                     <AvatarImage
                       src={
-                        message.authorImage
-                          ? `${env.NEXT_PUBLIC_R2_ENDPOINT}/avatar/${message.authorImage}`
-                          : undefined
+                        message.authorImage ? message.authorImage : undefined
                       }
                       alt={message.author}
                     />

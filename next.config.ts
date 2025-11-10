@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
         protocol: "https" as const,
         hostname: "*curlyteddy.com",
       },
+      {
+        protocol: "https" as const,
+        hostname: "*r2.cloudflarestorage.com",
+      },
     ],
   },
   serverExternalPackages: ["@prisma/adapter-libsql"],

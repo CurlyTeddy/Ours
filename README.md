@@ -92,7 +92,6 @@ A personal web application for couples to document their relationship journey, m
    R2_ENDPOINT="https://your-account-id.r2.cloudflarestorage.com"
    R2_ACCESS_KEY="your-access-key"
    R2_SECRET_ACCESS_KEY="your-secret-key"
-   NEXT_PUBLIC_R2_ENDPOINT="https://your-public-r2-domain.com"
    ```
 
 4. **Set up the database**
