@@ -18,7 +18,6 @@ import { toast } from "sonner";
 import ky from "ky";
 import { PhotoUploadResponse } from "@/features/moments/models/responses";
 import { PhotoUploadRequest } from "@/features/moments/models/requests";
-import { env } from "@/lib/env";
 import Autoplay from "embla-carousel-autoplay";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -181,7 +180,7 @@ export function PhotoGallery() {
                 <CarouselItem key={photo.photoId} className="p-0">
                   <div className="relative aspect-[4/3] overflow-hidden bg-muted">
                     <Image
-                      src={`${env.NEXT_PUBLIC_R2_ENDPOINT}/carousel/${photo.imageKey}`}
+                      src={photo.imageUrl}
                       alt={photo.imageKey.substring(
                         0,
                         photo.imageKey.lastIndexOf("-"),

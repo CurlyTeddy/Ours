@@ -14,6 +14,7 @@ function usePhotos(config?: SWRConfiguration) {
       return response.photos.map((photo) => ({
         photoId: photo.photoId,
         imageKey: photo.imageKey,
+        imageUrl: photo.imageUrl,
         createdAt: photo.createdAt,
       }));
     },

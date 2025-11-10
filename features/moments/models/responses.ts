@@ -1,6 +1,7 @@
 interface Photo {
   photoId: string;
   imageKey: string;
+  imageUrl: string;
   createdAt: string;
 }
 

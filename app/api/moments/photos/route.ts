@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/database-client";
 import s3Client from "@/lib/s3-client";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createId } from "@paralleldrive/cuid2";
 import { HttpErrorPayload } from "@/lib/error";
@@ -20,11 +20,21 @@ async function GET(): Promise<NextResponse<PhotoResponse | HttpErrorPayload>> {
     });
 
     return NextResponse.json({
-      photos: photos.map((photo) => ({
-        photoId: photo.photoId,
-        imageKey: photo.imageKey,
-        createdAt: photo.createdAt.toISOString(),
-      })),
+      photos: await Promise.all(
+        photos.map(async (photo) => ({
+          photoId: photo.photoId,
+          imageKey: photo.imageKey,
+          imageUrl: await getSignedUrl(
+            s3Client,
+            new GetObjectCommand({
+              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+              Key: `carousel/${photo.imageKey}`,
+            }),
+            { expiresIn: 300 },
+          ),
+          createdAt: photo.createdAt.toISOString(),
+        })),
+      ),
     });
   } catch {
     return NextResponse.json(
@@ -101,10 +111,22 @@ async function POST(
     );
 
     return NextResponse.json({
-      photos: photos.map((photo) => ({
-        ...photo,
-        createdAt: photo.createdAt.toISOString(),
-      })),
+      photos: await Promise.all(
+        photos.map(async (photo) => ({
+          ...photo,
+          imageUrl: await getSignedUrl(
+            s3Client,
+            new GetObjectCommand({
+              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+              Key: `carousel/${photo.imageKey}`,
+            }),
+            {
+              expiresIn: 300,
+            },
+          ),
+          createdAt: photo.createdAt.toISOString(),
+        })),
+      ),
       uploadUrls,
     });
   } catch {
