@@ -114,20 +114,17 @@ async function PUT(
       return {
         updatedTodo,
         imagesToUpload: await Promise.all(
-          newImageKeys
-            .entries()
-            .toArray()
-            .map(async ([name, key]) => ({
-              name,
-              signedUrl: await getSignedUrl(
-                s3Client,
-                new PutObjectCommand({
-                  Bucket: bucket,
-                  Key: `two-do/${key}`,
-                }),
-                { expiresIn: 300 },
-              ),
-            })),
+          Array.from(newImageKeys.entries()).map(async ([name, key]) => ({
+            name,
+            signedUrl: await getSignedUrl(
+              s3Client,
+              new PutObjectCommand({
+                Bucket: bucket,
+                Key: `two-do/${key}`,
+              }),
+              { expiresIn: 300 },
+            ),
+          })),
         ),
       };
     });
