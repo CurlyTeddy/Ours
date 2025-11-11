@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { ControllerRenderProps, useForm } from "react-hook-form";
 import {
   Form,
   FormField,
@@ -88,24 +88,18 @@ function ProfileSkeleton() {
   );
 }
 
-function ProfileCard({ user }: { user: Profile }) {
-  const { mutate } = useUser();
-  const [isPending, startTransition] = useTransition();
+function AvatarManager({
+  field,
+  user,
+}: {
+  field: ControllerRenderProps<z.infer<typeof profileSchema>, "image">;
+  user: Profile;
+}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isObjectUrl = useRef<boolean>(false);
   const [preview, setPreview] = useState<string | undefined>(
     user.imageUrl ?? undefined,
   );
-  const [name, setName] = useState<string>(user.name);
-
-  const form = useForm<z.infer<typeof profileSchema>>({
-    defaultValues: {
-      name: name,
-      email: user.email,
-      image: null,
-    },
-    resolver: zodResolver(profileSchema),
-  });
 
   useEffect(() => {
     return () => {
@@ -113,7 +107,97 @@ function ProfileCard({ user }: { user: Profile }) {
         URL.revokeObjectURL(preview);
       }
     };
-  }, [preview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col items-center space-y-6">
+        <div className="relative group">
+          <Avatar className="size-32 ring-4 ring-primary/10 transition-all">
+            <AvatarImage
+              src={preview}
+              alt={field.name}
+              className="object-cover"
+            />
+            <AvatarFallback className="text-3xl font-semibold bg-gradient-to-br from-primary/10 to-primary/20 text-primary">
+              {user.name[0].toUpperCase()}
+            </AvatarFallback>
+            <div
+              className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-50 group-hover:ring-primary/20 transition-opacity duration-300 flex items-center justify-center cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Camera className="w-8 h-8 text-white" />
+            </div>
+          </Avatar>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            field.onChange(null);
+            if (preview !== undefined && isObjectUrl.current) {
+              URL.revokeObjectURL(preview);
+              isObjectUrl.current = false;
+            }
+            setPreview(undefined);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+          }}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Trash2 className="w-4 h-4" />
+          Remove
+        </Button>
+
+        <p className="text-sm text-muted-foreground text-center max-w-xs">
+          Recommended: Square image, up to 10MB
+        </p>
+      </div>
+
+      <FormItem className="hidden">
+        <FormLabel>Image</FormLabel>
+        <FormControl>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={(event) => {
+              if (!event.target.files || event.target.files.length === 0) {
+                return;
+              }
+
+              if (preview) {
+                URL.revokeObjectURL(preview);
+              }
+              const newImage = event.target.files[0];
+              setPreview(URL.createObjectURL(newImage));
+              isObjectUrl.current = true;
+              field.onChange(newImage);
+            }}
+            className="hidden"
+          />
+        </FormControl>
+      </FormItem>
+    </div>
+  );
+}
+
+function ProfileCard({ user }: { user: Profile }) {
+  const { mutate } = useUser();
+  const [isPending, startTransition] = useTransition();
+
+  const form = useForm<z.infer<typeof profileSchema>>({
+    defaultValues: {
+      name: user.name,
+      email: user.email,
+      image: null,
+    },
+    resolver: zodResolver(profileSchema),
+  });
 
   const onSubmit = (formData: z.infer<typeof profileSchema>) => {
     startTransition(async () => {
@@ -135,7 +219,6 @@ function ProfileCard({ user }: { user: Profile }) {
           });
         }
 
-        setName(profile.name);
         await mutate({ ...profile }, { revalidate: false });
         toast.success("Profile updated successfully!");
       } catch {
@@ -168,77 +251,9 @@ function ProfileCard({ user }: { user: Profile }) {
               {/* Avatar Section */}
               <FormField<z.infer<typeof profileSchema>, "image">
                 name="image"
-                render={({ field: { onChange, name: imageName } }) => {
-                  return (
-                    <div className="space-y-6">
-                      <div className="flex flex-col items-center space-y-6">
-                        <div className="relative group">
-                          <Avatar className="size-32 ring-4 ring-primary/10 transition-all">
-                            <AvatarImage
-                              src={preview}
-                              alt={imageName}
-                              className="object-cover"
-                            />
-                            <AvatarFallback className="text-3xl font-semibold bg-gradient-to-br from-primary/10 to-primary/20 text-primary">
-                              {name[0].toUpperCase()}
-                            </AvatarFallback>
-                            <div
-                              className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-50 group-hover:ring-primary/20 transition-opacity duration-300 flex items-center justify-center cursor-pointer"
-                              onClick={() => fileInputRef.current?.click()}
-                            >
-                              <Camera className="w-8 h-8 text-white" />
-                            </div>
-                          </Avatar>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            form.setValue("image", null);
-                            setPreview(undefined);
-                            if (preview !== undefined && isObjectUrl.current) {
-                              URL.revokeObjectURL(preview);
-                            }
-                          }}
-                          className="flex items-center gap-2 cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Remove
-                        </Button>
-
-                        <p className="text-sm text-muted-foreground text-center max-w-xs">
-                          Recommended: Square image, up to 10MB
-                        </p>
-                      </div>
-
-                      <FormItem className="hidden">
-                        <FormLabel>Image</FormLabel>
-                        <FormControl>
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={(event) => {
-                              if (
-                                !event.target.files ||
-                                event.target.files.length === 0
-                              ) {
-                                return;
-                              }
-                              const newImage = event.target.files[0];
-                              setPreview(URL.createObjectURL(newImage));
-                              isObjectUrl.current = true;
-                              onChange(newImage);
-                            }}
-                            className="hidden"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    </div>
-                  );
-                }}
+                render={({ field }) => (
+                  <AvatarManager field={field} user={user} />
+                )}
               />
 
               <Separator />
