@@ -93,26 +93,16 @@ function ProfileCard({ user }: { user: Profile }) {
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isObjectUrl = useRef<boolean>(false);
-  const [preview, setPreview] = useState<string>();
+  const [preview, setPreview] = useState<string | undefined>(
+    user.imageUrl ?? undefined,
+  );
   const [name, setName] = useState<string>(user.name);
 
   const form = useForm<z.infer<typeof profileSchema>>({
-    defaultValues: async () => {
-      if (user.imageKey === null || user.imageUrl === null) {
-        return {
-          name: name,
-          email: user.email,
-          image: null,
-        };
-      }
-
-      const blob = await ky.get(user.imageUrl).blob();
-      setPreview(user.imageUrl);
-      return {
-        name: name,
-        email: user.email,
-        image: new File([blob], user.imageKey, { type: blob.type }),
-      };
+    defaultValues: {
+      name: name,
+      email: user.email,
+      image: null,
     },
     resolver: zodResolver(profileSchema),
   });
