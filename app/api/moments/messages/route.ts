@@ -13,6 +13,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import s3Client from "@/lib/s3-client";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { env } from "@/lib/env";
+import { urlCache, urlTimeout } from "@/lib/timed-cache";
 
 async function GET(): Promise<
   NextResponse<BulletinMessageResponse | HttpErrorPayload>
@@ -30,13 +31,12 @@ async function GET(): Promise<
       orderBy: { createdAt: "asc" },
     });
 
-    const uniqueNames = new Map<string, string>();
     for (const message of messages) {
       if (
         message.author.image !== null &&
-        !uniqueNames.has(message.author.image)
+        !urlCache.has(message.author.image)
       ) {
-        uniqueNames.set(
+        urlCache.set(
           message.author.image,
           await getSignedUrl(
             s3Client,
@@ -45,7 +45,7 @@ async function GET(): Promise<
               Key: `avatar/${message.author.image}`,
             }),
             {
-              expiresIn: 300,
+              expiresIn: urlTimeout,
             },
           ),
         );
@@ -53,20 +53,14 @@ async function GET(): Promise<
     }
 
     return NextResponse.json({
-      messages: messages.map((message) => {
-        let signedUrl: string | null = null;
-        if (message.author.image !== null) {
-          signedUrl = uniqueNames.get(message.author.image) ?? null;
-        }
-        return {
-          messageId: message.messageId,
-          createdAt: message.createdAt.toISOString(),
-          updateAt: message.updatedAt.toISOString(),
-          content: message.content,
-          author: message.author.name,
-          authorImage: signedUrl,
-        };
-      }),
+      messages: messages.map((message) => ({
+        messageId: message.messageId,
+        createdAt: message.createdAt.toISOString(),
+        updateAt: message.updatedAt.toISOString(),
+        content: message.content,
+        author: message.author.name,
+        authorImage: urlCache.get(message.author.image ?? "")?.value ?? null,
+      })),
     });
   } catch {
     return NextResponse.json(
@@ -122,13 +116,29 @@ async function POST(
       },
     });
 
+    if (message.author.image !== null && !urlCache.has(message.author.image)) {
+      urlCache.set(
+        message.author.image,
+        await getSignedUrl(
+          s3Client,
+          new GetObjectCommand({
+            Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+            Key: `avatar/${message.author.image}`,
+          }),
+          {
+            expiresIn: urlTimeout,
+          },
+        ),
+      );
+    }
+
     return NextResponse.json({
       messageId: message.messageId,
       createdAt: message.createdAt.toISOString(),
       updateAt: message.updatedAt.toISOString(),
       content: message.content,
       author: message.author.name,
-      authorImage: message.author.image,
+      authorImage: urlCache.get(message.author.image ?? "")?.value ?? null,
     });
   } catch {
     return NextResponse.json(

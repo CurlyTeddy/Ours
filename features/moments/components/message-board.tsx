@@ -74,15 +74,20 @@ export function MessageBoard() {
 
     startSending(async () => {
       try {
-        await mutateMessages(async () => {
-          const newMessage = await ky
-            .post("/api/moments/messages", {
-              json: { content: trimmedMessage } satisfies MessageCreateRequest,
-            })
-            .json<BulletinMessage>();
+        await mutateMessages(
+          async () => {
+            const newMessage = await ky
+              .post("/api/moments/messages", {
+                json: {
+                  content: trimmedMessage,
+                } satisfies MessageCreateRequest,
+              })
+              .json<BulletinMessage>();
 
-          return [...messages, newMessage];
-        });
+            return [...messages, newMessage];
+          },
+          { revalidate: false },
+        );
         setNewMessage("");
         toast.success("Message sent!");
       } catch (error) {

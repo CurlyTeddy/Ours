@@ -19,6 +19,8 @@ import { DateTime } from "luxon";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
+import { urlCache, urlTimeout } from "@/lib/timed-cache";
+import assert from "node:assert";
 
 async function PUT(
   request: NextRequest,
@@ -132,7 +134,7 @@ async function PUT(
                 Bucket: bucket,
                 Key: `two-do/${key}`,
               }),
-              { expiresIn: 300 },
+              { expiresIn: urlTimeout },
             ),
           })),
         ),
@@ -151,6 +153,45 @@ async function PUT(
     }
 
     const { updatedTodo } = payload;
+    const newImageKeys = updatedTodo.imageKeys
+      ? updatedTodo.imageKeys.split(",")
+      : [];
+    for (const imageKey of newImageKeys) {
+      if (!urlCache.has(imageKey)) {
+        urlCache.set(
+          imageKey,
+          await getSignedUrl(
+            s3Client,
+            new GetObjectCommand({
+              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+              Key: `two-do/${imageKey}`,
+            }),
+            {
+              expiresIn: urlTimeout,
+            },
+          ),
+        );
+      }
+    }
+
+    if (
+      updatedTodo.createdBy.image !== null &&
+      !urlCache.has(updatedTodo.createdBy.image)
+    ) {
+      urlCache.set(
+        updatedTodo.createdBy.image,
+        await getSignedUrl(
+          s3Client,
+          new GetObjectCommand({
+            Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+            Key: `avatar/${updatedTodo.createdBy.image}`,
+          }),
+          {
+            expiresIn: urlTimeout,
+          },
+        ),
+      );
+    }
 
     const todo: TodoDto = {
       id: updatedTodo.todoId,
@@ -160,38 +201,18 @@ async function PUT(
       updatedAt: updatedTodo.updatedAt.toISOString(),
       doneAt: updatedTodo.doneAt ? updatedTodo.doneAt.toISOString() : null,
       priority: updatedTodo.priority,
-      images: await Promise.all(
-        updatedTodo.imageKeys !== null
-          ? updatedTodo.imageKeys.split(",").map(async (key) => ({
-              key,
-              url: await getSignedUrl(
-                s3Client,
-                new GetObjectCommand({
-                  Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                  Key: `two-do/${key}`,
-                }),
-                {
-                  expiresIn: 300,
-                },
-              ),
-            }))
-          : [],
-      ),
+      images: newImageKeys.map((key) => {
+        const cachedUrl = urlCache.get(key)?.value;
+        assert(cachedUrl !== undefined, "Two-do URLs should be cached.");
+        return {
+          key,
+          url: cachedUrl,
+        };
+      }),
       createdBy: {
         name: updatedTodo.createdBy.name,
         imageUrl:
-          updatedTodo.createdBy.image !== null
-            ? await getSignedUrl(
-                s3Client,
-                new GetObjectCommand({
-                  Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                  Key: `avatar/${updatedTodo.createdBy.image}`,
-                }),
-                {
-                  expiresIn: 300,
-                },
-              )
-            : null,
+          urlCache.get(updatedTodo.createdBy.image ?? "")?.value ?? null,
       },
     };
 
@@ -232,8 +253,9 @@ async function DELETE(
     });
 
     if (todo.imageKeys !== null) {
+      const imageKeys = todo.imageKeys.split(",");
       await Promise.all(
-        todo.imageKeys.split(",").map((key) => {
+        imageKeys.map((key) => {
           const command = new DeleteObjectCommand({
             Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
             Key: `two-do/${key}`,
@@ -241,6 +263,7 @@ async function DELETE(
           return s3Client.send(command);
         }),
       );
+      imageKeys.forEach((key) => urlCache.delete(key));
     }
 
     revalidatePath("/twodo");
