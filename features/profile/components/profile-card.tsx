@@ -97,9 +97,14 @@ function AvatarManager({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isObjectUrl = useRef<boolean>(false);
-  const [preview, setPreview] = useState<string | undefined>(
-    user.imageUrl ?? undefined,
-  );
+  const inSync = useRef<boolean>(true);
+  const [preview, setPreview] = useState<string>();
+
+  useEffect(() => {
+    if (!isObjectUrl.current && inSync.current) {
+      setPreview(user.imageUrl ?? undefined);
+    }
+  }, [user.imageUrl]);
 
   useEffect(() => {
     return () => {
@@ -142,6 +147,7 @@ function AvatarManager({
               URL.revokeObjectURL(preview);
               isObjectUrl.current = false;
             }
+            inSync.current = false;
             setPreview(undefined);
             if (fileInputRef.current) {
               fileInputRef.current.value = "";
@@ -170,12 +176,13 @@ function AvatarManager({
                 return;
               }
 
-              if (preview) {
+              if (preview && isObjectUrl.current) {
                 URL.revokeObjectURL(preview);
               }
               const newImage = event.target.files[0];
               setPreview(URL.createObjectURL(newImage));
               isObjectUrl.current = true;
+              inSync.current = false;
               field.onChange(newImage);
             }}
             className="hidden"
