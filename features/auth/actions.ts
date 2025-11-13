@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod/v4";
-import prisma from "@/lib/database-client";
+import { prisma } from "@/lib/database-client";
 import { redirect } from "next/navigation";
 import { createId } from "@paralleldrive/cuid2";
 import bcrypt from "bcryptjs";

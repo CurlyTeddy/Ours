@@ -8,6 +8,7 @@ export const env = createEnv({
     R2_SECRET_ACCESS_KEY: z.string().min(1),
     LIBSQL_DATABASE_URL: z.string().min(1),
     LIBSQL_DATABASE_TOKEN: z.string().min(1),
+    REDIS_URL: z.string().min(1),
   },
   client: {
     NEXT_PUBLIC_ENVIRONMENT: z.enum(["dev", "prod"]),

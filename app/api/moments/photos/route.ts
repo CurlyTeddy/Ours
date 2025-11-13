@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/database-client";
+import { prisma } from "@/lib/database-client";
 import s3Client from "@/lib/s3-client";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getCachedSignedUrl } from "@/lib/s3-client";
 import { createId } from "@paralleldrive/cuid2";
 import { HttpErrorPayload } from "@/lib/error";
 import z from "zod";
@@ -12,8 +12,7 @@ import {
   PhotoUploadResponse,
 } from "@/features/moments/models/responses";
 import { PhotoUploadRequest } from "@/features/moments/models/requests";
-import { urlCache, urlTimeout } from "@/lib/timed-cache";
-import assert from "node:assert";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 async function GET(): Promise<NextResponse<PhotoResponse | HttpErrorPayload>> {
   try {
@@ -21,39 +20,20 @@ async function GET(): Promise<NextResponse<PhotoResponse | HttpErrorPayload>> {
       orderBy: { createdAt: "asc" },
     });
 
-    for (const photo of photos) {
-      if (!urlCache.has(photo.imageKey)) {
-        urlCache.set(
-          photo.imageKey,
-          await getSignedUrl(
+    return NextResponse.json({
+      photos: await Promise.all(
+        photos.map(async (photo) => ({
+          photoId: photo.photoId,
+          imageKey: photo.imageKey,
+          imageUrl: await getCachedSignedUrl(
             s3Client,
             new GetObjectCommand({
               Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
               Key: `carousel/${photo.imageKey}`,
             }),
-            {
-              expiresIn: urlTimeout,
-            },
           ),
-        );
-      }
-    }
-
-    return NextResponse.json({
-      photos: await Promise.all(
-        photos.map(async (photo) => {
-          const cachedUrl = urlCache.get(photo.imageKey)?.value;
-          assert(
-            cachedUrl !== undefined,
-            "Cached for photos must be set before returning response.",
-          );
-          return {
-            photoId: photo.photoId,
-            imageKey: photo.imageKey,
-            imageUrl: cachedUrl,
-            createdAt: photo.createdAt.toISOString(),
-          };
-        }),
+          createdAt: photo.createdAt.toISOString(),
+        })),
       ),
     });
   } catch {
@@ -123,45 +103,24 @@ async function POST(
             Key: `carousel/${imageKey}`,
             ContentType: "image/*",
           }),
-          {
-            expiresIn: urlTimeout,
-          },
+          { expiresIn: 300 },
         ),
       ),
     );
 
-    for (const photo of photos) {
-      if (!urlCache.has(photo.imageKey)) {
-        urlCache.set(
-          photo.imageKey,
-          await getSignedUrl(
+    return NextResponse.json({
+      photos: await Promise.all(
+        photos.map(async (photo) => ({
+          ...photo,
+          imageUrl: await getCachedSignedUrl(
             s3Client,
             new GetObjectCommand({
               Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
               Key: `carousel/${photo.imageKey}`,
             }),
-            {
-              expiresIn: urlTimeout,
-            },
           ),
-        );
-      }
-    }
-
-    return NextResponse.json({
-      photos: await Promise.all(
-        photos.map(async (photo) => {
-          const cachedUrl = urlCache.get(photo.imageKey)?.value;
-          assert(
-            cachedUrl !== undefined,
-            "Cached for photos must be set before returning response.",
-          );
-          return {
-            ...photo,
-            imageUrl: cachedUrl,
-            createdAt: photo.createdAt.toISOString(),
-          };
-        }),
+          createdAt: photo.createdAt.toISOString(),
+        })),
       ),
       uploadUrls,
     });

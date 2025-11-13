@@ -1,4 +1,4 @@
-import prisma from "@/lib/database-client";
+import { prisma } from "@/lib/database-client";
 import { sha256 } from "@oslojs/crypto/sha2";
 import {
   encodeBase32LowerCaseNoPadding,

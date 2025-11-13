@@ -6,10 +6,10 @@ import {
   ProfileUpdateResponse,
 } from "@/features/profile/models/responses";
 import z from "zod";
-import prisma from "@/lib/database-client";
+import { prisma } from "@/lib/database-client";
 import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getCachedSignedUrl } from "@/lib/s3-client";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -18,8 +18,7 @@ import {
 import s3Client from "@/lib/s3-client";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
-import { urlCache, urlTimeout } from "@/lib/timed-cache";
-import assert from "node:assert";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export async function GET(
   request: NextRequest,
@@ -36,27 +35,20 @@ export async function GET(
       );
     }
 
-    if (user.image !== null && !urlCache.has(user.image)) {
-      urlCache.set(
-        user.image,
-        await getSignedUrl(
-          s3Client,
-          new GetObjectCommand({
-            Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-            Key: `avatar/${user.image}`,
-          }),
-          {
-            expiresIn: urlTimeout,
-          },
-        ),
-      );
-    }
-
     return NextResponse.json({
       name: user.name,
       email: user.email,
       imageKey: user.image,
-      imageUrl: urlCache.get(user.image ?? "")?.value ?? null,
+      imageUrl:
+        user.image !== null
+          ? await getCachedSignedUrl(
+              s3Client,
+              new GetObjectCommand({
+                Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                Key: `avatar/${user.image}`,
+              }),
+            )
+          : null,
     });
   } catch (error) {
     console.error("Error fetching user:", error);
@@ -123,8 +115,6 @@ export async function PUT(
         select: { name: true, email: true, image: true },
       });
 
-      const cachedUrl = image !== null ? urlCache.get(image)?.value : null;
-      assert(cachedUrl !== undefined, "Unchanged avatar should be cached.");
       revalidatePath(`/profile`);
       return NextResponse.json(
         {
@@ -132,7 +122,16 @@ export async function PUT(
             name: profile.name,
             email: profile.email,
             imageKey: image,
-            imageUrl: cachedUrl,
+            imageUrl:
+              image !== null
+                ? await getCachedSignedUrl(
+                    s3Client,
+                    new GetObjectCommand({
+                      Bucket: bucket,
+                      Key: `avatar/${image}`,
+                    }),
+                  )
+                : null,
           },
         },
         { status: 200 },
@@ -160,7 +159,6 @@ export async function PUT(
           : undefined;
 
       if (currentImage !== null) {
-        urlCache.delete(currentImage);
         await s3Client.send(
           new DeleteObjectCommand({
             Bucket: bucket,
@@ -169,30 +167,21 @@ export async function PUT(
         );
       }
 
-      if (profile.image !== null) {
-        urlCache.set(
-          profile.image,
-          await getSignedUrl(
-            s3Client,
-            new GetObjectCommand({
-              Bucket: bucket,
-              Key: `avatar/${profile.image}`,
-            }),
-          ),
-        );
-      }
-
-      assert(
-        profile.image === null ||
-          urlCache.get(profile.image)?.value !== undefined,
-        "New avatar should be cached.",
-      );
       return {
         profile: {
           name: profile.name,
           email: profile.email,
           imageKey: profile.image,
-          imageUrl: urlCache.get(profile.image ?? "")?.value ?? null,
+          imageUrl:
+            profile.image !== null
+              ? await getCachedSignedUrl(
+                  s3Client,
+                  new GetObjectCommand({
+                    Bucket: bucket,
+                    Key: `avatar/${profile.image}`,
+                  }),
+                )
+              : null,
         },
         signedUrl,
       };

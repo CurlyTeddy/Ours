@@ -1,9 +1,9 @@
-import prisma from "@/lib/database-client";
+import { prisma } from "@/lib/database-client";
 import { createId } from "@paralleldrive/cuid2";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getCachedSignedUrl } from "@/lib/s3-client";
 import s3Client from "@/lib/s3-client";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { HttpErrorPayload } from "@/lib/error";
@@ -16,8 +16,7 @@ import { TodoCreateRequest } from "@/features/two-dos/models/requests";
 import { validateSessionToken } from "@/features/auth/session";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
-import { urlCache, urlTimeout } from "@/lib/timed-cache";
-import assert from "node:assert";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
   try {
@@ -33,73 +32,44 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
       },
     });
 
-    for (const todo of todos) {
-      if (
-        todo.createdBy.image !== null &&
-        !urlCache.has(todo.createdBy.image)
-      ) {
-        urlCache.set(
-          todo.createdBy.image,
-          await getSignedUrl(
-            s3Client,
-            new GetObjectCommand({
-              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-              Key: `avatar/${todo.createdBy.image}`,
-            }),
-            {
-              expiresIn: urlTimeout,
-            },
-          ),
-        );
-      }
-
-      if (todo.imageKeys === null || todo.imageKeys.length === 0) {
-        continue;
-      }
-
-      const imageKeys = todo.imageKeys.split(",");
-      for (const imageKey of imageKeys) {
-        if (!urlCache.has(imageKey)) {
-          urlCache.set(
-            imageKey,
-            await getSignedUrl(
-              s3Client,
-              new GetObjectCommand({
-                Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                Key: `two-do/${imageKey}`,
-              }),
-              {
-                expiresIn: urlTimeout,
-              },
-            ),
-          );
-        }
-      }
-    }
-
-    const todoDto = todos.map((todo) => ({
-      id: todo.todoId,
-      title: todo.title,
-      description: todo.description,
-      createdAt: todo.createdAt.toISOString(),
-      updatedAt: todo.updatedAt.toISOString(),
-      doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
-      priority: todo.priority,
-      images: todo.imageKeys
-        ? todo.imageKeys.split(",").map((key) => {
-            const cachedUrl = urlCache.get(key)?.value;
-            assert(cachedUrl !== undefined, "Two-do URLs should be cached.");
-            return {
-              key,
-              url: cachedUrl,
-            };
-          })
-        : [],
-      createdBy: {
-        name: todo.createdBy.name,
-        imageUrl: urlCache.get(todo.createdBy.image ?? "")?.value ?? null,
-      },
-    }));
+    const todoDto = await Promise.all(
+      todos.map(async (todo) => ({
+        id: todo.todoId,
+        title: todo.title,
+        description: todo.description,
+        createdAt: todo.createdAt.toISOString(),
+        updatedAt: todo.updatedAt.toISOString(),
+        doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
+        priority: todo.priority,
+        images: todo.imageKeys
+          ? await Promise.all(
+              todo.imageKeys.split(",").map(async (key) => ({
+                key,
+                url: await getCachedSignedUrl(
+                  s3Client,
+                  new GetObjectCommand({
+                    Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                    Key: `two-do/${key}`,
+                  }),
+                ),
+              })),
+            )
+          : [],
+        createdBy: {
+          name: todo.createdBy.name,
+          imageUrl:
+            todo.createdBy.image !== null
+              ? await getCachedSignedUrl(
+                  s3Client,
+                  new GetObjectCommand({
+                    Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                    Key: `avatar/${todo.createdBy.image}`,
+                  }),
+                )
+              : null,
+        },
+      })),
+    );
 
     return NextResponse.json(
       { todos: todoDto },
@@ -191,40 +161,6 @@ async function POST(
         },
       });
 
-      for (const imageKey of imageKeys) {
-        if (!urlCache.has(imageKey)) {
-          urlCache.set(
-            imageKey,
-            await getSignedUrl(
-              s3Client,
-              new GetObjectCommand({
-                Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                Key: `two-do/${imageKey}`,
-              }),
-              {
-                expiresIn: urlTimeout,
-              },
-            ),
-          );
-        }
-      }
-
-      if (user.image !== null) {
-        urlCache.set(
-          user.image,
-          await getSignedUrl(
-            s3Client,
-            new GetObjectCommand({
-              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-              Key: `avatar/${newTodo.createdBy.image}`,
-            }),
-            {
-              expiresIn: urlTimeout,
-            },
-          ),
-        );
-      }
-
       const todo: TodoDto = {
         id: newTodo.todoId,
         title: newTodo.title,
@@ -233,17 +169,31 @@ async function POST(
         updatedAt: newTodo.updatedAt.toISOString(),
         doneAt: newTodo.doneAt ? newTodo.doneAt.toISOString() : null,
         priority: newTodo.priority,
-        images: imageKeys.map((key) => {
-          const cachedUrl = urlCache.get(key)?.value;
-          assert(cachedUrl !== undefined, "Two-do URLs should be cached.");
-          return {
+        images: await Promise.all(
+          imageKeys.map(async (key) => ({
             key,
-            url: cachedUrl,
-          };
-        }),
+            url: await getCachedSignedUrl(
+              s3Client,
+              new GetObjectCommand({
+                Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                Key: `two-do/${key}`,
+              }),
+            ),
+          })),
+        ),
         createdBy: {
           name: newTodo.createdBy.name,
-          imageUrl: urlCache.get(user.image ?? "")?.value ?? null,
+          imageUrl:
+            user.image !== null
+              ? await getCachedSignedUrl(
+                  s3Client,
+                  new GetObjectCommand({
+                    Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                    Key: `avatar/${user.image}`,
+                  }),
+                  { expiresIn: 300 },
+                )
+              : null,
         },
       };
 
@@ -255,7 +205,6 @@ async function POST(
               Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
               Key: `two-do/${key}`,
             }),
-            { expiresIn: urlTimeout },
           );
         }),
       );

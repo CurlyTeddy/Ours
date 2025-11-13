@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/database-client";
+import { prisma } from "@/lib/database-client";
 import s3Client from "@/lib/s3-client";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { HttpErrorPayload } from "@/lib/error";
 import { env } from "@/lib/env";
 import { Prisma } from "@prisma/client";
-import { urlCache } from "@/lib/timed-cache";
 
 interface DeleteResponse {
   success: boolean;
@@ -29,8 +28,6 @@ async function DELETE(
         Key: `carousel/${photo.imageKey}`,
       }),
     );
-
-    urlCache.delete(photo.imageKey);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -16,9 +16,7 @@ export function useUser(config?: SWRConfiguration) {
     "/api/profile",
     async (url: string) => await ky.get<Profile>(url).json(),
     {
-      revalidateOnFocus: false,
-      dedupingInterval: 60000,
-      shouldRetryOnError: false,
+      errorRetryCount: 1,
       onError: (error) => {
         toast.error(error.message);
       },

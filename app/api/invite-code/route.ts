@@ -1,4 +1,4 @@
-import prisma from "@/lib/database-client";
+import { prisma } from "@/lib/database-client";
 import { NextResponse } from "next/server";
 
 async function POST() {
