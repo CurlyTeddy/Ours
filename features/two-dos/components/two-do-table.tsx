@@ -94,7 +94,7 @@ function TwodoTableSkeleton() {
 
       {/* Table container */}
       <div className="relative flex-1">
-        <div className="absolute inset-0 rounded-md border-2 overflow-hidden">
+        <div className="absolute inset-0 rounded-md border-2 overflow-auto scrollbar-hide">
           <Table scrollable={false}>
             <TableHeader className="sticky top-0 z-10">
               <TableRow isHeader>
@@ -371,7 +371,7 @@ export function TwodoTable() {
         </div>
       </div>
       <div className="relative flex-1">
-        <div className="absolute inset-0 rounded-md border-2 overflow-hidden">
+        <div className="absolute inset-0 rounded-md border-2 overflow-auto scrollbar-hide">
           <Table scrollable={false}>
             <TableHeader className="sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (

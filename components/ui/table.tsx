@@ -12,7 +12,7 @@ function Table({
   return (
     <div
       data-slot="table-container"
-      className={`relative w-full overflow-x-auto ${scrollable ? "" : "scrollbar-hide"}`}
+      className={`relative w-full" ${scrollable ? "overflow-x-auto" : ""}`}
     >
       <table
         data-slot="table"
