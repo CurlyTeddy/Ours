@@ -5,14 +5,6 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https" as const,
-        hostname: "pub-*.r2.dev",
-      },
-      {
-        protocol: "https" as const,
-        hostname: "*curlyteddy.com",
-      },
-      {
-        protocol: "https" as const,
         hostname: "*r2.cloudflarestorage.com",
       },
     ],
