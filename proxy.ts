@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { env } from "@/lib/env";
 import { validateSessionToken } from "@/features/auth/session";
 
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const token = request.cookies.get("session")?.value;
 
   const { session, user } = await validateSessionToken(token);
@@ -72,5 +72,4 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|.*\\.png$|$).*)"],
-  runtime: "nodejs",
 };
