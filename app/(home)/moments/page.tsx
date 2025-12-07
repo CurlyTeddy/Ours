@@ -1,14 +1,34 @@
 "use client";
 
-import { useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PhotoGallery } from "@/features/moments/components/photo-gallery";
 import { MessageBoard } from "@/features/moments/components/message-board";
+import { useEffect, useState } from "react";
 
 export default function Page() {
-  const daysTogether = useRef<number>(
-    Math.trunc((Date.now() - Date.UTC(2022, 10, 1)) / (1000 * 60 * 60 * 24)),
-  );
+  const computeDays = () =>
+    Math.trunc((Date.now() - Date.UTC(2022, 10, 1)) / (1000 * 60 * 60 * 24));
+
+  const [daysTogether, setDaysTogether] = useState<number>(computeDays);
+
+  useEffect(() => {
+    const update = () => setDaysTogether(() => computeDays());
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        update();
+      }
+    };
+
+    window.addEventListener("focus", update);
+    window.addEventListener("pageshow", update);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", update);
+      window.removeEventListener("pageshow", update);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   return (
     <main className="flex-1 container mx-auto p-4 bg-background">
@@ -30,7 +50,7 @@ export default function Page() {
                 className="text-5xl sm:text-6xl font-bold text-primary mb-2 leading-none"
                 suppressHydrationWarning
               >
-                {daysTogether.current}
+                {daysTogether}
               </div>
               <p className="text-sm text-muted-foreground">
                 Since November 1, 2022
