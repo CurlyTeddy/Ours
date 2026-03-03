@@ -19,7 +19,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1000.0",
     "@hookform/resolvers": "^5.2.2",
     "@libsql/client": "^0.15.15",
-    "@next/eslint-plugin-next": "16.0.7",
+    "@next/eslint-plugin-next": "16.1.6",
     "@oslojs/crypto": "^1.0.1",
     "@oslojs/encoding": "^1.1.0",
     "@paralleldrive/cuid2": "^2.3.1",
@@ -49,11 +49,11 @@
     "ky": "^1.14.3",
     "lucide-react": "^0.503.0",
     "luxon": "^3.7.2",
-    "next": "16.0.7",
+    "next": "16.1.6",
     "next-themes": "^0.4.6",
-    "react": "19.2.1",
+    "react": "19.2.4",
     "react-day-picker": "^9.14.0",
-    "react-dom": "19.2.1",
+    "react-dom": "19.2.4",
     "react-dropzone": "^14.4.1",
     "react-hook-form": "^7.71.2",
     "redis": "^5.11.0",
@@ -70,7 +70,7 @@
     "@tailwindcss/postcss": "^4.2.1",
     "@types/luxon": "^3.7.1",
     "@types/node": "^20.19.35",
-    "@types/react": "19.2.7",
+    "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "^9.39.3",
     "eslint-plugin-boundaries": "^5.4.0",
@@ -88,7 +88,7 @@
   "packageManager": "pnpm@10.8.1+sha512.c50088ba998c67b8ca8c99df8a5e02fd2ae2e2b29aaf238feaa9e124248d3f48f9fb6db2424949ff901cffbb5e0f0cc1ad6aedb602cd29450751d11c35023677",
   "pnpm": {
     "overrides": {
-      "@types/react": "19.2.7",
+      "@types/react": "19.2.14",
       "@types/react-dom": "19.2.3"
     }
   }
