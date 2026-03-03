@@ -37,7 +37,7 @@ function PhotoGallerySkeleton() {
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="relative aspect-[4/3] overflow-hidden bg-muted m-6 rounded-xl">
+        <div className="relative aspect-4/3 overflow-hidden bg-muted m-6 rounded-xl">
           <Skeleton className="w-full h-full" />
         </div>
       </CardContent>
@@ -178,7 +178,7 @@ export function PhotoGallery() {
             <CarouselContent className="m-0">
               {photos.map((photo, index) => (
                 <CarouselItem key={photo.photoId} className="p-0">
-                  <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                  <div className="relative aspect-4/3 overflow-hidden bg-muted">
                     <Image
                       src={photo.imageUrl}
                       alt={photo.imageKey.substring(
@@ -195,7 +195,7 @@ export function PhotoGallery() {
               ))}
             </CarouselContent>
           ) : (
-            <div className="aspect-[4/3] border-2 border-dashed border-muted-foreground/25 flex items-center justify-center bg-muted/50 m-6 rounded-xl">
+            <div className="aspect-4/3 border-2 border-dashed border-muted-foreground/25 flex items-center justify-center bg-muted/50 m-6 rounded-xl">
               <div className="text-center p-8">
                 <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground text-sm mb-2">

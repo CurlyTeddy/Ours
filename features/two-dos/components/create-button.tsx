@@ -125,7 +125,7 @@ function CreateButton() {
           <span className="hidden sm:inline">Add</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-175">
         <DialogHeader>
           <DialogTitle>Add Two Dos</DialogTitle>
           <DialogDescription>

@@ -29,7 +29,7 @@ function MessageBoardSkeleton() {
           {/* Skeleton messages */}
           {Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="flex p-2 items-center gap-3">
-              <Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
+              <Skeleton className="h-8 w-8 rounded-full shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <Skeleton className="h-4 w-16" />
@@ -120,7 +120,7 @@ export function MessageBoard() {
                   key={message.messageId}
                   className="flex p-2 items-center gap-3"
                 >
-                  <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-border">
+                  <Avatar className="h-8 w-8 shrink-0 ring-2 ring-border">
                     <AvatarImage
                       src={
                         message.authorImage ? message.authorImage : undefined
@@ -136,7 +136,7 @@ export function MessageBoard() {
                       <span className="text-sm font-semibold text-foreground truncate">
                         {message.author}
                       </span>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                      <span className="text-xs text-muted-foreground shrink-0">
                         {secondsBetween > 604800
                           ? DateTime.fromISO(message.createdAt, {
                               zone: timezone,
@@ -144,7 +144,7 @@ export function MessageBoard() {
                           : `${formatTime(secondsBetween)} ago`}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground leading-relaxed break-words">
+                    <p className="text-sm text-foreground leading-relaxed wrap-break-words">
                       {message.content}
                     </p>
                   </div>

@@ -125,7 +125,7 @@ function AvatarManager({
               alt={field.name}
               className="object-cover"
             />
-            <AvatarFallback className="text-3xl font-semibold bg-gradient-to-br from-primary/10 to-primary/20 text-primary">
+            <AvatarFallback className="text-3xl font-semibold bg-linear-to-br from-primary/10 to-primary/20 text-primary">
               {user.name[0].toUpperCase()}
             </AvatarFallback>
             <div

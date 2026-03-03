@@ -21,7 +21,7 @@ export default function UserAvatar() {
         src={user?.imageUrl ? user.imageUrl : undefined}
         alt="My account"
       />
-      <AvatarFallback className="font-semibold bg-gradient-to-br from-primary/10 to-primary/20 text-primary">
+      <AvatarFallback className="font-semibold bg-linear-to-br from-primary/10 to-primary/20 text-primary">
         {user?.name && user.name.length > 0 ? user.name[0].toUpperCase() : "U"}
       </AvatarFallback>
     </Avatar>

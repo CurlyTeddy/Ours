@@ -168,7 +168,7 @@ function CarouselUploader({
           <CarouselContent className="m-0">
             {previewImages.map((image, index) => (
               <CarouselItem key={image.file.name} className="p-0">
-                <div className="relative aspect-[4/3] overflow-hidden bg-muted rounded-lg">
+                <div className="relative aspect-4/3 overflow-hidden bg-muted rounded-lg">
                   <Image
                     src={image.preview}
                     alt={image.file.name}
@@ -182,7 +182,7 @@ function CarouselUploader({
             ))}
           </CarouselContent>
         ) : (
-          <div className="aspect-[4/3] border-2 border-dashed border-muted-foreground/25 flex items-center justify-center bg-muted/50 rounded-xl">
+          <div className="aspect-4/3 border-2 border-dashed border-muted-foreground/25 flex items-center justify-center bg-muted/50 rounded-xl">
             <div className="text-center p-8">
               <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-muted-foreground text-sm mb-2">
@@ -323,8 +323,8 @@ export default function EditDialog({
         }
       }}
     >
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="sm:max-w-175 max-h-[90vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Edit To-do</DialogTitle>
           <DialogDescription>
             Update details of this to-do item.
@@ -407,7 +407,7 @@ export default function EditDialog({
               <ErrorMessage message={errorMessage} />
             </div>
 
-            <DialogFooter className="flex-shrink-0 mt-4">
+            <DialogFooter className="shrink-0 mt-4">
               <Button
                 type="submit"
                 disabled={isPending}

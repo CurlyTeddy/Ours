@@ -254,7 +254,7 @@ export function TwodoTable() {
                   src={userImage ? userImage : undefined}
                   alt={userName}
                 />
-                <AvatarFallback className="font-semibold bg-gradient-to-br from-primary/10 to-primary/20 text-primary">
+                <AvatarFallback className="font-semibold bg-linear-to-br from-primary/10 to-primary/20 text-primary">
                   {userName.length > 0 ? userName[0].toUpperCase() : "U"}
                 </AvatarFallback>
               </Avatar>
