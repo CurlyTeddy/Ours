@@ -6,13 +6,16 @@ import { MessageBoard } from "@/features/moments/components/message-board";
 import { useEffect, useState } from "react";
 
 export default function Page() {
-  const computeDays = () =>
-    Math.trunc((Date.now() - Date.UTC(2022, 10, 1)) / (1000 * 60 * 60 * 24));
-
-  const [daysTogether, setDaysTogether] = useState<number>(computeDays);
+  const [daysTogether, setDaysTogether] = useState<number | null>(null);
 
   useEffect(() => {
-    const update = () => setDaysTogether(() => computeDays());
+    const update = () =>
+      setDaysTogether(() =>
+        Math.trunc(
+          (Date.now() - Date.UTC(2022, 10, 1)) / (1000 * 60 * 60 * 24),
+        ),
+      );
+    update();
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         update();
@@ -46,10 +49,7 @@ export default function Page() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div
-                className="text-5xl sm:text-6xl font-bold text-primary mb-2 leading-none"
-                suppressHydrationWarning
-              >
+              <div className="text-5xl sm:text-6xl font-bold text-primary mb-2 leading-none">
                 {daysTogether}
               </div>
               <p className="text-sm text-muted-foreground">
