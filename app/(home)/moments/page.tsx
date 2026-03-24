@@ -34,7 +34,7 @@ export default function Page() {
   }, []);
 
   return (
-    <main className="flex-1 container mx-auto p-4 bg-background">
+    <main className="flex-1 container mx-auto p-4">
       <div className="grid grid-cols-1 xl:grid-cols-5 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
         {/* Photo Gallery Section */}
         <div className="xl:col-span-3 lg:col-span-2">

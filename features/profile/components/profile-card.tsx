@@ -43,7 +43,7 @@ const profileSchema = z.object({
 
 function ProfileSkeleton() {
   return (
-    <main className="my-auto bg-background p-4">
+    <main className="my-auto p-4">
       <Card className="mx-auto max-w-2xl pt-8">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -235,7 +235,7 @@ function ProfileCard({ user }: { user: Profile }) {
   };
 
   return (
-    <main className="my-auto bg-background p-4">
+    <main className="my-auto p-4">
       <Card className="mx-auto max-w-2xl pt-8">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
