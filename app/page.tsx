@@ -48,6 +48,7 @@ function HeroSection() {
           src="/hero.png"
           alt="Hold hands"
           fill
+          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 33vw"
           className="object-cover"
           priority
         />
