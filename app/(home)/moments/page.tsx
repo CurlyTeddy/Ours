@@ -49,7 +49,7 @@ export default function Page() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-5xl sm:text-6xl font-bold text-primary mb-2 leading-none">
+              <div className="text-5xl sm:text-6xl text-primary mb-2 leading-none">
                 {daysTogether}
               </div>
               <p className="text-sm text-muted-foreground">

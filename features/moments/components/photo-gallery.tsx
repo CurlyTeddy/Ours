@@ -27,7 +27,7 @@ function PhotoGallerySkeleton() {
     <Card className="flex-auto pb-0 overflow-hidden">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-xl sm:text-2xl font-bold text-foreground">
+          <CardTitle className="text-xl sm:text-2xl text-foreground">
             Photo Gallery
           </CardTitle>
           <div className="flex gap-2">
@@ -124,7 +124,7 @@ export function PhotoGallery() {
     <Card className="flex-auto pb-0 overflow-hidden">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-xl sm:text-2xl font-bold text-foreground">
+          <CardTitle className="text-xl sm:text-2xl text-foreground">
             Photo Gallery
           </CardTitle>
           <div className="flex gap-2">

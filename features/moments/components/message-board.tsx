@@ -133,7 +133,7 @@ export function MessageBoard() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-semibold text-foreground truncate">
+                      <span className="text-sm text-foreground truncate">
                         {message.author}
                       </span>
                       <span className="text-xs text-muted-foreground shrink-0">

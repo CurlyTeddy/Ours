@@ -53,13 +53,14 @@ function HeroSection() {
         />
       </div>
 
-      <h1 className="text-balance text-center font-serif text-5xl font-bold tracking-tight text-foreground md:text-7xl">
+      <h1
+        className={`text-balance text-center font-serif text-5xl font-semibold tracking-tight ${playpenSans.className} md:text-7xl`}
+      >
         Our Moments
       </h1>
 
       <p className="mt-4 max-w-md text-pretty text-center text-lg leading-relaxed text-muted-foreground md:text-xl">
-        A little space where we keep our favorite memories, stories, and all the
-        tiny moments that make us, us.
+        A little space to keep our favorite moments that make us, us.
       </p>
 
       <div className="mt-8 flex items-center gap-3" aria-hidden="true">
@@ -144,9 +145,7 @@ function Footer() {
           <Heart className="h-3.5 w-3.5 text-primary" fill="currentColor" />
           <span>for us</span>
         </div>
-        <p className={`text-xs ${playpenSans.className}`}>
-          Our Moments &middot; A private love diary
-        </p>
+        <p className={`text-xs`}>Our Moments &middot; A private love diary</p>
       </div>
     </footer>
   );
