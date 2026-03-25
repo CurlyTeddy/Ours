@@ -15,7 +15,7 @@ A personal web application for couples to document their relationship journey, m
 
 ### Frontend
 
-- **[Next.js 15](https://nextjs.org)** - React framework with App Router
+- **[Next.js 16](https://nextjs.org)** - React framework with App Router
 - **[React 19](https://react.dev)** - UI library
 - **[TypeScript](https://www.typescriptlang.org)** - Type-safe JavaScript
 - **[Tailwind CSS 4](https://tailwindcss.com)** - Utility-first CSS framework
