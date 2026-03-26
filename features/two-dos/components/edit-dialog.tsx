@@ -219,26 +219,29 @@ export default function EditDialog({
   const timeZone = useTimeZone();
   const form = useForm<z.infer<typeof updateSchema>>({
     resolver: zodResolver(updateSchema),
-    defaultValues: async () => {
-      const blobs = await Promise.all(
-        todo.images.map((image) => ky.get(image.url).blob()),
-      );
-
-      return {
-        title: todo.title,
-        description: todo.description ?? "",
-        doneAt: todo.doneAt
-          ? DateTime.fromISO(todo.doneAt, { zone: timeZone }).toFormat(
-              dateFormat,
-            )
-          : null,
-        images: blobs.map(
-          (blob, index) =>
-            new File([blob], todo.images[index].key, { type: blob.type }),
-        ),
-      };
+    defaultValues: {
+      title: todo.title,
+      description: todo.description ?? "",
+      doneAt: todo.doneAt
+        ? DateTime.fromISO(todo.doneAt, { zone: timeZone }).toFormat(dateFormat)
+        : null,
+      images: [],
     },
   });
+
+  useEffect(() => {
+    Promise.all(todo.images.map((image) => ky.get(image.url).blob())).then(
+      (blobs) => {
+        form.setValue(
+          "images",
+          blobs.map(
+            (blob, index) =>
+              new File([blob], todo.images[index].key, { type: blob.type }),
+          ),
+        );
+      },
+    );
+  }, [todo.images, form]);
 
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | undefined>(
