@@ -14,11 +14,20 @@ import s3Client from "@/lib/s3-client";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { env } from "@/lib/env";
 
-async function GET(): Promise<
-  NextResponse<BulletinMessageResponse | HttpErrorPayload>
-> {
+async function GET(
+  request: NextRequest,
+): Promise<NextResponse<BulletinMessageResponse | HttpErrorPayload>> {
   try {
+    const { searchParams } = request.nextUrl;
+    const cursor = searchParams.get("cursor");
+    const limit = Math.min(
+      Math.max(Number(searchParams.get("limit")) || 20, 1),
+      100,
+    );
+
     const messages = await prisma.bulletinMessage.findMany({
+      take: limit + 1,
+      where: cursor ? { messageId: { lt: cursor } } : undefined,
       include: {
         author: {
           select: {
@@ -27,12 +36,16 @@ async function GET(): Promise<
           },
         },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { messageId: "desc" },
     });
+
+    const hasMore = messages.length > limit;
+    const page = hasMore ? messages.slice(0, limit) : messages;
+    const nextCursor = hasMore ? page[page.length - 1].messageId : null;
 
     return NextResponse.json({
       messages: await Promise.all(
-        messages.map(async (message) => ({
+        page.map(async (message) => ({
           messageId: message.messageId,
           createdAt: message.createdAt.toISOString(),
           updateAt: message.updatedAt.toISOString(),
@@ -50,6 +63,7 @@ async function GET(): Promise<
               : null,
         })),
       ),
+      nextCursor,
     });
   } catch {
     return NextResponse.json(

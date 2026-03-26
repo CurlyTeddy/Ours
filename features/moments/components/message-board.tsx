@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { Send } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -51,17 +51,58 @@ function MessageBoardSkeleton() {
 }
 
 export function MessageBoard() {
-  const { messages, mutate: mutateMessages, isLoading } = useMessages();
+  const {
+    messages,
+    mutate: mutateMessages,
+    isLoading,
+    hasMore,
+    isLoadingMore,
+    setSize,
+    size,
+  } = useMessages();
   const [isSending, startSending] = useTransition();
   const [newMessage, setNewMessage] = useState<string>("");
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isInitialLoad = useRef(true);
 
+  // Scroll to bottom on initial load
   useEffect(() => {
-    if (messagesContainerRef.current) {
+    if (
+      isInitialLoad.current &&
+      messages.length > 0 &&
+      messagesContainerRef.current
+    ) {
       messagesContainerRef.current.scrollTop =
         messagesContainerRef.current.scrollHeight;
+      isInitialLoad.current = false;
     }
+  }, [messages]);
+
+  // Load older messages when scrolling to the top
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container || isLoadingMore || !hasMore) {
+      return;
+    }
+
+    if (container.scrollTop < 50) {
+      setSize(size + 1);
+    }
+  }, [hasMore, isLoadingMore, setSize, size]);
+
+  // Preserve scroll position when prepending older messages
+  const prevScrollHeight = useRef<number>(0);
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || isInitialLoad.current) {
+      return;
+    }
+
+    if (prevScrollHeight.current > 0) {
+      container.scrollTop += container.scrollHeight - prevScrollHeight.current;
+    }
+    prevScrollHeight.current = container.scrollHeight;
   }, [messages]);
 
   const timezone = useTimeZone();
@@ -75,8 +116,8 @@ export function MessageBoard() {
     startSending(async () => {
       try {
         await mutateMessages(
-          async () => {
-            const newMessage = await ky
+          async (pages) => {
+            const newMsg = await ky
               .post("/api/moments/messages", {
                 json: {
                   content: trimmedMessage,
@@ -84,11 +125,31 @@ export function MessageBoard() {
               })
               .json<BulletinMessage>();
 
-            return [...messages, newMessage];
+            if (!pages || pages.length === 0) {
+              return [{ messages: [newMsg], nextCursor: null }];
+            }
+
+            const firstPage = pages[0];
+            return [
+              {
+                ...firstPage,
+                messages: [newMsg, ...firstPage.messages],
+              },
+              ...pages.slice(1),
+            ];
           },
           { revalidate: false },
         );
         setNewMessage("");
+
+        // Scroll to bottom after sending
+        requestAnimationFrame(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop =
+              messagesContainerRef.current.scrollHeight;
+          }
+        });
+
         toast.success("Message sent!");
       } catch (error) {
         console.error("Send failed:", error);
@@ -109,10 +170,16 @@ export function MessageBoard() {
       <CardContent className="space-y-4">
         <div
           ref={messagesContainerRef}
+          onScroll={handleScroll}
           className="space-y-4 h-65 overflow-y-auto scrollbar-hide pr-2"
         >
+          {isLoadingMore && (
+            <div className="flex justify-center py-2">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
           {messages.length > 0 ? (
-            messages.map((message: BulletinMessage) => {
+            messages.reverse().map((message: BulletinMessage) => {
               const secondsBetween =
                 (Date.now() - new Date(message.createdAt).getTime()) / 1000;
               return (

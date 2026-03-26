@@ -25,6 +25,7 @@ interface BulletinMessage {
 
 interface BulletinMessageResponse {
   messages: BulletinMessage[];
+  nextCursor: string | null;
 }
 
 export type {

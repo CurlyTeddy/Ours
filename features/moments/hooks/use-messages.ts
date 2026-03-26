@@ -2,22 +2,31 @@
 
 import ky, { HTTPError } from "ky";
 import { toast } from "sonner";
-import useSWR, { SWRConfiguration } from "swr";
+import useSWRInfinite, { SWRInfiniteConfiguration } from "swr/infinite";
 import {
   BulletinMessage,
   BulletinMessageResponse,
 } from "@/features/moments/models/responses";
 
-function useMessages(config?: SWRConfiguration) {
-  const key = "/api/moments/messages";
-  const hook = useSWR<BulletinMessage[]>(
-    key,
+function useMessages(limit = 5, config?: SWRInfiniteConfiguration) {
+  const hook = useSWRInfinite<BulletinMessageResponse>(
+    (_, previousPageData: BulletinMessageResponse | null) => {
+      if (previousPageData && !previousPageData.nextCursor) {
+        return null;
+      }
+      const params = new URLSearchParams();
+      params.set("limit", String(limit));
+      if (previousPageData?.nextCursor) {
+        params.set("cursor", previousPageData.nextCursor);
+      }
+      return `/api/moments/messages?${params.toString()}`;
+    },
     async (url: string) => {
-      const response = await ky.get(url).json<BulletinMessageResponse>();
-      return response.messages;
+      return ky.get(url).json<BulletinMessageResponse>();
     },
     {
       errorRetryCount: 1,
+      revalidateFirstPage: false,
       onError: (error: HTTPError) => {
         toast.error(error.message);
       },
@@ -25,10 +34,17 @@ function useMessages(config?: SWRConfiguration) {
     },
   );
 
+  const pages = hook.data ?? [];
+  const messages = pages.flatMap((page) => page.messages);
+  const hasMore =
+    pages.length > 0 && pages[pages.length - 1].nextCursor !== null;
+
   return {
-    key,
     ...hook,
-    messages: hook.data ?? [],
+    messages,
+    hasMore,
+    isLoadingMore:
+      hook.isValidating && hook.data && hook.data.length !== hook.size,
   };
 }
 
