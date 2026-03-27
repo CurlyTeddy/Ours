@@ -16,6 +16,7 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  PaginationState,
   RowSelectionState,
   SortingState,
   useReactTable,
@@ -146,6 +147,10 @@ function TwodoTableSkeleton() {
 
 export function TwodoTable() {
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
   const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
   const handleFilterChange = useDebouncedCallback((value: string) => {
     table.getColumn("title")?.setFilterValue(value);
@@ -304,11 +309,13 @@ export function TwodoTable() {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getFilteredRowModel: getFilteredRowModel(),
     onColumnFiltersChange: setColumnFilters,
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
+      pagination,
       columnFilters,
       rowSelection,
     },
