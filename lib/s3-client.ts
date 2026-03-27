@@ -25,8 +25,6 @@ if (env.NEXT_PUBLIC_ENVIRONMENT !== "prod") {
   globalS3.s3Client = s3Client;
 }
 
-const DEFAULT_CACHE_TTL = 300;
-
 /**
  * @summary Wrapper around AWS SDK's getSignedUrl that caches results in Redis.
  *
@@ -52,13 +50,10 @@ const DEFAULT_CACHE_TTL = 300;
 async function getCachedSignedUrl(
   client: S3Client,
   command: GetObjectCommand,
-  options?: RequestPresigningArguments,
+  options: RequestPresigningArguments = { expiresIn: 300 },
 ): Promise<string> {
-  if (
-    options !== undefined &&
-    options.expiresIn !== undefined &&
-    options.expiresIn < 60
-  ) {
+  const expireTime = options.expiresIn;
+  if (expireTime === undefined || expireTime < 60) {
     throw RangeError("Expire time needs to be at least 60 seconds.");
   }
 
@@ -69,14 +64,10 @@ async function getCachedSignedUrl(
     return cachedUrl;
   }
 
-  const signedUrl = await getSignedUrl(client, command);
+  const signedUrl = await getSignedUrl(client, command, options);
 
   // Cache with TTL (use slightly shorter TTL than expiresIn to be safe)
-  const ttl = options?.expiresIn
-    ? Math.max(options.expiresIn - 10, 60)
-    : DEFAULT_CACHE_TTL;
-
-  await redis.setEx(cacheKey, ttl, signedUrl);
+  await redis.setEx(cacheKey, expireTime - 10, signedUrl);
 
   return signedUrl;
 }
