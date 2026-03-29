@@ -33,7 +33,7 @@ import ky, { HTTPError } from "ky";
 import { TodoUpdateResponse } from "@/features/two-dos/models/responses";
 import { HttpErrorPayload } from "@/lib/error";
 import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
-import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
+import { useTodo } from "@/features/two-dos/hooks/use-todo";
 import {
   Carousel,
   CarouselContent,
@@ -48,69 +48,79 @@ import AlertDialogButton from "@/components/ui/alert-dialog-button";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-interface PreviewImage {
-  file: File;
-  preview: string;
-}
-
 function CarouselUploader({
+  existingImages,
+  onExistingImagesChange,
   field,
   isPending,
 }: {
+  existingImages: Todo["images"];
+  onExistingImagesChange: (images: Todo["images"]) => void;
   field: ControllerRenderProps<z.infer<typeof updateSchema>, "images">;
   isPending: boolean;
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const fileInput = useRef<HTMLInputElement>(null);
-  const { value: images, ref, onChange, ...rest } = field;
+  const { value: newImages, ref, onChange, ...rest } = field;
   useImperativeHandle(ref, () => fileInput.current);
 
-  const previewImages: PreviewImage[] = useMemo(() => {
-    if (!images?.length) {
-      return [];
-    }
-    return images.map((image) => ({
-      file: image,
-      preview: URL.createObjectURL(image),
+  // Only new uploads need object URLs — existing images use their pre-signed URLs directly
+  const newImagePreviews = useMemo(() => {
+    return newImages.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
     }));
-  }, [images]);
+  }, [newImages]);
 
   useEffect(() => {
     return () =>
-      previewImages.forEach((image) => URL.revokeObjectURL(image.preview));
+      newImagePreviews.forEach((image) => URL.revokeObjectURL(image.preview));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const totalCount = existingImages.length + newImages.length;
 
   const onImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files?.length) {
       return;
     }
 
-    const newImages = Array.from(event.target.files);
+    const uploadedFiles = Array.from(event.target.files);
 
-    if (newImages.length + event.target.files.length >= 5) {
+    if (totalCount + uploadedFiles.length > 5) {
       toast.info("A twodo can only have at most five images.");
       return;
     }
 
-    if (!newImages.every((image) => image.size <= maxFileSize)) {
-      toast.info("Images size need to be smaller than 5 GB.");
+    if (!uploadedFiles.every((image) => image.size <= maxFileSize)) {
+      toast.info("Images size need to be smaller than 5 MB.");
+      return;
     }
 
-    onChange([...images, ...newImages]);
+    onChange([...newImages, ...uploadedFiles]);
     toast.success("Image uploaded successfully!");
   };
 
   const onImageDelete = () => {
-    if (previewImages.length === 0 || api === undefined) {
+    if (totalCount === 0 || api === undefined) {
       return;
     }
 
     const currentIndex = api.selectedScrollSnap();
-    URL.revokeObjectURL(previewImages[currentIndex].preview);
-    onChange(images.filter((_, index) => index !== currentIndex));
+
+    if (currentIndex < existingImages.length) {
+      onExistingImagesChange(
+        existingImages.filter((_, index) => index !== currentIndex),
+      );
+    } else {
+      const newIndex = currentIndex - existingImages.length;
+      URL.revokeObjectURL(newImagePreviews[newIndex].preview);
+      onChange(newImages.filter((_, index) => index !== newIndex));
+    }
     toast.success("Image deleted successfully!");
   };
+
+  const hasImages = totalCount > 0;
 
   return (
     <FormItem>
@@ -133,7 +143,7 @@ function CarouselUploader({
             buttonVariant="outline"
             buttonSize="sm"
             buttonClassName="cursor-pointer hover:text-destructive sm:flex"
-            disabled={previewImages.length === 0 || isPending}
+            disabled={!hasImages || isPending}
             onConfirm={onImageDelete}
             confirmButtonVariant="destructive"
             alertTitle="Are you sure?"
@@ -157,9 +167,22 @@ function CarouselUploader({
         />
       </FormControl>
       <Carousel setApi={setApi}>
-        {previewImages.length > 0 ? (
+        {hasImages ? (
           <CarouselContent className="m-0">
-            {previewImages.map((image, index) => (
+            {existingImages.map((image) => (
+              <CarouselItem key={image.key} className="p-0">
+                <div className="relative aspect-4/3 overflow-hidden bg-muted rounded-lg">
+                  <Image
+                    src={image.url}
+                    alt={image.key}
+                    fill
+                    sizes="(max-width: 768px) 80vw, (max-width: 1200px) 60vw, 50vw"
+                    className="object-cover"
+                  />
+                </div>
+              </CarouselItem>
+            ))}
+            {newImagePreviews.map((image, index) => (
               <CarouselItem key={image.file.name} className="p-0">
                 <div className="relative aspect-4/3 overflow-hidden bg-muted rounded-lg">
                   <Image
@@ -168,7 +191,7 @@ function CarouselUploader({
                     fill
                     sizes="(max-width: 768px) 80vw, (max-width: 1200px) 60vw, 50vw"
                     className="object-cover"
-                    priority={index === 0}
+                    priority={index === 0 && existingImages.length === 0}
                   />
                 </div>
               </CarouselItem>
@@ -184,7 +207,7 @@ function CarouselUploader({
             </div>
           </div>
         )}
-        {previewImages.length > 1 && (
+        {totalCount > 1 && (
           <>
             <CarouselPrevious
               className="left-4 bg-white/80 hover:bg-white border-0 shadow-md"
@@ -217,33 +240,20 @@ export default function EditForm({ todo }: { todo: Todo }) {
     },
   });
 
-  useEffect(() => {
-    Promise.all(todo.images.map((image) => ky.get(image.url).blob())).then(
-      (blobs) => {
-        form.setValue(
-          "images",
-          blobs.map(
-            (blob, index) =>
-              new File([blob], todo.images[index].key, { type: blob.type }),
-          ),
-        );
-      },
-    );
-  }, [todo.images, form]);
-
+  const [existingImages, setExistingImages] = useState(todo.images);
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | undefined>(
     undefined,
   );
-  const { key, mutate } = useTodos();
+  const { key, mutate } = useTodo(todo.id);
 
   const onSubmit = (data: z.infer<typeof updateSchema>) => {
     startTransition(async () => {
       try {
         await mutate(
-          async (todos = []) => {
+          async (currentTodo) => {
             const response = await ky
-              .put(`${key}/${todo.id}`, {
+              .put(key, {
                 json: {
                   title: data.title,
                   description: data.description ?? null,
@@ -253,7 +263,10 @@ export default function EditForm({ todo }: { todo: Todo }) {
                       : DateTime.fromFormat(data.doneAt, dateFormat, {
                           zone: timeZone,
                         }).toISO(),
-                  imageNames: data.images.map((image) => image.name),
+                  imageNames: [
+                    ...existingImages.map((image) => image.key),
+                    ...data.images.map((image) => image.name),
+                  ],
                 } satisfies TodoUpdateRequest,
               })
               .json<TodoUpdateResponse>();
@@ -272,18 +285,16 @@ export default function EditForm({ todo }: { todo: Todo }) {
               ),
             );
 
-            return todos.map((todo) =>
-              todo.id === response.todo.id
-                ? {
-                    ...todo,
-                    title: response.todo.title,
-                    description: response.todo.description,
-                    doneAt: response.todo.doneAt,
-                    updatedAt: response.todo.updatedAt,
-                    images: response.todo.images,
-                  }
-                : todo,
-            );
+            return currentTodo
+              ? {
+                  ...currentTodo,
+                  title: response.todo.title,
+                  description: response.todo.description,
+                  doneAt: response.todo.doneAt,
+                  updatedAt: response.todo.updatedAt,
+                  images: response.todo.images,
+                }
+              : currentTodo;
           },
           {
             revalidate: false,
@@ -391,7 +402,12 @@ export default function EditForm({ todo }: { todo: Todo }) {
           <FormField<z.infer<typeof updateSchema>, "images">
             name="images"
             render={({ field }) => (
-              <CarouselUploader field={field} isPending={isPending} />
+              <CarouselUploader
+                existingImages={existingImages}
+                onExistingImagesChange={setExistingImages}
+                field={field}
+                isPending={isPending}
+              />
             )}
           />
 
