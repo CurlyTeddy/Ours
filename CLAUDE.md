@@ -46,6 +46,28 @@ Main entities in `prisma/schema.prisma`:
 - **Environment Variables:** Access environment variables via `lib/env.ts` to ensure type-safe validation.
 - **Authentication:** Protected routes should verify the session via `features/auth/session.ts` or middleware.
 
+## Code Abstraction Rules
+
+A function must justify its existence with real logic — transformation, error
+handling, or branching. Do not extract functions that merely sequence or
+forward calls, regardless of how many. If the function name teaches nothing
+beyond what the call sites already make obvious, inline it.
+
+**Before creating a function, ask:**
+1. Does it contain real logic, or just sequence/forward calls?
+2. Does its name tell the reader *what happens*, or do they still need to jump
+   to the definition?
+3. Is it reused, or just anticipating reuse that may never come?
+
+If all three answers are "no" — don't create it.
+
+**Patterns to avoid:**
+- Wrappers with no added behavior: `getUser(id)` → `db.findUserById(id)`
+- Sequential grouping with no conditionality: `init()` → `setupA(); setupB(); setupC()`
+- Layers that add zero transformation, validation, or error handling
+
+Abstraction should reduce complexity, not relocate it.
+
 ## Critical Files
 - `package.json`: Project dependencies and scripts.
 - `prisma/schema.prisma`: Source of truth for the database schema.
