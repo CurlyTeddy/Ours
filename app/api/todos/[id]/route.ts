@@ -21,6 +21,76 @@ import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse<TodoDto | HttpErrorPayload>> {
+  const { id } = await params;
+
+  try {
+    const todo = await prisma.todo.findUnique({
+      where: { todoId: id },
+      include: {
+        createdBy: {
+          select: {
+            name: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    if (todo === null) {
+      return NextResponse.json({ message: "Todo not found." }, { status: 404 });
+    }
+
+    const imageKeys = todo.imageKeys ? todo.imageKeys.split(",") : [];
+
+    const todoDto: TodoDto = {
+      id: todo.todoId,
+      title: todo.title,
+      description: todo.description,
+      createdAt: todo.createdAt.toISOString(),
+      updatedAt: todo.updatedAt.toISOString(),
+      doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
+      priority: todo.priority,
+      images: await Promise.all(
+        imageKeys.map(async (key) => ({
+          key,
+          url: await getCachedSignedUrl(
+            s3Client,
+            new GetObjectCommand({
+              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+              Key: `two-do/${key}`,
+            }),
+          ),
+        })),
+      ),
+      createdBy: {
+        name: todo.createdBy.name,
+        imageUrl:
+          todo.createdBy.image !== null
+            ? await getCachedSignedUrl(
+                s3Client,
+                new GetObjectCommand({
+                  Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+                  Key: `avatar/${todo.createdBy.image}`,
+                }),
+              )
+            : null,
+      },
+    };
+
+    return NextResponse.json(todoDto, { status: 200 });
+  } catch (error) {
+    console.error("Error fetching todo:", error);
+    return NextResponse.json(
+      { message: "Failed to fetch todo. Please try again later." },
+      { status: 500 },
+    );
+  }
+}
+
 async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -270,4 +340,4 @@ async function DELETE(
   }
 }
 
-export { PUT, DELETE };
+export { GET, PUT, DELETE };

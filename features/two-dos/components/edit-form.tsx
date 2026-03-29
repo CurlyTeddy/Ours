@@ -1,12 +1,4 @@
 import { maxFileSize, timeFormat, Todo } from "@/features/two-dos/models/views";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { ControllerRenderProps, useForm } from "react-hook-form";
 import { z } from "zod/v4";
 import { updateSchema } from "@/features/two-dos/models/views";
@@ -50,10 +42,11 @@ import {
   CarouselPrevious,
   CarouselApi,
 } from "@/components/ui/carousel";
-import { Upload, Trash2 } from "lucide-react";
+import { Upload, Trash2, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface PreviewImage {
   file: File;
@@ -209,14 +202,9 @@ function CarouselUploader({
   );
 }
 
-export default function EditDialog({
-  todo,
-  setEditingTodo,
-}: {
-  todo: Todo;
-  setEditingTodo: (editingTodo: Todo | null) => void;
-}) {
+export default function EditForm({ todo }: { todo: Todo }) {
   const timeZone = useTimeZone();
+  const router = useRouter();
   const form = useForm<z.infer<typeof updateSchema>>({
     resolver: zodResolver(updateSchema),
     defaultValues: {
@@ -303,7 +291,7 @@ export default function EditDialog({
         );
 
         setErrorMessage(undefined);
-        setEditingTodo(null);
+        router.push("/twodo");
       } catch (error) {
         let errorMessage = "Failed to update todo. Please try again later.";
         console.error(error);
@@ -317,111 +305,109 @@ export default function EditDialog({
   };
 
   return (
-    <Dialog
-      open={!!todo}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          setEditingTodo(null);
-          setErrorMessage(undefined);
-        }
-      }}
-    >
-      <DialogContent className="sm:max-w-175 max-h-[90vh] flex flex-col">
-        <DialogHeader className="shrink-0">
-          <DialogTitle>Edit To-do</DialogTitle>
-          <DialogDescription>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="cursor-pointer"
+          onClick={() => router.push("/twodo")}
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-semibold">Edit To-do</h1>
+          <p className="text-sm text-muted-foreground">
             Update details of this to-do item.
-          </DialogDescription>
-        </DialogHeader>
+          </p>
+        </div>
+      </div>
 
-        <Form {...form}>
-          <form
-            onSubmit={(event) => void form.handleSubmit(onSubmit)(event)}
-            className="flex flex-col flex-1 min-h-0"
-          >
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2 -mr-2 scrollbar-hide">
-              <div className="border-b pb-4">
-                <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm text-muted-foreground">
-                  <div>
-                    <dt>Created At</dt>
-                    <dd>
-                      {DateTime.fromISO(todo.createdAt, {
-                        zone: timeZone,
-                      }).toFormat(timeFormat)}
-                    </dd>
-                  </div>
-
-                  <div>
-                    <dt>Created By</dt>
-                    <dd>{todo.createdBy.name}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Last Updated</dt>
-                    <dd>
-                      {DateTime.fromISO(todo.updatedAt, {
-                        zone: timeZone,
-                      }).toFormat(timeFormat)}
-                    </dd>
-                  </div>
-
-                  <UncontrolledFormField name="doneAt">
-                    <FormItem>
-                      <FormLabel>Done At</FormLabel>
-                      <RegisteredFormControl>
-                        <PopoverCalendar />
-                      </RegisteredFormControl>
-                      <FormMessage />
-                    </FormItem>
-                  </UncontrolledFormField>
-                </dl>
+      <Form {...form}>
+        <form
+          onSubmit={(event) => void form.handleSubmit(onSubmit)(event)}
+          className="space-y-6"
+        >
+          <div className="border-b pb-4">
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm text-muted-foreground">
+              <div>
+                <dt>Created At</dt>
+                <dd>
+                  {DateTime.fromISO(todo.createdAt, {
+                    zone: timeZone,
+                  }).toFormat(timeFormat)}
+                </dd>
               </div>
 
-              <UncontrolledFormField name="title">
+              <div>
+                <dt>Created By</dt>
+                <dd>{todo.createdBy.name}</dd>
+              </div>
+
+              <div>
+                <dt>Last Updated</dt>
+                <dd>
+                  {DateTime.fromISO(todo.updatedAt, {
+                    zone: timeZone,
+                  }).toFormat(timeFormat)}
+                </dd>
+              </div>
+
+              <UncontrolledFormField name="doneAt">
                 <FormItem>
-                  <FormLabel>Title</FormLabel>
+                  <FormLabel>Done At</FormLabel>
                   <RegisteredFormControl>
-                    <Input />
+                    <PopoverCalendar />
                   </RegisteredFormControl>
                   <FormMessage />
                 </FormItem>
               </UncontrolledFormField>
+            </dl>
+          </div>
 
-              <UncontrolledFormField name="description">
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <RegisteredFormControl>
-                    <Textarea
-                      rows={8}
-                      className="resize-y max-h-[250] scrollbar-hide"
-                    />
-                  </RegisteredFormControl>
-                  <FormMessage />
-                </FormItem>
-              </UncontrolledFormField>
+          <UncontrolledFormField name="title">
+            <FormItem>
+              <FormLabel>Title</FormLabel>
+              <RegisteredFormControl>
+                <Input />
+              </RegisteredFormControl>
+              <FormMessage />
+            </FormItem>
+          </UncontrolledFormField>
 
-              <FormField<z.infer<typeof updateSchema>, "images">
-                name="images"
-                render={({ field }) => (
-                  <CarouselUploader field={field} isPending={isPending} />
-                )}
-              />
+          <UncontrolledFormField name="description">
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <RegisteredFormControl>
+                <Textarea
+                  rows={8}
+                  className="resize-y max-h-[250] scrollbar-hide"
+                />
+              </RegisteredFormControl>
+              <FormMessage />
+            </FormItem>
+          </UncontrolledFormField>
 
-              <ErrorMessage message={errorMessage} />
-            </div>
+          <FormField<z.infer<typeof updateSchema>, "images">
+            name="images"
+            render={({ field }) => (
+              <CarouselUploader field={field} isPending={isPending} />
+            )}
+          />
 
-            <DialogFooter className="shrink-0 mt-4">
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="cursor-pointer"
-              >
-                Save
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          <ErrorMessage message={errorMessage} />
+
+          <div className="flex justify-end pb-6">
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="cursor-pointer"
+            >
+              Save
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }

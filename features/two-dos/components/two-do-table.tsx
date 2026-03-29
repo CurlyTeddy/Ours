@@ -26,7 +26,6 @@ import { useMemo, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { Input } from "@/components/ui/input";
 import { CreateButton } from "@/features/two-dos/components/create-button";
-import EditDialog from "@/features/two-dos/components/edit-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Circle, CircleCheck, Plus, Trash2 } from "lucide-react";
@@ -39,6 +38,7 @@ import ky from "ky";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useRouter } from "next/navigation";
 
 function TwodoTableSkeleton() {
   // Create skeleton rows
@@ -322,7 +322,7 @@ export function TwodoTable() {
     getRowId: (row) => row.id,
   });
 
-  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
+  const router = useRouter();
 
   const handleDelete = async () => {
     const selectTodoIds = table
@@ -402,7 +402,7 @@ export function TwodoTable() {
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => {
-                    setEditingTodo(row.original);
+                    router.push(`/twodo/${row.original.id}/edit`);
                   }}
                   className="cursor-pointer"
                 >
@@ -446,10 +446,6 @@ export function TwodoTable() {
       </div>
 
       <DataTablePagination table={table} />
-
-      {editingTodo && (
-        <EditDialog todo={editingTodo} setEditingTodo={setEditingTodo} />
-      )}
     </div>
   );
 }
