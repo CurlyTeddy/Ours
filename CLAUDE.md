@@ -1,25 +1,9 @@
-# Ours - Project Context
+# Ours - Development Guide
 
-## Overview
-**Ours** is a private, feature-rich personal web application designed for couples to document their relationship journey, manage shared goals, and capture special moments. It provides a dedicated space for photos, messages, and collaborative todo lists.
-
-## Tech Stack
-- **Framework:** [Next.js 16](https://nextjs.org) (App Router, Turbopack)
-- **Language:** [TypeScript](https://www.typescriptlang.org)
-- **Runtime:** [Node.js](https://nodejs.org) (v18+)
-- **Database ORM:** [Prisma](https://www.prisma.io) (configured for SQLite/LibSQL)
-- **Database:** [Turso](https://turso.tech) (LibSQL)
-- **Styling:** [Tailwind CSS 4](https://tailwindcss.com), [Radix UI](https://www.radix-ui.com), [Shadcn/UI](https://ui.shadcn.com)
-- **Icons:** [Lucide React](https://lucide.dev)
-- **Authentication:** Custom session-based auth with `InviteCode` registration system.
-- **Storage:** Cloudflare R2 / AWS S3 (via `@aws-sdk/client-s3`)
-- **Data Fetching:** [SWR](https://swr.vercel.app), [Ky](https://github.com/sindresorhus/ky)
-- **Validation:** [Zod](https://zod.dev)
-- **Forms:** [React Hook Form](https://react-hook-form.com)
-- **Package Manager:** [pnpm](https://pnpm.io/)
+> For project overview, tech stack, features, setup, and database schema, see @README.md.
 
 ## Key Directories & Architecture
-The project follows a modern, feature-based modular architecture:
+The project follows a feature-based modular architecture:
 - `app/`: Next.js App Router (pages, layouts, and API routes).
 - `features/`: Core business logic organized by feature (Auth, Moments, Profile, Two-Dos).
   - Each feature contains its own `components/`, `hooks/`, and `models/`.
@@ -28,15 +12,6 @@ The project follows a modern, feature-based modular architecture:
 - `prisma/`: Database schema and migrations.
 - `public/`: Static assets.
 - `hooks/`: Global React hooks.
-
-## Data Models
-Main entities in `prisma/schema.prisma`:
-- **User**: Core profile and auth data.
-- **InviteCode**: Controls access to the application via an invite system.
-- **Todo**: Shared tasks with priority and optional image keys.
-- **MomentPhoto**: Shared photo gallery entries.
-- **BulletinMessage**: Shared message board content.
-- **Session**: Custom session management.
 
 ## Development Conventions
 - **Feature-Based Organization:** Prefer putting feature-specific components, hooks, and types into `features/<feature-name>/` rather than global directories.
