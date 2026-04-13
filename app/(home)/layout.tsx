@@ -56,19 +56,20 @@ export default function Layout({
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56">
             <DropdownMenuItem asChild className="p-0">
-              <Link href="/profile">
-                <Button
-                  type="button"
-                  variant={"ghost"}
-                  className="w-full justify-start cursor-pointer"
-                >
+              <Button
+                type="button"
+                variant={"ghost"}
+                className="w-full justify-start cursor-pointer"
+                asChild
+              >
+                <Link href="/profile">
                   <UserIcon className="w-6" />
                   Profile
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="p-0">
-              <form action={signOutAction}>
+            <form action={signOutAction}>
+              <DropdownMenuItem asChild className="p-0">
                 <Button
                   type="submit"
                   variant={"ghost"}
@@ -77,8 +78,8 @@ export default function Layout({
                   <PowerIcon className="w-6" />
                   Sign Out
                 </Button>
-              </form>
-            </DropdownMenuItem>
+              </DropdownMenuItem>
+            </form>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
