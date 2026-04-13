@@ -25,6 +25,13 @@ import { DataTablePagination } from "@/components/ui/pagination";
 import { useMemo, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CreateButton } from "@/features/two-dos/components/create-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -295,6 +302,8 @@ export function TwodoTable() {
             ) : (
               <Circle className="text-gray-400" />
             ),
+          filterFn: (row, columnId, filterValue) =>
+            row.getValue(columnId) === filterValue,
         },
       ] as ColumnDef<Todo>[],
     [timeZone],
@@ -360,6 +369,23 @@ export function TwodoTable() {
           }}
           className="max-w-sm"
         />
+        <Select
+          onValueChange={(value) => {
+            table
+              .getColumn("status")
+              ?.setFilterValue(value === "all" ? undefined : value === "done");
+          }}
+          defaultValue="all"
+        >
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="done">Done</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="ml-auto flex items-center space-x-2">
           <CreateButton />
           <AlertDialogButton
