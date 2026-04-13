@@ -49,3 +49,6 @@ prisma/dev.db-journal
 
 # prisma auto-generated files
 lib/generated/*
+
+# local settings
+**/*local*
