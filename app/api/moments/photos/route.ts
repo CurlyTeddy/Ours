@@ -76,7 +76,7 @@ async function POST(
 
     const photos = await prisma.$transaction(async (txn) => {
       const photoCount = await txn.momentPhoto.count();
-      if (photoCount + imageKeys.length >= 10) {
+      if (photoCount + imageKeys.length > 10) {
         return null;
       }
 
