@@ -26,6 +26,7 @@ interface BulletinMessage {
 interface BulletinMessageResponse {
   messages: BulletinMessage[];
   nextCursor: string | null;
+  totalCount: number;
 }
 
 export type {

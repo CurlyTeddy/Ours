@@ -126,7 +126,7 @@ export function MessageBoard() {
               .json<BulletinMessage>();
 
             if (!pages || pages.length === 0) {
-              return [{ messages: [newMsg], nextCursor: null }];
+              return [{ messages: [newMsg], nextCursor: null, totalCount: 1 }];
             }
 
             const firstPage = pages[0];
@@ -134,6 +134,7 @@ export function MessageBoard() {
               {
                 ...firstPage,
                 messages: [newMsg, ...firstPage.messages],
+                totalCount: firstPage.totalCount + 1,
               },
               ...pages.slice(1),
             ];

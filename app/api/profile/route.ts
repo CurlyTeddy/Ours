@@ -36,6 +36,7 @@ export async function GET(
     }
 
     return NextResponse.json({
+      id: user.id,
       name: user.name,
       email: user.email,
       imageKey: user.image,
@@ -119,6 +120,7 @@ export async function PUT(
       return NextResponse.json(
         {
           profile: {
+            id: user.id,
             name: profile.name,
             email: profile.email,
             imageKey: image,
@@ -169,6 +171,7 @@ export async function PUT(
 
       return {
         profile: {
+          id: user.id,
           name: profile.name,
           email: profile.email,
           imageKey: profile.image,

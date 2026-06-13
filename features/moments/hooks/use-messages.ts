@@ -36,12 +36,14 @@ function useMessages(limit = 5, config?: SWRInfiniteConfiguration) {
 
   const pages = hook.data ?? [];
   const messages = pages.flatMap((page) => page.messages);
+  const totalCount = pages[0]?.totalCount ?? 0;
   const hasMore =
     pages.length > 0 && pages[pages.length - 1].nextCursor !== null;
 
   return {
     ...hook,
     messages,
+    totalCount,
     hasMore,
     isLoadingMore:
       hook.isValidating && hook.data && hook.data.length !== hook.size,

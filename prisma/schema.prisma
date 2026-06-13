@@ -19,6 +19,7 @@ model User {
   Todos            Todo[]
   session          Session[]
   bulletinMessages BulletinMessage[]
+  selectedMusic    SharedMusic?
 
   @@map("user")
 }
@@ -76,4 +77,17 @@ model BulletinMessage {
   content   String
 
   @@map("bulletin_message")
+}
+
+model SharedMusic {
+  selectedById String   @id @map("selected_by")
+  selectedBy   User     @relation(fields: [selectedById], references: [userId], onUpdate: Cascade, onDelete: Cascade)
+  videoId      String   @map("video_id")
+  title        String
+  channelTitle String   @map("channel_title")
+  thumbnailUrl String   @map("thumbnail_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("shared_music")
 }

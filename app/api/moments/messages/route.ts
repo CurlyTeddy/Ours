@@ -25,19 +25,22 @@ async function GET(
       100,
     );
 
-    const messages = await prisma.bulletinMessage.findMany({
-      take: limit + 1,
-      where: cursor ? { messageId: { lt: cursor } } : undefined,
-      include: {
-        author: {
-          select: {
-            name: true,
-            image: true,
+    const [messages, totalCount] = await Promise.all([
+      prisma.bulletinMessage.findMany({
+        take: limit + 1,
+        where: cursor ? { messageId: { lt: cursor } } : undefined,
+        include: {
+          author: {
+            select: {
+              name: true,
+              image: true,
+            },
           },
         },
-      },
-      orderBy: { messageId: "desc" },
-    });
+        orderBy: { messageId: "desc" },
+      }),
+      prisma.bulletinMessage.count(),
+    ]);
 
     const hasMore = messages.length > limit;
     const page = hasMore ? messages.slice(0, limit) : messages;
@@ -64,6 +67,7 @@ async function GET(
         })),
       ),
       nextCursor,
+      totalCount,
     });
   } catch {
     return NextResponse.json(

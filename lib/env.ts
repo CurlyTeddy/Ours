@@ -9,6 +9,7 @@ export const env = createEnv({
     LIBSQL_DATABASE_URL: z.string().min(1),
     LIBSQL_DATABASE_TOKEN: z.string().min(1),
     REDIS_URL: z.string().min(1),
+    YOUTUBE_DATA_API_KEY: z.string().min(1),
   },
   client: {
     NEXT_PUBLIC_ENVIRONMENT: z.enum(["dev", "prod"]),
