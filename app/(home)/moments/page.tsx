@@ -14,8 +14,10 @@ import { useMessages } from "@/features/moments/hooks/use-messages";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 import { SharedMusicPlayer } from "@/features/music/components/shared-music-player";
 import { useEffect, useState } from "react";
-
-const relationshipStart = new Date(Date.UTC(2022, 10, 1));
+import {
+  getDaysTogether,
+  getNextAnniversary,
+} from "@/features/moments/anniversary";
 
 export default function Page() {
   const { photos, isLoading: isPhotosLoading } = usePhotos();
@@ -43,9 +45,7 @@ export default function Page() {
     };
   }, []);
 
-  const daysTogether = Math.trunc(
-    (now - relationshipStart.getTime()) / (1000 * 60 * 60 * 24),
-  );
+  const daysTogether = getDaysTogether(now);
   const openTodos = todos.filter((todo) => !todo.status).length;
   const anniversary = getNextAnniversary(now);
 
@@ -161,50 +161,4 @@ function MetricPill({ value, label }: { value: string | null; label: string }) {
       <span className="mt-1 text-sm text-muted-foreground">{label}</span>
     </div>
   );
-}
-
-function getNextAnniversary(timestamp: number) {
-  const now = new Date(timestamp);
-  let anniversary = new Date(Date.UTC(now.getUTCFullYear(), 10, 1, 0, 0, 0, 0));
-
-  if (anniversary.getTime() < now.getTime()) {
-    anniversary = new Date(
-      Date.UTC(now.getUTCFullYear() + 1, 10, 1, 0, 0, 0, 0),
-    );
-  }
-
-  const daysLeft = Math.ceil(
-    (anniversary.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  const years =
-    anniversary.getUTCFullYear() - relationshipStart.getUTCFullYear();
-
-  return {
-    daysLeft,
-    label: anniversary.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      timeZone: "UTC",
-    }),
-    yearLabel: `${years}${ordinalSuffix(years)} Year Anniversary`,
-  };
-}
-
-function ordinalSuffix(value: number) {
-  const tens = value % 100;
-  if (tens >= 11 && tens <= 13) {
-    return "th";
-  }
-
-  switch (value % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
 }
