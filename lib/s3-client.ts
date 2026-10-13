@@ -57,6 +57,11 @@ async function getCachedSignedUrl(
     throw RangeError("Expire time needs to be at least 60 seconds.");
   }
 
+  // Commands sent while disconnected wait in the offline queue, so skip the cache instead.
+  if (!redis.isReady) {
+    return getSignedUrl(client, command, options);
+  }
+
   const cacheKey = `presigned:${command.input.Key}`;
 
   const cachedUrl = await redis.get(cacheKey);

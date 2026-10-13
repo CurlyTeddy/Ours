@@ -19,7 +19,16 @@ const prisma =
 
 const redis =
   globalDbClient.redis ??
-  (await createClient({ url: env.REDIS_URL }).connect());
+  // Without an error listener node-redis throws on any error and kills the process.
+  createClient({ url: env.REDIS_URL }).on("error", (error) => {
+    console.error("Redis error:", error);
+  });
+if (!redis.isOpen) {
+  // Not awaited: Redis is only a cache, so its outage must not block startup.
+  redis.connect().catch((error: unknown) => {
+    console.error("Redis connect failed:", error);
+  });
+}
 
 if (env.NEXT_PUBLIC_ENVIRONMENT !== "prod") {
   globalDbClient.prisma = prisma;
