@@ -52,3 +52,6 @@ lib/generated/*
 
 # local settings
 **/*local*
+
+# agent skills: links into .agents/skills, restored by the skills CLI from skills-lock.json
+.claude/skills

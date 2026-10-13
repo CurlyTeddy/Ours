@@ -8,3 +8,5 @@ public
 .prettierignore
 package.json
 pnpm-lock.yaml
+.agents
+.claude/skills

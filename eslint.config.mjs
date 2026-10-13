@@ -7,7 +7,8 @@ const eslintConfig = [
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
   {
-    ignores: ["lib/generated/**/*"],
+    // Vendored agent skills from skills-lock.json; lint and format would change upstream files.
+    ignores: ["lib/generated/**/*", ".agents/**", ".claude/skills/**"],
   },
   {
     name: "Next Plugins",
