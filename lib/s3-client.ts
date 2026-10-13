@@ -71,8 +71,8 @@ async function getCachedSignedUrl(
 
   const signedUrl = await getSignedUrl(client, command, options);
 
-  // Cache with TTL (use slightly shorter TTL than expiresIn to be safe)
-  await redis.setEx(cacheKey, expireTime - 10, signedUrl);
+  // Half the lifetime, so every URL served from cache still has at least half left
+  await redis.setEx(cacheKey, Math.floor(expireTime / 2), signedUrl);
 
   return signedUrl;
 }
