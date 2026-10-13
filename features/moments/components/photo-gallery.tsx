@@ -85,14 +85,22 @@ export function PhotoGallery() {
               })
               .json<PhotoUploadResponse>();
 
-            await Promise.all(
-              uploadUrls.map((url, index) =>
-                ky.put(url, {
-                  headers: { "Content-Type": files[index].type },
-                  body: files[index],
-                }),
-              ),
-            );
+            try {
+              await Promise.all(
+                uploadUrls.map((url, index) =>
+                  ky.put(url, {
+                    headers: { "Content-Type": files[index].type },
+                    body: files[index],
+                  }),
+                ),
+              );
+            } catch (error) {
+              // The rows already exist; drop them so no broken photo counts toward the limit
+              await Promise.allSettled(
+                newPhotos.map((photo) => ky.delete(`${key}/${photo.photoId}`)),
+              );
+              throw error;
+            }
 
             return photos.concat(newPhotos);
           },

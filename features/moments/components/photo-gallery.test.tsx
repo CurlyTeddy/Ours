@@ -126,6 +126,31 @@ describe("R1: Moments opens the dialog on selection", () => {
   });
 });
 
+describe("Moments failed upload", () => {
+  test("deletes the photo rows it created", async () => {
+    const deleted: string[] = [];
+    server.use(
+      http.put(
+        "https://r2.test/:id",
+        () => new HttpResponse(null, { status: 500 }),
+      ),
+      http.delete("/api/moments/photos/:photoId", ({ params }) => {
+        deleted.push(params.photoId as string);
+        return HttpResponse.json({ success: true });
+      }),
+    );
+    const { user, input } = await setup();
+
+    await user.upload(input, jpg("a.jpg"));
+    await user.click(await screen.findByRole("button", { name: "Apply" }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Failed to upload photos"),
+    );
+    expect(deleted).toEqual(["p100"]);
+  });
+});
+
 describe("R4: Moments cancel", () => {
   test("three picked, middle cancelled: exactly two uploaded in order", async () => {
     const { user, input } = await setup();
