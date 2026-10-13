@@ -286,14 +286,20 @@ export default function EditForm({ todo }: { todo: Todo }) {
                         }).toISO(),
                   imageNames: [
                     ...existingImages.map((image) => image.key),
-                    ...data.images.map((image) => image.name),
+                    // Index prefix keeps same-named files (iOS names them all image.jpg) apart
+                    ...data.images.map(
+                      (image, index) => `${index.toString()}-${image.name}`,
+                    ),
                   ],
                 } satisfies TodoUpdateRequest,
               })
               .json<TodoUpdateResponse>();
 
             const imageByName = new Map(
-              data.images.map((image) => [image.name, image]),
+              data.images.map((image, index) => [
+                `${index.toString()}-${image.name}`,
+                image,
+              ]),
             );
             await Promise.all(
               response.imagesToUpload.map(({ name, signedUrl }) =>

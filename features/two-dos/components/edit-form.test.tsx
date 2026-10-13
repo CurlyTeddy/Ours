@@ -134,8 +134,27 @@ describe("R1/R5: Two-do edit crops before adding", () => {
 
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(putNames).toHaveLength(1));
-    expect(putNames[0]).toEqual(["a.jpg"]);
+    expect(putNames[0]).toEqual(["0-a.jpg"]);
     await waitFor(() => expect(uploaded).toEqual(["cropped-a.jpg"]));
+  });
+});
+
+describe("Two-do edit same-named images", () => {
+  test("two new files with one name are both uploaded", async () => {
+    const { user, input } = setup();
+
+    await user.upload(input, [
+      new File(["g1"], "image.gif", { type: "image/gif" }),
+      new File(["g2"], "image.gif", { type: "image/gif" }),
+    ]);
+    await waitFor(() =>
+      expect(screen.getAllByAltText("image.gif")).toHaveLength(2),
+    );
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(uploaded).toHaveLength(2));
+    expect(putNames[0]).toEqual(["0-image.gif", "1-image.gif"]);
+    expect(uploaded.sort()).toEqual(["g1", "g2"]);
   });
 });
 
