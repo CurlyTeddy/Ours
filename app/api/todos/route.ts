@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/database-client";
 import { createId } from "@paralleldrive/cuid2";
-import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod/v4";
 import s3Client, { bucket } from "@/lib/s3-client";
@@ -137,8 +136,6 @@ async function POST(
   } catch (error) {
     console.error("Error creating todo:", error);
   }
-
-  revalidatePath("/twodo");
   return NextResponse.json(
     {
       message: "Failed to create a todo. Please try again later.",

@@ -16,7 +16,6 @@ import s3Client, { bucket } from "@/lib/s3-client";
 import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { createId } from "@paralleldrive/cuid2";
 import { DateTime } from "luxon";
-import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod/v4";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -188,8 +187,6 @@ async function PUT(
     );
 
     const todo = await toTodoDto(payload.updatedTodo);
-
-    revalidatePath("/twodo");
     return NextResponse.json(
       {
         todo,
@@ -247,8 +244,6 @@ async function DELETE(
         }),
       );
     }
-
-    revalidatePath("/twodo");
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("Error deleting todos:", error);

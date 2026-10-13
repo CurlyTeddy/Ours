@@ -7,7 +7,6 @@ import {
 } from "@/features/profile/models/responses";
 import z from "zod";
 import { prisma } from "@/lib/database-client";
-import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import s3Client, { bucket, getCachedSignedUrl } from "@/lib/s3-client";
@@ -101,8 +100,6 @@ export async function PUT(
         data: { name, email },
         select: { name: true, email: true, image: true },
       });
-
-      revalidatePath(`/profile`);
       return NextResponse.json(
         {
           profile: {
@@ -164,8 +161,6 @@ export async function PUT(
         }),
       );
     }
-
-    revalidatePath(`/profile`);
     return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     console.error("Error updating profile:", error);

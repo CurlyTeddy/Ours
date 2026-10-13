@@ -21,7 +21,6 @@ vi.mock("@/lib/s3-client", () => ({
 vi.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: () => Promise.resolve("https://r2.test/put"),
 }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const put = (imageNames: string[]) =>
   PUT(

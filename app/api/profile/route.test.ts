@@ -25,7 +25,6 @@ vi.mock("@/features/auth/session", () => ({
 vi.mock("next/headers", () => ({
   cookies: () => Promise.resolve({ get: () => ({ value: "token" }) }),
 }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const put = (image: string | null) =>
   PUT(
