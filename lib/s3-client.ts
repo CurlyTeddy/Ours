@@ -1,6 +1,10 @@
 import { env } from "@/lib/env";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { redis } from "@/lib/database-client";
 
 const globalS3 = globalThis as unknown as {
@@ -54,6 +58,21 @@ async function getCachedSignedUrl(key: string): Promise<string> {
   return signedUrl;
 }
 
-export { bucket, getCachedSignedUrl };
+// Runs after the DB change has committed: a leftover object only costs storage, while
+// failing the request would tell the user that a saved change was lost.
+async function deleteObjects(keys: string[]): Promise<void> {
+  const results = await Promise.allSettled(
+    keys.map((key) =>
+      s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })),
+    ),
+  );
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error(`Failed to delete ${keys[index]}:`, result.reason);
+    }
+  });
+}
+
+export { bucket, deleteObjects, getCachedSignedUrl };
 
 export default s3Client;

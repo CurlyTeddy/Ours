@@ -8,8 +8,12 @@ import {
 import z from "zod";
 import { prisma } from "@/lib/database-client";
 import { createId } from "@paralleldrive/cuid2";
-import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import s3Client, { bucket, getCachedSignedUrl } from "@/lib/s3-client";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import s3Client, {
+  bucket,
+  deleteObjects,
+  getCachedSignedUrl,
+} from "@/lib/s3-client";
 import { cookies } from "next/headers";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -154,12 +158,7 @@ export async function PUT(
 
     // R2 deletes cannot roll back, so this runs only after the update commits
     if (currentImage !== null) {
-      await s3Client.send(
-        new DeleteObjectCommand({
-          Bucket: bucket,
-          Key: `avatar/${currentImage}`,
-        }),
-      );
+      await deleteObjects([`avatar/${currentImage}`]);
     }
     return NextResponse.json(payload, { status: 200 });
   } catch (error) {

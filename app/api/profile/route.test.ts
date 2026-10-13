@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/database-client";
-import s3Client from "@/lib/s3-client";
+import { deleteObjects } from "@/lib/s3-client";
 import { PUT } from "@/app/api/profile/route";
 
 vi.mock("@/lib/database-client", () => ({
@@ -14,6 +13,7 @@ vi.mock("@/lib/database-client", () => ({
 vi.mock("@/lib/s3-client", () => ({
   default: { send: vi.fn() },
   bucket: "images-test",
+  deleteObjects: vi.fn(),
   getCachedSignedUrl: () => Promise.resolve("https://r2.test/get"),
 }));
 vi.mock("@aws-sdk/s3-request-presigner", () => ({
@@ -34,9 +34,7 @@ const put = (image: string | null) =>
     }),
   );
 const deletedKeys = () =>
-  vi
-    .mocked(s3Client.send)
-    .mock.calls.map(([command]) => (command as DeleteObjectCommand).input.Key);
+  vi.mocked(deleteObjects).mock.calls.flatMap(([keys]) => keys);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -66,7 +64,7 @@ describe("PUT /api/profile avatar", () => {
         data: { name: "Teddy", email: "t@example.com" },
       }),
     );
-    expect(s3Client.send).not.toHaveBeenCalled();
+    expect(deleteObjects).not.toHaveBeenCalled();
   });
 
   test("null removes the avatar and deletes the old object", async () => {
@@ -98,6 +96,6 @@ describe("PUT /api/profile avatar", () => {
     const response = await put(null);
 
     expect(response.status).toBe(500);
-    expect(s3Client.send).not.toHaveBeenCalled();
+    expect(deleteObjects).not.toHaveBeenCalled();
   });
 });

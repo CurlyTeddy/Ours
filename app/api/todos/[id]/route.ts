@@ -12,8 +12,8 @@ import { todoInclude, toTodoDto } from "@/features/two-dos/todo-dto";
 import { prisma } from "@/lib/database-client";
 import { HttpErrorPayload } from "@/lib/error";
 import { Prisma } from "@prisma/client";
-import s3Client, { bucket } from "@/lib/s3-client";
-import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import s3Client, { bucket, deleteObjects } from "@/lib/s3-client";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { createId } from "@paralleldrive/cuid2";
 import { DateTime } from "luxon";
 import { NextRequest, NextResponse } from "next/server";
@@ -176,16 +176,7 @@ async function PUT(
     }
 
     // R2 deletes cannot roll back, so they run only after the update commits
-    await Promise.all(
-      payload.removedKeys.map((key) =>
-        s3Client.send(
-          new DeleteObjectCommand({
-            Bucket: bucket,
-            Key: `two-do/${key}`,
-          }),
-        ),
-      ),
-    );
+    await deleteObjects(payload.removedKeys.map((key) => `two-do/${key}`));
 
     const todo = await toTodoDto(payload.updatedTodo);
     return NextResponse.json(
@@ -234,15 +225,8 @@ async function DELETE(
     });
 
     if (todo.imageKeys !== null) {
-      const imageKeys = todo.imageKeys.split(",");
-      await Promise.all(
-        imageKeys.map((key) => {
-          const command = new DeleteObjectCommand({
-            Bucket: bucket,
-            Key: `two-do/${key}`,
-          });
-          return s3Client.send(command);
-        }),
+      await deleteObjects(
+        todo.imageKeys.split(",").map((key) => `two-do/${key}`),
       );
     }
     return new NextResponse(null, { status: 204 });

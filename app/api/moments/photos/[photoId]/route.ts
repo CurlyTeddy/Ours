@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database-client";
-import s3Client, { bucket } from "@/lib/s3-client";
-import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { deleteObjects } from "@/lib/s3-client";
 import { HttpErrorPayload } from "@/lib/error";
 import { Prisma } from "@prisma/client";
 
@@ -20,13 +19,7 @@ async function DELETE(
       where: { photoId },
     });
 
-    // Assume S3 operations won't fail so no need to wrap it in a transaction
-    await s3Client.send(
-      new DeleteObjectCommand({
-        Bucket: bucket,
-        Key: `carousel/${photo.imageKey}`,
-      }),
-    );
+    await deleteObjects([`carousel/${photo.imageKey}`]);
 
     return NextResponse.json({ success: true });
   } catch (error) {
