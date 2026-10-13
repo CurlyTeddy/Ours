@@ -30,14 +30,6 @@ interface AlertDialogButtonProps {
   alertTitle: string;
   alertDescription: string;
   confirmButtonText?: string;
-  confirmButtonVariant?:
-    | "default"
-    | "destructive"
-    | "outline"
-    | "secondary"
-    | "ghost"
-    | "link";
-  cancelButtonText?: string;
 
   onConfirm: () => void | Promise<void>;
   onOpen?: () => void | Promise<void>;
@@ -54,8 +46,6 @@ export default function AlertDialogButton({
   alertTitle,
   alertDescription,
   confirmButtonText = "Confirm",
-  confirmButtonVariant = "destructive",
-  cancelButtonText = "Cancel",
   onConfirm,
   onOpen,
   onClose,
@@ -105,10 +95,10 @@ export default function AlertDialogButton({
         <AlertDialogFooter>
           <AlertDialogCancel asChild>
             <Button variant="outline" className="cursor-pointer">
-              {cancelButtonText}
+              Cancel
             </Button>
           </AlertDialogCancel>
-          <AlertDialogAction asChild variant={confirmButtonVariant}>
+          <AlertDialogAction asChild variant="destructive">
             <Button
               onClick={handleConfirm}
               className="cursor-pointer"

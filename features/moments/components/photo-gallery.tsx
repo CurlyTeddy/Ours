@@ -182,7 +182,6 @@ export function PhotoGallery() {
               onClose={() => {
                 plugin.current.play();
               }}
-              confirmButtonVariant="destructive"
               alertTitle="Are you sure?"
               alertDescription="You will delete the current photo on carousel. The action cannot be undone."
             >

@@ -164,7 +164,6 @@ function CarouselUploader({
             buttonClassName="cursor-pointer hover:text-destructive sm:flex"
             disabled={!hasImages || isPending}
             onConfirm={onImageDelete}
-            confirmButtonVariant="destructive"
             alertTitle="Are you sure?"
             alertDescription="You will delete the current image. The action cannot be undone."
           >
