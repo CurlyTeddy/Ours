@@ -13,11 +13,17 @@ vi.mock("@/lib/database-client", () => ({
   redis: {
     isReady: true,
     get: (key: string) => Promise.resolve(store.get(key)?.toString() ?? null),
-    incr: (key: string) => {
-      store.set(key, (store.get(key) ?? 0) + 1);
-      return Promise.resolve();
+    multi() {
+      const chain = {
+        incr: (key: string) => {
+          store.set(key, (store.get(key) ?? 0) + 1);
+          return chain;
+        },
+        expire: () => chain,
+        exec: () => Promise.resolve([]),
+      };
+      return chain;
     },
-    expire: () => Promise.resolve(),
     ttl: () => Promise.resolve(600),
     del: (key: string) => Promise.resolve(store.delete(key)),
   },

@@ -52,8 +52,12 @@ export async function authenticate(
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
     if (redis.isReady) {
-      await redis.incr(throttleKey);
-      await redis.expire(throttleKey, failedLoginWindowSeconds);
+      // One transaction, so a crash in between cannot leave a counter that never expires
+      await redis
+        .multi()
+        .incr(throttleKey)
+        .expire(throttleKey, failedLoginWindowSeconds)
+        .exec();
     }
     return "Invalid credential.";
   }
