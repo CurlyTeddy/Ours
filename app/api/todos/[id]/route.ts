@@ -203,23 +203,13 @@ async function PUT(
       }
 
       const bucket = `images-${env.NEXT_PUBLIC_ENVIRONMENT}`;
-      await Promise.all(
-        oldImageKeys
-          .filter((key) => !imageIntersection.has(key))
-          .map((key) => {
-            const command = new DeleteObjectCommand({
-              Bucket: bucket,
-              Key: `two-do/${key}`,
-            });
-            return s3Client.send(command);
-          }),
-      );
 
       // Letting frontend to upload files can cause race condition. A user might delete an object
       // that is not yet uploaded by another user, this can be mitigated by adding retry mechanism
       // on the client side.
       return {
         updatedTodo,
+        removedKeys: oldImageKeys.filter((key) => !imageIntersection.has(key)),
         imagesToUpload: await Promise.all(
           Array.from(newImageKeys.entries()).map(async ([name, key]) => ({
             name,
@@ -246,6 +236,18 @@ async function PUT(
         },
       );
     }
+
+    // R2 deletes cannot roll back, so they run only after the update commits
+    await Promise.all(
+      payload.removedKeys.map((key) =>
+        s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+            Key: `two-do/${key}`,
+          }),
+        ),
+      ),
+    );
 
     const { updatedTodo } = payload;
     const newImageKeys = updatedTodo.imageKeys

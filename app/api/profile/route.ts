@@ -160,15 +160,6 @@ export async function PUT(
             )
           : undefined;
 
-      if (currentImage !== null) {
-        await s3Client.send(
-          new DeleteObjectCommand({
-            Bucket: bucket,
-            Key: `avatar/${currentImage}`,
-          }),
-        );
-      }
-
       return {
         profile: {
           id: user.id,
@@ -189,6 +180,16 @@ export async function PUT(
         signedUrl,
       };
     });
+
+    // R2 deletes cannot roll back, so this runs only after the update commits
+    if (currentImage !== null) {
+      await s3Client.send(
+        new DeleteObjectCommand({
+          Bucket: bucket,
+          Key: `avatar/${currentImage}`,
+        }),
+      );
+    }
 
     revalidatePath(`/profile`);
     return NextResponse.json(payload, { status: 200 });
