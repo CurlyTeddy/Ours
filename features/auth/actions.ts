@@ -64,7 +64,8 @@ export async function authenticate(
     expires: session.expireAt,
   });
 
-  const redirectUrl = typeof redirectTo === "string" ? redirectTo : "/moments";
+  // Only same-site paths; "//host" and "/\host" are treated as other origins by browsers.
+  const redirectUrl = /^\/(?![/\\])/.test(redirectTo) ? redirectTo : "/moments";
   redirect(redirectUrl);
 }
 
