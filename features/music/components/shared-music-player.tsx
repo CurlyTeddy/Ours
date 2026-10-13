@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Script from "next/script";
-import ky, { HTTPError } from "ky";
+import ky from "ky";
 import {
   useCallback,
   useEffect,
@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HttpErrorPayload } from "@/lib/error";
+import { getErrorMessage } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { useSharedMusic } from "@/features/music/hooks/use-shared-music";
 import {
@@ -245,12 +245,7 @@ function SharedMusicPlayer() {
         setResults(response.results);
       } catch (error) {
         console.error("Music search failed:", error);
-        let errorMessage = "Failed to search YouTube";
-        if (error instanceof HTTPError) {
-          const errorPayload = await error.response.json<HttpErrorPayload>();
-          errorMessage = errorPayload.message;
-        }
-        toast.error(errorMessage);
+        toast.error(await getErrorMessage(error, "Failed to search YouTube"));
       }
     });
   };

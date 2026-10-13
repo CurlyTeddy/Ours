@@ -11,8 +11,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { HTTPError } from "ky";
-import { HttpErrorPayload } from "@/lib/error";
+import { getErrorMessage } from "@/lib/error";
 import { toast } from "sonner";
 
 interface AlertDialogButtonProps {
@@ -69,12 +68,7 @@ export default function AlertDialogButton({
       try {
         await onConfirm();
       } catch (error) {
-        let errorMessage = defaultErrorMessage;
-        if (error instanceof HTTPError) {
-          const errorPayload = await error.response.json<HttpErrorPayload>();
-          errorMessage = errorPayload.message;
-        }
-        toast.error(errorMessage);
+        toast.error(await getErrorMessage(error, defaultErrorMessage));
       }
     });
   };

@@ -31,10 +31,10 @@ import { defaultTodoLocation } from "@/features/two-dos/models/location";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ErrorMessage from "@/components/ui/error-message";
 import { FileUploader } from "@/components/ui/file-uploader";
-import ky, { HTTPError } from "ky";
+import ky from "ky";
 import { TodoCreateRequest } from "@/features/two-dos/models/requests";
 import { TodoCreateResponse } from "@/features/two-dos/models/responses";
-import { HttpErrorPayload } from "@/lib/error";
+import { getErrorMessage } from "@/lib/error";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 import { Plus } from "lucide-react";
 import { LocationCombobox } from "@/features/two-dos/components/location-combobox";
@@ -102,13 +102,13 @@ function CreateButton() {
         form.reset();
         setErrorMessage(undefined);
       } catch (error) {
-        let errorMessage = "Failed to create todo. Please try again later.";
-        if (error instanceof HTTPError) {
-          const errorPayload = await error.response.json<HttpErrorPayload>();
-          errorMessage = errorPayload.message;
-        }
         console.error("Error creating todo:", error);
-        setErrorMessage(errorMessage);
+        setErrorMessage(
+          await getErrorMessage(
+            error,
+            "Failed to create todo. Please try again later.",
+          ),
+        );
       }
     });
   };

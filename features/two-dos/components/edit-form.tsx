@@ -29,9 +29,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import ErrorMessage from "@/components/ui/error-message";
 import PopoverCalendar, { dateFormat } from "@/components/ui/popover-calendar";
-import ky, { HTTPError } from "ky";
+import ky from "ky";
 import { TodoUpdateResponse } from "@/features/two-dos/models/responses";
-import { HttpErrorPayload } from "@/lib/error";
+import { getErrorMessage } from "@/lib/error";
 import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
 import { useTodo } from "@/features/two-dos/hooks/use-todo";
 import {
@@ -332,13 +332,13 @@ export default function EditForm({ todo }: { todo: Todo }) {
         setErrorMessage(undefined);
         router.push("/twodo");
       } catch (error) {
-        let errorMessage = "Failed to update todo. Please try again later.";
         console.error(error);
-        if (error instanceof HTTPError) {
-          const errorPayload = await error.response.json<HttpErrorPayload>();
-          errorMessage = errorPayload.message;
-        }
-        setErrorMessage(errorMessage);
+        setErrorMessage(
+          await getErrorMessage(
+            error,
+            "Failed to update todo. Please try again later.",
+          ),
+        );
       }
     });
   };
