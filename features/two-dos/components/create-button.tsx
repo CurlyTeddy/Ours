@@ -202,6 +202,7 @@ function CreateButton() {
                           multiple
                           maxFiles={5}
                           maxSize={maxFileSize}
+                          cropAspect={4 / 3}
                           disabled={isPending}
                         />
                       </FormControl>

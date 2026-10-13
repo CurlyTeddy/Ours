@@ -7,8 +7,14 @@ const eslintConfig = [
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
   {
-    // Vendored agent skills from skills-lock.json; lint and format would change upstream files.
-    ignores: ["lib/generated/**/*", ".agents/**", ".claude/skills/**"],
+    // Generated code, Next.js build output and vendored agent skills (skills-lock.json); lint and format would change files we do not own.
+    ignores: [
+      "lib/generated/**/*",
+      ".agents/**",
+      ".claude/skills/**",
+      ".next/**",
+      "next-env.d.ts",
+    ],
   },
   {
     name: "Next Plugins",

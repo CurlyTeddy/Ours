@@ -34,6 +34,7 @@ import {
 } from "@/features/profile/models/responses";
 import { useUser } from "@/features/profile/hooks/user";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -99,6 +100,7 @@ function AvatarManager({
   const isObjectUrl = useRef<boolean>(false);
   const inSync = useRef<boolean>(true);
   const [preview, setPreview] = useState<string>();
+  const [filesToCrop, setFilesToCrop] = useState<File[]>([]);
 
   useEffect(() => {
     if (!isObjectUrl.current && inSync.current) {
@@ -175,20 +177,34 @@ function AvatarManager({
               if (!event.target.files || event.target.files.length === 0) {
                 return;
               }
-
-              if (preview && isObjectUrl.current) {
-                URL.revokeObjectURL(preview);
-              }
-              const newImage = event.target.files[0];
-              setPreview(URL.createObjectURL(newImage));
-              isObjectUrl.current = true;
-              inSync.current = false;
-              field.onChange(newImage);
+              setFilesToCrop([event.target.files[0]]);
+              // Lets the same file be picked again
+              event.target.value = "";
             }}
             className="hidden"
           />
         </FormControl>
       </FormItem>
+
+      <ImageCropDialog
+        files={filesToCrop}
+        aspect={1}
+        cropShape="round"
+        onComplete={([newImage]) => {
+          setFilesToCrop([]);
+          if (!newImage) {
+            return;
+          }
+
+          if (preview && isObjectUrl.current) {
+            URL.revokeObjectURL(preview);
+          }
+          setPreview(URL.createObjectURL(newImage));
+          isObjectUrl.current = true;
+          inSync.current = false;
+          field.onChange(newImage);
+        }}
+      />
     </div>
   );
 }

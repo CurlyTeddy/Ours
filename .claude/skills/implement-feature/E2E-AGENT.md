@@ -33,7 +33,11 @@ For each flow:
 4. Screenshot the outcome.
 5. Judge it against the spec.
 
-Run every flow at two widths: phone (`emulate` or `resize_page` to 375x812) and desktop (1280x800). Most users are on phones.
+Run every flow at two widths: phone (`emulate` to 375x812) and desktop (1280x800). Most users are on phones. Avoid `resize_page`: after it, the page stops receiving clicks and keys even after a reload; switching widths needs a fresh `new_page` plus `emulate`.
+
+For hidden file inputs (`className="hidden"`), un-hide the input with `evaluate_script` (`el.classList.remove("hidden")`), then use `upload_file` on it.
+
+The MCP has no wheel or pinch input: dispatch synthetic `WheelEvent`s or two-finger `TouchEvent`s on the target with `evaluate_script`, and read the resulting state from the DOM (e.g. the `transform` of `.reactEasyCrop_Image` for crop zoom).
 
 A flow **fails** when the outcome differs from the spec, or when:
 - at phone width, the page scrolls sideways (`evaluate_script`: `document.documentElement.scrollWidth > window.innerWidth`);

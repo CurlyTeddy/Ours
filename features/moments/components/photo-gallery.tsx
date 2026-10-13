@@ -21,6 +21,7 @@ import { PhotoUploadRequest } from "@/features/moments/models/requests";
 import Autoplay from "embla-carousel-autoplay";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 
 function PhotoGallerySkeleton() {
   return (
@@ -55,11 +56,22 @@ export function PhotoGallery() {
   );
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const onPhotoUpload: ChangeEventHandler<HTMLInputElement> = (event) => {
+  const [filesToCrop, setFilesToCrop] = useState<File[]>([]);
+
+  const onPhotoPick: ChangeEventHandler<HTMLInputElement> = (event) => {
     if (!event.target.files?.length) {
       return;
     }
-    const files = Array.from(event.target.files);
+    setFilesToCrop(Array.from(event.target.files));
+    // Lets the same file be picked again
+    event.target.value = "";
+  };
+
+  const uploadPhotos = (files: File[]) => {
+    setFilesToCrop([]);
+    if (files.length === 0) {
+      return;
+    }
 
     startUploading(async () => {
       try {
@@ -131,7 +143,7 @@ export function PhotoGallery() {
             <input
               type="file"
               accept="image/*"
-              onChange={onPhotoUpload}
+              onChange={onPhotoPick}
               multiple
               className="hidden"
               ref={fileInput}
@@ -212,6 +224,11 @@ export function PhotoGallery() {
           )}
         </Carousel>
       </CardContent>
+      <ImageCropDialog
+        files={filesToCrop}
+        aspect={4 / 3}
+        onComplete={uploadPhotos}
+      />
     </Card>
   );
 }

@@ -10,6 +10,7 @@ import Dropzone, {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useControllableState } from "@/hooks/use-controllable-state";
@@ -118,6 +119,14 @@ interface FileUploaderProps extends React.HTMLAttributes<HTMLDivElement> {
    * @example disabled
    */
   disabled?: boolean;
+
+  /**
+   * Aspect ratio to crop accepted images to before they are added.
+   * @type number | undefined
+   * @default undefined // no cropping
+   * @example cropAspect={4 / 3}
+   */
+  cropAspect?: number;
 }
 
 export function FileUploader(props: FileUploaderProps) {
@@ -132,6 +141,7 @@ export function FileUploader(props: FileUploaderProps) {
     maxFiles = 1,
     multiple = false,
     disabled = false,
+    cropAspect,
     className,
     id,
     ...dropzoneProps
@@ -143,57 +153,63 @@ export function FileUploader(props: FileUploaderProps) {
     onChange: onValueChange,
   });
 
-  const onDrop = React.useCallback(
-    (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
-      if (!multiple && maxFiles === 1 && acceptedFiles.length > 1) {
-        toast.error("Cannot upload more than 1 file at a time");
-        return;
-      }
+  const [filesToCrop, setFilesToCrop] = React.useState<File[]>([]);
 
-      if (files.length + acceptedFiles.length > maxFiles) {
-        toast.error(`Cannot upload more than ${maxFiles.toString()} files`);
-        return;
-      }
+  const addFiles = (acceptedFiles: File[]) => {
+    const newFiles = acceptedFiles.map((file) =>
+      Object.assign(file, {
+        preview: URL.createObjectURL(file),
+      }),
+    );
 
-      const newFiles = acceptedFiles.map((file) =>
-        Object.assign(file, {
-          preview: URL.createObjectURL(file),
-        }),
+    const updatedFiles = [...files, ...newFiles];
+
+    setFiles(updatedFiles);
+
+    if (
+      onUpload &&
+      updatedFiles.length > 0 &&
+      updatedFiles.length <= maxFiles
+    ) {
+      const target =
+        updatedFiles.length > 1
+          ? `${updatedFiles.length.toString()} files`
+          : `file`;
+
+      toast.promise(onUpload(updatedFiles), {
+        loading: `Uploading ${target}...`,
+        success: () => {
+          setFiles([]);
+          return `${target} uploaded`;
+        },
+        error: `Failed to upload ${target}`,
+      });
+    }
+  };
+
+  const onDrop = (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
+    if (!multiple && maxFiles === 1 && acceptedFiles.length > 1) {
+      toast.error("Cannot upload more than 1 file at a time");
+      return;
+    }
+
+    if (files.length + acceptedFiles.length > maxFiles) {
+      toast.error(`Cannot upload more than ${maxFiles.toString()} files`);
+      return;
+    }
+
+    if (rejectedFiles.length > 0) {
+      toast.error(
+        `File(s) rejected: ${rejectedFiles.map(({ file }) => file.name).join(", ")}`,
       );
+    }
 
-      const updatedFiles = [...files, ...newFiles];
-
-      setFiles(updatedFiles);
-
-      if (rejectedFiles.length > 0) {
-        toast.error(
-          `File(s) rejected: ${rejectedFiles.map(({ file }) => file.name).join(", ")}`,
-        );
-      }
-
-      if (
-        onUpload &&
-        updatedFiles.length > 0 &&
-        updatedFiles.length <= maxFiles
-      ) {
-        const target =
-          updatedFiles.length > 1
-            ? `${updatedFiles.length.toString()} files`
-            : `file`;
-
-        toast.promise(onUpload(updatedFiles), {
-          loading: `Uploading ${target}...`,
-          success: () => {
-            setFiles([]);
-            return `${target} uploaded`;
-          },
-          error: `Failed to upload ${target}`,
-        });
-      }
-    },
-
-    [files, maxFiles, multiple, onUpload, setFiles],
-  );
+    if (cropAspect === undefined) {
+      addFiles(acceptedFiles);
+    } else {
+      setFilesToCrop(acceptedFiles);
+    }
+  };
 
   function onRemove(index: number) {
     const newFiles = files.filter((_, i) => i !== index);
@@ -308,6 +324,16 @@ export function FileUploader(props: FileUploaderProps) {
           </div>
         </ScrollArea>
       ) : null}
+      {cropAspect === undefined ? null : (
+        <ImageCropDialog
+          files={filesToCrop}
+          aspect={cropAspect}
+          onComplete={(cropped) => {
+            setFilesToCrop([]);
+            if (cropped.length > 0) addFiles(cropped);
+          }}
+        />
+      )}
     </div>
   );
 }

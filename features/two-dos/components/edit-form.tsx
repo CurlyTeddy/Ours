@@ -45,6 +45,7 @@ import {
 import { Upload, Trash2, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
+import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { LocationCombobox } from "@/features/two-dos/components/location-combobox";
@@ -63,6 +64,7 @@ function CarouselUploader({
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const fileInput = useRef<HTMLInputElement>(null);
+  const [filesToCrop, setFilesToCrop] = useState<File[]>([]);
   const { value: newImages, ref, onChange, ...rest } = field;
   useImperativeHandle(ref, () => fileInput.current);
 
@@ -88,6 +90,8 @@ function CarouselUploader({
     }
 
     const uploadedFiles = Array.from(event.target.files);
+    // Lets the same file be picked again
+    event.target.value = "";
 
     if (totalCount + uploadedFiles.length > 5) {
       toast.info("A twodo can only have at most five images.");
@@ -99,7 +103,15 @@ function CarouselUploader({
       return;
     }
 
-    onChange([...newImages, ...uploadedFiles]);
+    setFilesToCrop(uploadedFiles);
+  };
+
+  const onCropComplete = (croppedFiles: File[]) => {
+    setFilesToCrop([]);
+    if (croppedFiles.length === 0) {
+      return;
+    }
+    onChange([...newImages, ...croppedFiles]);
     toast.success("Image uploaded successfully!");
   };
 
@@ -223,6 +235,11 @@ function CarouselUploader({
         )}
       </Carousel>
       <FormMessage />
+      <ImageCropDialog
+        files={filesToCrop}
+        aspect={4 / 3}
+        onComplete={onCropComplete}
+      />
     </FormItem>
   );
 }

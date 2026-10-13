@@ -12,6 +12,7 @@ Each report is under 300 words and contains:
 
 - `vitest.config.mts`: jsdom, `globals: true` (React Testing Library auto-cleanup depends on it), `@/` paths, and `NEXT_PUBLIC_ENVIRONMENT=dev`. `.env` is not loaded, and under jsdom `lib/env.ts` validates client vars only: reading a server var throws unless `@/lib/env` is mocked with that key.
 - `vitest.setup.ts` makes relative URLs like `ky.get("/api/x")` and `fetch("/api/x")` resolve against `http://localhost:3000`, as in a browser.
+- `vitest.setup.ts` also stubs `ResizeObserver`, `IntersectionObserver` and `matchMedia`, which jsdom lacks and the Embla carousel needs. A package fake shared by several test files goes in root `__mocks__/<pkg>.tsx` (used by `vi.mock("<pkg>")` with no factory), e.g. `__mocks__/react-easy-crop.tsx`.
 - Installed: `@testing-library/react`, `@testing-library/user-event`, `msw`, `vitest-mock-extended`.
 - Run `pnpm test run <paths>`. Import `describe`, `test`, `expect` and `vi` from `"vitest"`.
 - Before you report, run `pnpm exec eslint --fix <your files>`. Lint only your own files, so you don't rewrite the builder's.
@@ -31,7 +32,8 @@ import { SWRConfig } from "swr";
 import type { ReactNode } from "react";
 
 const server = setupServer();
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+// msw 3 renamed onUnhandledRequest; the old key type-errors and only warns
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 // A fresh SWR cache per test; the global cache leaks data between tests.

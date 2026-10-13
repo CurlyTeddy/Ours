@@ -75,6 +75,7 @@ Every message between you and an agent goes through `SendMessage` to the agent I
 6. **Final gates.**
    - Run `pnpm exec prettier --write $(git diff --name-only --diff-filter=d HEAD)`. Nothing commits, so the lint-staged hook never formats.
    - Then run `pnpm lint` (auto-fixes the whole repo), `pnpm exec tsc --noEmit`, `pnpm test run` and `pnpm build`.
+   - Read lint and type errors through `mcp__ide__getDiagnostics` with each file's URI, not by parsing ESLint output; it's one call per file and needs no script. If a gate fails on something this change didn't cause, such as generated output, fix the root cause in its config through the file's owner rather than working around it.
    - Send failures to the file's owner. Done when all pass in one sweep.
 7. **E2E loop** (cap 5 rounds).
    - First round: spawn `subagent_type: general-purpose` with `model: sonnet` and the prompt `Read .claude/skills/implement-feature/E2E-AGENT.md and follow it. Spec: <path>.`
