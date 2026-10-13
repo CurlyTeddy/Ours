@@ -110,7 +110,8 @@ async function PUT(
       const newImageKeys = new Map(
         newImageNames
           .filter((name) => !imageIntersection.has(name))
-          .map((name) => [name, `${name}-${createId()}`]),
+          // Keys are stored comma-joined, so a comma in a file name would split one key in two
+          .map((name) => [name, `${name.replaceAll(",", "_")}-${createId()}`]),
       );
 
       // Database update must be before R2 operations to avoid side effect on R2 when the database update fails

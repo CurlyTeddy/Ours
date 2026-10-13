@@ -85,6 +85,18 @@ describe("PUT /api/todos/[id] images", () => {
     ]);
   });
 
+  test("a comma in a new file name stays inside one key", async () => {
+    const response = await put(["a.jpg-1", "0-Paris, France.jpg"]);
+    const body = (await response.json()) as {
+      imagesToUpload: { name: string }[];
+    };
+
+    expect(storedKeys()).toMatch(/^a\.jpg-1,0-Paris_ France\.jpg-\w+$/);
+    expect(body.imagesToUpload.map((image) => image.name)).toEqual([
+      "0-Paris, France.jpg",
+    ]);
+  });
+
   test("an empty list clears the keys and deletes every object", async () => {
     await put([]);
 

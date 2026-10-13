@@ -93,7 +93,10 @@ async function POST(
   }
 
   const { title, description, location, imageNames } = validatedFields.data;
-  const imageKeys = imageNames.map((name) => `${name}-${createId()}`);
+  // Keys are stored comma-joined, so a comma in a file name would split one key in two
+  const imageKeys = imageNames.map(
+    (name) => `${name.replaceAll(",", "_")}-${createId()}`,
+  );
 
   try {
     const payload = await prisma.$transaction(async (txn) => {
