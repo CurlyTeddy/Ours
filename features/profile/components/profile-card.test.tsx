@@ -79,9 +79,9 @@ beforeEach(() => {
   );
 });
 
-function setup() {
+function setup(profile = user0) {
   const user = userEvent.setup();
-  const { container } = render(<ProfileCard user={user0} />, { wrapper });
+  const { container } = render(<ProfileCard user={profile} />, { wrapper });
   const input = container.querySelector(
     'input[type="file"]',
   ) as HTMLInputElement;
@@ -122,6 +122,33 @@ describe("R1/R5: avatar opens a round 1:1 dialog", () => {
     );
     expect(putJson.map((b) => b.image)).toEqual(["me.jpg"]);
     expect(uploaded).toEqual(["cropped-me.jpg"]);
+  });
+});
+
+describe("existing avatar", () => {
+  const withAvatar: Profile = {
+    ...user0,
+    imageKey: "me.jpg-abc",
+    imageUrl: "https://r2.test/me.jpg",
+  };
+
+  test("saving without touching the avatar keeps its key", async () => {
+    const { user } = setup(withAvatar);
+
+    await save(user);
+
+    await waitFor(() => expect(putJson).toHaveLength(1));
+    expect(putJson[0].image).toBe("me.jpg-abc");
+  });
+
+  test("Remove sends null", async () => {
+    const { user } = setup(withAvatar);
+
+    await user.click(screen.getByRole("button", { name: /remove/i }));
+    await save(user);
+
+    await waitFor(() => expect(putJson).toHaveLength(1));
+    expect(putJson[0].image).toBeNull();
   });
 });
 

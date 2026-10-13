@@ -39,7 +39,8 @@ import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.email("Invalid email address"),
-  image: z.file().nullable(),
+  // undefined: avatar untouched, null: avatar removed
+  image: z.file().nullable().optional(),
 });
 
 function ProfileSkeleton() {
@@ -217,7 +218,7 @@ function ProfileCard({ user }: { user: Profile }) {
     defaultValues: {
       name: user.name,
       email: user.email,
-      image: null,
+      image: undefined,
     },
     resolver: zodResolver(profileSchema),
   });
@@ -230,7 +231,10 @@ function ProfileCard({ user }: { user: Profile }) {
             json: {
               name: formData.name,
               email: formData.email,
-              image: formData.image ? formData.image.name : null,
+              image:
+                formData.image === undefined
+                  ? user.imageKey
+                  : (formData.image?.name ?? null),
             },
           })
           .json();
