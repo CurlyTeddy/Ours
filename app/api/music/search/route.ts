@@ -7,6 +7,17 @@ import {
   youTubeSearchResponseSchema,
 } from "@/features/music/models/responses";
 
+// YouTube returns snippet text HTML-escaped ("Don&#39;t"); one pass, so "&amp;lt;" stays "&lt;"
+const htmlEntities: Record<string, string> = {
+  "&amp;": "&",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&lt;": "<",
+  "&gt;": ">",
+};
+const decodeHtml = (text: string) =>
+  text.replace(/&(?:amp|quot|#39|lt|gt);/g, (entity) => htmlEntities[entity]);
+
 const searchParamsSchema = z.object({
   q: z.string().trim().min(1).max(120),
 });
@@ -71,8 +82,8 @@ async function GET(
 
           return {
             videoId,
-            title,
-            channelTitle,
+            title: decodeHtml(title),
+            channelTitle: decodeHtml(channelTitle),
             thumbnailUrl,
           };
         })
