@@ -8,7 +8,7 @@ The project follows a feature-based modular architecture:
 - `features/`: Core business logic organized by feature (Auth, Moments, Profile, Two-Dos).
   - Each feature contains its own `components/`, `hooks/`, and `models/`.
 - `components/`: Shared UI components (Shadcn/UI in `components/ui/`) and providers.
-- `lib/`: Shared utilities, API clients (Prisma, S3, Rate Limit), and environment config.
+- `lib/`: Shared utilities, API clients (Prisma, Redis, S3), and environment config.
 - `prisma/`: Database schema and migrations.
 - `public/`: Static assets.
 - `hooks/`: Global React hooks.

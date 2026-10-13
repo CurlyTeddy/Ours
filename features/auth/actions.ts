@@ -1,19 +1,19 @@
 "use server";
 
 import { z } from "zod/v4";
-import { prisma } from "@/lib/database-client";
+import { prisma, redis } from "@/lib/database-client";
 import { redirect } from "next/navigation";
 import { createId } from "@paralleldrive/cuid2";
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { env } from "@/lib/env";
 import { generateSessionToken } from "@/features/auth/session";
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
-import { Throttler } from "@/lib/rate-limit";
 import { formatTime } from "@/lib/utils";
 
-const throttler = new Throttler<string>([0, 0, 60, 300, 1800, 3600]);
+const maxFailedLogins = 5;
+const failedLoginWindowSeconds = 15 * 60;
 
 export async function authenticate(
   previousState: string | undefined,
@@ -32,8 +32,17 @@ export async function authenticate(
   }
 
   const { email, password, redirectTo } = parsedCredentials.data;
-  const waitTime = throttler.consume(email);
-  if (waitTime !== 0) {
+  // Keyed by IP too, so a stranger cannot lock the real user out of their own email.
+  // shortcut: trusts x-forwarded-for, which Vercel overwrites; behind another proxy it can be spoofed.
+  const ip =
+    (await headers()).get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const throttleKey = `login-failures:${email}:${ip}`;
+  // Skipped while Redis is down: it is a cache-grade store and must not block login
+  if (
+    redis.isReady &&
+    Number(await redis.get(throttleKey)) >= maxFailedLogins
+  ) {
+    const waitTime = await redis.ttl(throttleKey);
     return `Too many requests. Wait ${formatTime(waitTime)} to make another attempt.`;
   }
 
@@ -42,9 +51,15 @@ export async function authenticate(
   });
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (redis.isReady) {
+      await redis.incr(throttleKey);
+      await redis.expire(throttleKey, failedLoginWindowSeconds);
+    }
     return "Invalid credential.";
   }
-  throttler.reset(email);
+  if (redis.isReady) {
+    await redis.del(throttleKey);
+  }
 
   const token = generateSessionToken();
   const session = await prisma.session.create({
