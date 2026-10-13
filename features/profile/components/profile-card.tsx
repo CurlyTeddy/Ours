@@ -240,10 +240,28 @@ function ProfileCard({ user }: { user: Profile }) {
           .json();
 
         if (formData.image && signedUrl) {
-          await ky.put(signedUrl, {
-            headers: { "Content-Type": formData.image.type },
-            body: formData.image,
-          });
+          try {
+            await ky.put(signedUrl, {
+              headers: { "Content-Type": formData.image.type },
+              body: formData.image,
+            });
+          } catch (error) {
+            // The profile already points at the missing file and the old avatar is gone; clear it
+            const cleared = await ky
+              .put<ProfileUpdateResponse>(`/api/profile`, {
+                json: {
+                  name: formData.name,
+                  email: formData.email,
+                  image: null,
+                },
+              })
+              .json()
+              .catch(() => null);
+            if (cleared) {
+              await mutate({ ...cleared.profile }, { revalidate: false });
+            }
+            throw error;
+          }
         }
 
         await mutate({ ...profile }, { revalidate: false });

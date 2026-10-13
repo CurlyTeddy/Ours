@@ -152,6 +152,28 @@ describe("existing avatar", () => {
   });
 });
 
+describe("avatar upload failure", () => {
+  test("clears the avatar instead of leaving a broken one", async () => {
+    server.use(
+      http.put(
+        "https://r2.test/avatar",
+        () => new HttpResponse("<Error/>", { status: 500 }),
+      ),
+    );
+    const { user, input } = setup();
+
+    await user.upload(input, jpg("me.jpg"));
+    await user.click(await screen.findByRole("button", { name: "Apply" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await save(user);
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Failed to update profile"),
+    );
+    expect(putJson.map((body) => body.image)).toEqual(["me.jpg", null]);
+  });
+});
+
 describe("R4: avatar cancel", () => {
   test.each(["Cancel", "Escape"])(
     "%s leaves the preview and form unchanged",
