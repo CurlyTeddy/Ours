@@ -28,7 +28,8 @@ async function GET(): Promise<NextResponse<PhotoResponse | HttpErrorPayload>> {
         })),
       ),
     });
-  } catch {
+  } catch (error) {
+    console.error("Failed to fetch photos:", error);
     return NextResponse.json(
       { message: "Failed to fetch photos" },
       { status: 500 },
@@ -109,7 +110,8 @@ async function POST(
       ),
       uploadUrls,
     });
-  } catch {
+  } catch (error) {
+    console.error("Failed to create photo upload:", error);
     return NextResponse.json(
       { message: "Failed to create photo upload" },
       { status: 500 },

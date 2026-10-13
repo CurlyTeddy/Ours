@@ -60,7 +60,8 @@ async function GET(
       nextCursor,
       totalCount,
     });
-  } catch {
+  } catch (error) {
+    console.error("Failed to fetch messages:", error);
     return NextResponse.json(
       { message: "Failed to fetch messages" },
       { status: 500 },
@@ -125,7 +126,8 @@ async function POST(
           ? await getCachedSignedUrl(`avatar/${message.author.image}`)
           : null,
     });
-  } catch {
+  } catch (error) {
+    console.error("Failed to create message:", error);
     return NextResponse.json(
       { message: "Failed to create message" },
       { status: 500 },

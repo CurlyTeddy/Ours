@@ -30,6 +30,7 @@ async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error("Failed to delete photo:", error);
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2025"
