@@ -277,27 +277,26 @@ export default function EditForm({ todo }: { todo: Todo }) {
       try {
         await mutate(
           async () => {
+            const request = {
+              title: data.title,
+              description: data.description ?? null,
+              location: data.location,
+              doneAt:
+                !data.doneAt || data.doneAt.length === 0
+                  ? null
+                  : DateTime.fromFormat(data.doneAt, dateFormat, {
+                      zone: timeZone,
+                    }).toISO(),
+              imageNames: [
+                ...existingImages.map((image) => image.key),
+                // Index prefix keeps same-named files (iOS names them all image.jpg) apart
+                ...data.images.map(
+                  (image, index) => `${index.toString()}-${image.name}`,
+                ),
+              ],
+            } satisfies TodoUpdateRequest;
             const response = await ky
-              .put(key, {
-                json: {
-                  title: data.title,
-                  description: data.description ?? null,
-                  location: data.location,
-                  doneAt:
-                    !data.doneAt || data.doneAt.length === 0
-                      ? null
-                      : DateTime.fromFormat(data.doneAt, dateFormat, {
-                          zone: timeZone,
-                        }).toISO(),
-                  imageNames: [
-                    ...existingImages.map((image) => image.key),
-                    // Index prefix keeps same-named files (iOS names them all image.jpg) apart
-                    ...data.images.map(
-                      (image, index) => `${index.toString()}-${image.name}`,
-                    ),
-                  ],
-                } satisfies TodoUpdateRequest,
-              })
+              .put(key, { json: request })
               .json<TodoUpdateResponse>();
 
             const imageByName = new Map(
@@ -306,16 +305,29 @@ export default function EditForm({ todo }: { todo: Todo }) {
                 image,
               ]),
             );
-            await Promise.all(
-              response.imagesToUpload.map(({ name, signedUrl }) =>
-                ky.put(signedUrl, {
-                  headers: imageByName.get(name)
-                    ? { "Content-Type": imageByName.get(name)?.type }
-                    : undefined,
-                  body: imageByName.get(name),
-                }),
-              ),
-            );
+            try {
+              await Promise.all(
+                response.imagesToUpload.map(({ name, signedUrl }) =>
+                  ky.put(signedUrl, {
+                    headers: imageByName.get(name)
+                      ? { "Content-Type": imageByName.get(name)?.type }
+                      : undefined,
+                    body: imageByName.get(name),
+                  }),
+                ),
+              );
+            } catch (error) {
+              // The todo already lists the new keys; drop them so it shows no broken images
+              await ky
+                .put(key, {
+                  json: {
+                    ...request,
+                    imageNames: existingImages.map((image) => image.key),
+                  },
+                })
+                .catch(() => null);
+              throw error;
+            }
 
             return toTodo(response.todo);
           },

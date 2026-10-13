@@ -158,6 +158,31 @@ describe("Two-do edit same-named images", () => {
   });
 });
 
+describe("Two-do edit failed upload", () => {
+  test("saves again without the new images", async () => {
+    server.use(
+      http.put(
+        "https://r2.test/:name",
+        () => new HttpResponse("<Error/>", { status: 500 }),
+      ),
+    );
+    const { user, input } = setup(1);
+
+    await user.upload(
+      input,
+      new File(["g"], "party.gif", { type: "image/gif" }),
+    );
+    await screen.findByAltText("party.gif");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(putNames).toHaveLength(2));
+    expect(putNames).toEqual([["old0.jpg", "0-party.gif"], ["old0.jpg"]]);
+    expect(
+      await screen.findByText("Failed to update todo. Please try again later."),
+    ).toBeDefined();
+  });
+});
+
 describe("R4: Two-do edit cancel", () => {
   test("cancel adds nothing and shows no toast", async () => {
     const { user, input } = setup();
