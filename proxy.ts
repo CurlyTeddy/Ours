@@ -19,6 +19,13 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   }
 
   if (session === null || user === null) {
+    // fetch follows redirects, so API callers would get the login page's HTML instead of JSON
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { message: "Invalid or expired session." },
+        { status: 401 },
+      );
+    }
     return NextResponse.redirect(
       new URL(`/login?callbackUrl=${request.nextUrl.pathname}`, request.url),
     );
