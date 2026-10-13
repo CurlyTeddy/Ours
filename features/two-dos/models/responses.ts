@@ -1,7 +1,10 @@
+import { TodoLocation } from "@/features/two-dos/models/location";
+
 interface TodoDto {
   id: string;
   title: string;
   description: string | null;
+  location: TodoLocation;
   createdAt: string;
   updatedAt: string;
   doneAt: string | null;

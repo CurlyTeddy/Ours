@@ -18,6 +18,7 @@ function useTodos(config?: SWRConfiguration) {
         images: todo.images,
         title: todo.title,
         description: todo.description,
+        location: todo.location,
         doneAt: todo.doneAt,
         createdAt: todo.createdAt,
         createdBy: todo.createdBy,

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/database-client";
 import { createId } from "@paralleldrive/cuid2";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import z from "zod";
+import z from "zod/v4";
 import { getCachedSignedUrl } from "@/lib/s3-client";
 import s3Client from "@/lib/s3-client";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -13,6 +13,11 @@ import {
   TodoResponse,
 } from "@/features/two-dos/models/responses";
 import { TodoCreateRequest } from "@/features/two-dos/models/requests";
+import {
+  todoLocationSchema,
+  todoLocationSelect,
+  toLocationWrite,
+} from "@/features/two-dos/models/location";
 import { validateSessionToken } from "@/features/auth/session";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
@@ -29,6 +34,7 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
             image: true,
           },
         },
+        location: { select: todoLocationSelect },
       },
     });
 
@@ -37,6 +43,7 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
         id: todo.todoId,
         title: todo.title,
         description: todo.description,
+        location: todo.location,
         createdAt: todo.createdAt.toISOString(),
         updatedAt: todo.updatedAt.toISOString(),
         doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
@@ -99,11 +106,13 @@ async function POST(
     .object({
       title: z.string().min(1, "Title is required"),
       description: z.string().optional(),
+      location: todoLocationSchema,
       imageNames: z.array(z.string()),
     })
     .safeParse({
       title: requestPayload.title,
       description: requestPayload.description,
+      location: requestPayload.location,
       imageNames: requestPayload.imageNames,
     });
 
@@ -111,7 +120,6 @@ async function POST(
     return NextResponse.json(
       {
         message: validatedFields.error.issues[0].message,
-        validationIssues: validatedFields.error.issues,
       },
       {
         status: 400,
@@ -134,7 +142,7 @@ async function POST(
     );
   }
 
-  const { title, description, imageNames } = validatedFields.data;
+  const { title, description, location, imageNames } = validatedFields.data;
   const imageKeys = imageNames.map((name) => `${name}-${createId()}`);
 
   try {
@@ -151,11 +159,13 @@ async function POST(
               image: true,
             },
           },
+          location: { select: todoLocationSelect },
         },
         data: {
           title,
           description,
-          createdById: user.id,
+          location: toLocationWrite(location),
+          createdBy: { connect: { userId: user.id } },
           priority: (maxPriority._max.priority ?? 0) + 1,
           imageKeys: imageKeys.length > 0 ? imageKeys.join(",") : null,
         },
@@ -165,6 +175,7 @@ async function POST(
         id: newTodo.todoId,
         title: newTodo.title,
         description: newTodo.description,
+        location: newTodo.location,
         createdAt: newTodo.createdAt.toISOString(),
         updatedAt: newTodo.updatedAt.toISOString(),
         doneAt: newTodo.doneAt ? newTodo.doneAt.toISOString() : null,

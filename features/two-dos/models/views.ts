@@ -1,4 +1,8 @@
 import { dateFormat } from "@/components/ui/popover-calendar";
+import {
+  todoLocationSchema,
+  TodoLocation,
+} from "@/features/two-dos/models/location";
 import { DateTime } from "luxon";
 import { z } from "zod/v4";
 
@@ -9,6 +13,7 @@ const timeFormat = `${dateFormat} HH:mm`;
 const createSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
+  location: todoLocationSchema,
   images: z.array(
     z
       .file()
@@ -39,6 +44,7 @@ export interface Todo {
     name: string;
     imageUrl: string | null;
   };
+  location: TodoLocation;
   updatedAt: string;
   doneAt: string | null;
   description: string | null;

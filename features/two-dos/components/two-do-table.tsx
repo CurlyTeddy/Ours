@@ -35,7 +35,14 @@ import {
 import { CreateButton } from "@/features/two-dos/components/create-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, Circle, CircleCheck, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowUpDown,
+  Circle,
+  CircleCheck,
+  MapPin,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useTimeZone } from "@/components/providers/time-zone";
 import { DateTime } from "luxon";
 import { timeFormat, Todo } from "@/features/two-dos/models/views";
@@ -76,6 +83,10 @@ function TwodoTableSkeleton() {
       {/* Description */}
       <TableCell>
         <Skeleton className="h-4 w-40" />
+      </TableCell>
+      {/* Location */}
+      <TableCell>
+        <Skeleton className="h-4 w-28" />
       </TableCell>
       {/* Status */}
       <TableCell>
@@ -119,6 +130,7 @@ function TwodoTableSkeleton() {
                 </TableHead>
                 <TableHead>Created By</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Location</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -292,6 +304,19 @@ export function TwodoTable() {
               </div>
             );
           },
+        },
+        {
+          accessorKey: "location.name",
+          header: "Location",
+          cell: ({ row }) => (
+            <div
+              className="flex max-w-16 items-center gap-2 truncate sm:max-w-28 md:max-w-36 lg:max-w-48"
+              title={row.original.location.address}
+            >
+              <MapPin className="size-4 shrink-0 text-primary" />
+              <span className="truncate">{row.original.location.name}</span>
+            </div>
+          ),
         },
         {
           accessorKey: "status",

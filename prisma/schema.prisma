@@ -44,11 +44,26 @@ model Todo {
   doneAt      DateTime? @map("done_at")
   title       String
   description String?
+  location    Location  @relation(fields: [locationId], references: [locationId], onUpdate: Cascade)
+  locationId  String    @map("location_id")
   priority    Float     @unique
   imageKeys   String?   @map("image_keys")
 
   @@index([priority])
+  @@index([locationId])
   @@map("todo")
+}
+
+model Location {
+  locationId String  @id @default(cuid()) @map("location_id")
+  placeId    String? @unique @map("place_id")
+  name       String
+  address    String
+  latitude   Float
+  longitude  Float
+  todos      Todo[]
+
+  @@map("location")
 }
 
 model Session {

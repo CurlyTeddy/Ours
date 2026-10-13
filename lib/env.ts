@@ -13,8 +13,11 @@ export const env = createEnv({
   },
   client: {
     NEXT_PUBLIC_ENVIRONMENT: z.enum(["dev", "prod"]),
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().min(1).optional(),
   },
   experimental__runtimeEnv: {
     NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
   },
 });

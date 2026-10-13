@@ -1,5 +1,11 @@
 import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
 import {
+  defaultLocationId,
+  todoLocationSchema,
+  todoLocationSelect,
+  toLocationWrite,
+} from "@/features/two-dos/models/location";
+import {
   TodoDto,
   TodoUpdateResponse,
 } from "@/features/two-dos/models/responses";
@@ -18,7 +24,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { DateTime } from "luxon";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import z from "zod";
+import z from "zod/v4";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 async function GET(
@@ -37,6 +43,7 @@ async function GET(
             image: true,
           },
         },
+        location: { select: todoLocationSelect },
       },
     });
 
@@ -50,6 +57,7 @@ async function GET(
       id: todo.todoId,
       title: todo.title,
       description: todo.description,
+      location: todo.location,
       createdAt: todo.createdAt.toISOString(),
       updatedAt: todo.updatedAt.toISOString(),
       doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
@@ -102,6 +110,7 @@ async function PUT(
     .object({
       title: z.string().min(1, "Title is required"),
       description: z.string().nullable(),
+      location: todoLocationSchema,
       doneAt: z
         .string()
         .refine((date) => DateTime.fromISO(date).isValid, {
@@ -113,6 +122,7 @@ async function PUT(
     .safeParse({
       title: requestPayload.title,
       description: requestPayload.description,
+      location: requestPayload.location,
       doneAt: requestPayload.doneAt,
       imageNames: requestPayload.imageNames,
     });
@@ -132,7 +142,7 @@ async function PUT(
   try {
     const payload = await prisma.$transaction(async (txn) => {
       const todo = await txn.todo.findUnique({
-        select: { imageKeys: true },
+        select: { imageKeys: true, locationId: true },
         where: { todoId: id },
       });
 
@@ -140,7 +150,11 @@ async function PUT(
         return null;
       }
 
-      const { imageNames: newImageNames, ...rest } = validatedFields.data;
+      const {
+        imageNames: newImageNames,
+        location,
+        ...rest
+      } = validatedFields.data;
       const oldImageKeys = todo.imageKeys ? todo.imageKeys.split(",") : [];
       const oldImageSet = new Set(oldImageKeys);
       const imageIntersection = new Set(
@@ -157,6 +171,7 @@ async function PUT(
         where: { todoId: id },
         data: {
           ...rest,
+          location: toLocationWrite(location),
           imageKeys:
             newImageNames.length > 0
               ? newImageNames
@@ -173,8 +188,19 @@ async function PUT(
               image: true,
             },
           },
+          location: { select: todoLocationSelect },
         },
       });
+
+      if (updatedTodo.locationId !== todo.locationId) {
+        await txn.location.deleteMany({
+          where: {
+            locationId: todo.locationId,
+            NOT: { locationId: defaultLocationId },
+            todos: { none: {} },
+          },
+        });
+      }
 
       const bucket = `images-${env.NEXT_PUBLIC_ENVIRONMENT}`;
       await Promise.all(
@@ -230,6 +256,7 @@ async function PUT(
       id: updatedTodo.todoId,
       title: updatedTodo.title,
       description: updatedTodo.description,
+      location: updatedTodo.location,
       createdAt: updatedTodo.createdAt.toISOString(),
       updatedAt: updatedTodo.updatedAt.toISOString(),
       doneAt: updatedTodo.doneAt ? updatedTodo.doneAt.toISOString() : null,
@@ -291,10 +318,20 @@ async function DELETE(
   const { id } = await params;
 
   try {
-    const todo = await prisma.todo.delete({
-      where: {
-        todoId: id,
-      },
+    const todo = await prisma.$transaction(async (txn) => {
+      const deletedTodo = await txn.todo.delete({
+        where: {
+          todoId: id,
+        },
+      });
+      await txn.location.deleteMany({
+        where: {
+          locationId: deletedTodo.locationId,
+          NOT: { locationId: defaultLocationId },
+          todos: { none: {} },
+        },
+      });
+      return deletedTodo;
     });
 
     if (todo.imageKeys !== null) {

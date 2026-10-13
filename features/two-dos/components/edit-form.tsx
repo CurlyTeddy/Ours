@@ -47,6 +47,8 @@ import Image from "next/image";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { LocationCombobox } from "@/features/two-dos/components/location-combobox";
+import { GoogleMapsProvider } from "@/components/providers/google-maps";
 
 function CarouselUploader({
   existingImages,
@@ -233,6 +235,7 @@ export default function EditForm({ todo }: { todo: Todo }) {
     defaultValues: {
       title: todo.title,
       description: todo.description ?? "",
+      location: todo.location,
       doneAt: todo.doneAt
         ? DateTime.fromISO(todo.doneAt, { zone: timeZone }).toFormat(dateFormat)
         : null,
@@ -257,6 +260,7 @@ export default function EditForm({ todo }: { todo: Todo }) {
                 json: {
                   title: data.title,
                   description: data.description ?? null,
+                  location: data.location,
                   doneAt:
                     !data.doneAt || data.doneAt.length === 0
                       ? null
@@ -290,6 +294,7 @@ export default function EditForm({ todo }: { todo: Todo }) {
                   ...currentTodo,
                   title: response.todo.title,
                   description: response.todo.description,
+                  location: response.todo.location,
                   doneAt: response.todo.doneAt,
                   updatedAt: response.todo.updatedAt,
                   images: response.todo.images,
@@ -398,6 +403,19 @@ export default function EditForm({ todo }: { todo: Todo }) {
               <FormMessage />
             </FormItem>
           </UncontrolledFormField>
+
+          <FormField
+            name="location"
+            render={({ field }) => (
+              <GoogleMapsProvider>
+                <LocationCombobox
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={isPending}
+                />
+              </GoogleMapsProvider>
+            )}
+          />
 
           <FormField<z.infer<typeof updateSchema>, "images">
             name="images"

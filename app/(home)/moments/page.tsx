@@ -1,19 +1,12 @@
 "use client";
 
-import {
-  ArrowRight,
-  CalendarHeart,
-  Globe2,
-  MapPin,
-  MessageCircleHeart,
-  Sparkles,
-} from "lucide-react";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { CalendarHeart, MessageCircleHeart, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LoveMap } from "@/features/moments/components/love-map";
+import { GoogleMapsProvider } from "@/components/providers/google-maps";
 import { PhotoGallery } from "@/features/moments/components/photo-gallery";
 import { MessageBoard } from "@/features/moments/components/message-board";
 import { usePhotos } from "@/features/moments/hooks/use-photos";
@@ -122,48 +115,9 @@ export default function Page() {
         </div>
 
         <aside className="flex flex-col gap-6">
-          <Card className="rounded-4xl">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Globe2 className="size-5" />
-                </span>
-                <CardTitle>Love Map</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-5">
-              <AspectRatio
-                ratio={1}
-                className="relative flex overflow-hidden rounded-3xl border border-border bg-muted"
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,color-mix(in_oklch,var(--primary)_18%,transparent),transparent_42%),linear-gradient(145deg,var(--muted),var(--card))]" />
-                <div className="relative m-auto flex size-16 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm">
-                  <MapPin className="size-8 fill-current" />
-                </div>
-                <div className="absolute right-5 bottom-5 left-5">
-                  <p className="text-lg font-semibold text-foreground">
-                    Places we have loved
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Location history is not connected yet.
-                  </p>
-                </div>
-              </AspectRatio>
-              <div className="flex flex-col gap-3 text-sm">
-                <SummaryRow label="Countries visited" value="Not tracked" />
-                <Separator />
-                <SummaryRow label="Cities explored" value="Not tracked" />
-              </div>
-              <Button
-                className="w-full rounded-full"
-                variant="outline"
-                disabled
-              >
-                Explore Map
-                <ArrowRight data-icon="inline-end" />
-              </Button>
-            </CardContent>
-          </Card>
+          <GoogleMapsProvider>
+            <LoveMap />
+          </GoogleMapsProvider>
 
           <Card className="overflow-hidden rounded-4xl border-primary/20 bg-primary text-primary-foreground">
             <CardHeader>
@@ -205,15 +159,6 @@ function MetricPill({ value, label }: { value: string | null; label: string }) {
         </span>
       )}
       <span className="mt-1 text-sm text-muted-foreground">{label}</span>
-    </div>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between pb-3 last:pb-0">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-foreground">{value}</span>
     </div>
   );
 }

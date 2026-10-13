@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState, useTransition } from "react";
 import { createSchema, maxFileSize } from "@/features/two-dos/models/views";
+import { defaultTodoLocation } from "@/features/two-dos/models/location";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ErrorMessage from "@/components/ui/error-message";
 import { FileUploader } from "@/components/ui/file-uploader";
@@ -36,6 +37,8 @@ import { TodoCreateResponse } from "@/features/two-dos/models/responses";
 import { HttpErrorPayload } from "@/lib/error";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 import { Plus } from "lucide-react";
+import { LocationCombobox } from "@/features/two-dos/components/location-combobox";
+import { GoogleMapsProvider } from "@/components/providers/google-maps";
 
 function CreateButton() {
   const form = useForm<z.infer<typeof createSchema>>({
@@ -43,6 +46,7 @@ function CreateButton() {
     defaultValues: {
       title: "",
       description: "",
+      location: defaultTodoLocation,
       images: [],
     },
   });
@@ -65,6 +69,7 @@ function CreateButton() {
                 json: {
                   title: formData.title,
                   description: formData.description,
+                  location: formData.location,
                   imageNames: formData.images.map((file) => file.name),
                 } satisfies TodoCreateRequest,
               })
@@ -109,105 +114,118 @@ function CreateButton() {
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (!nextOpen) {
-          form.reset();
-          setErrorMessage(undefined);
-        }
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button className="cursor-pointer">
-          <Plus />
-          <span className="hidden sm:inline">Add</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-175">
-        <DialogHeader>
-          <DialogTitle>Add Two Dos</DialogTitle>
-          <DialogDescription>
-            Add a new two do item. It will have the lowest priority.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          {/* https://github.com/orgs/react-hook-form/discussions/8622#discussioncomment-6305393 */}
-          <form
-            onSubmit={(event) => void form.handleSubmit(onSubmit)(event)}
-            className="space-y-4"
-          >
-            <UncontrolledFormField name="title">
-              <FormItem>
-                <FormLabel>Title</FormLabel>
-                <RegisteredFormControl>
-                  <Input
-                    placeholder="e.g. Have a Golden Retriever!"
-                    autoFocus
+    <GoogleMapsProvider>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) {
+            form.reset();
+            setErrorMessage(undefined);
+          }
+        }}
+      >
+        <DialogTrigger asChild>
+          <Button className="cursor-pointer">
+            <Plus />
+            <span className="hidden sm:inline">Add</span>
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-175">
+          <DialogHeader>
+            <DialogTitle>Add Two Dos</DialogTitle>
+            <DialogDescription>
+              Add a new two do item. It will have the lowest priority.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            {/* https://github.com/orgs/react-hook-form/discussions/8622#discussioncomment-6305393 */}
+            <form
+              onSubmit={(event) => void form.handleSubmit(onSubmit)(event)}
+              className="space-y-4"
+            >
+              <UncontrolledFormField name="title">
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <RegisteredFormControl>
+                    <Input
+                      placeholder="e.g. Have a Golden Retriever!"
+                      autoFocus
+                    />
+                  </RegisteredFormControl>
+                  <FormDescription>
+                    Enter the title of the next excitement.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              </UncontrolledFormField>
+
+              <UncontrolledFormField name="description">
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <RegisteredFormControl>
+                    <Textarea
+                      placeholder="e.g. Its name is Dory."
+                      rows={3}
+                      className="resize-y max-h-[250] scrollbar-hide"
+                    />
+                  </RegisteredFormControl>
+                  <FormDescription>
+                    Optionally, add a description for more details.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              </UncontrolledFormField>
+
+              <FormField
+                name="location"
+                render={({ field }) => (
+                  <LocationCombobox
+                    value={field.value}
+                    onChange={field.onChange}
+                    disabled={isPending}
                   />
-                </RegisteredFormControl>
-                <FormDescription>
-                  Enter the title of the next excitement.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            </UncontrolledFormField>
+                )}
+              />
 
-            <UncontrolledFormField name="description">
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <RegisteredFormControl>
-                  <Textarea
-                    placeholder="e.g. Its name is Dory."
-                    rows={3}
-                    className="resize-y max-h-[250] scrollbar-hide"
-                  />
-                </RegisteredFormControl>
-                <FormDescription>
-                  Optionally, add a description for more details.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            </UncontrolledFormField>
+              <FormField
+                name="images"
+                render={({ field }) => {
+                  const { onChange, ...rest } = field;
+                  return (
+                    <FormItem>
+                      <FormLabel>Images</FormLabel>
+                      <FormControl>
+                        <FileUploader
+                          {...rest}
+                          onValueChange={onChange}
+                          multiple
+                          maxFiles={5}
+                          maxSize={maxFileSize}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
 
-            <FormField
-              name="images"
-              render={({ field }) => {
-                const { onChange, ...rest } = field;
-                return (
-                  <FormItem>
-                    <FormLabel>Images</FormLabel>
-                    <FormControl>
-                      <FileUploader
-                        {...rest}
-                        onValueChange={onChange}
-                        multiple
-                        maxFiles={5}
-                        maxSize={maxFileSize}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
-            <ErrorMessage message={errorMessage} />
-            <DialogFooter>
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="cursor-pointer"
-              >
-                Add Todo
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              <ErrorMessage message={errorMessage} />
+              <DialogFooter>
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  className="cursor-pointer"
+                >
+                  Add Todo
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </GoogleMapsProvider>
   );
 }
 
