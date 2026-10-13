@@ -240,7 +240,13 @@ export function MessageBoard() {
               setNewMessage(e.target.value);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              // Enter that confirms an IME candidate (e.g. Zhuyin) is not a send; Safari flags it with keyCode 229
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                !e.nativeEvent.isComposing &&
+                e.keyCode !== 229
+              ) {
                 handleSendMessage();
               }
             }}

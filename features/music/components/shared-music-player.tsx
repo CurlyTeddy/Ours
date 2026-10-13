@@ -478,7 +478,12 @@ function SharedMusicPlayer() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
+              // Enter that confirms an IME candidate (e.g. Zhuyin) is not a search; Safari flags it with keyCode 229
+              if (
+                event.key === "Enter" &&
+                !event.nativeEvent.isComposing &&
+                event.keyCode !== 229
+              ) {
                 handleSearch();
               }
             }}
