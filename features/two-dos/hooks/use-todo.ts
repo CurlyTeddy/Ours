@@ -4,8 +4,7 @@ import ky, { HTTPError } from "ky";
 import { toast } from "sonner";
 import useSWR, { SWRConfiguration } from "swr";
 import { TodoDto } from "@/features/two-dos/models/responses";
-import { Todo } from "@/features/two-dos/models/views";
-import { DateTime } from "luxon";
+import { Todo, toTodo } from "@/features/two-dos/models/views";
 
 function useTodo(id: string, config?: SWRConfiguration) {
   const key = `/api/todos/${id}`;
@@ -13,21 +12,7 @@ function useTodo(id: string, config?: SWRConfiguration) {
     key,
     async (url: string) => {
       const todo = await ky.get(url).json<TodoDto>();
-      return {
-        id: todo.id,
-        images: todo.images,
-        title: todo.title,
-        description: todo.description,
-        location: todo.location,
-        doneAt: todo.doneAt,
-        createdAt: todo.createdAt,
-        createdBy: todo.createdBy,
-        updatedAt: todo.updatedAt,
-        status:
-          todo.doneAt !== null
-            ? DateTime.fromISO(todo.doneAt) < DateTime.utc()
-            : false,
-      };
+      return toTodo(todo);
     },
     {
       errorRetryCount: 1,

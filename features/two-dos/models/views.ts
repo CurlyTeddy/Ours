@@ -5,6 +5,7 @@ import {
 } from "@/features/two-dos/models/location";
 import { DateTime } from "luxon";
 import { z } from "zod/v4";
+import type { TodoDto } from "@/features/two-dos/models/responses";
 
 const maxFileSize = 1024 * 1024 * 5;
 
@@ -51,4 +52,21 @@ export interface Todo {
   status: boolean;
 }
 
-export { createSchema, updateSchema, maxFileSize, timeFormat };
+function toTodo(todo: TodoDto): Todo {
+  return {
+    id: todo.id,
+    images: todo.images,
+    title: todo.title,
+    description: todo.description,
+    location: todo.location,
+    doneAt: todo.doneAt,
+    createdAt: todo.createdAt,
+    createdBy: todo.createdBy,
+    updatedAt: todo.updatedAt,
+    // A done date in the future is still a plan
+    status:
+      todo.doneAt !== null && DateTime.fromISO(todo.doneAt) < DateTime.utc(),
+  };
+}
+
+export { createSchema, updateSchema, maxFileSize, timeFormat, toTodo };

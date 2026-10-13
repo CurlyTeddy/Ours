@@ -1,4 +1,9 @@
-import { maxFileSize, timeFormat, Todo } from "@/features/two-dos/models/views";
+import {
+  maxFileSize,
+  timeFormat,
+  Todo,
+  toTodo,
+} from "@/features/two-dos/models/views";
 import { ControllerRenderProps, useForm } from "react-hook-form";
 import { z } from "zod/v4";
 import { updateSchema } from "@/features/two-dos/models/views";
@@ -271,7 +276,7 @@ export default function EditForm({ todo }: { todo: Todo }) {
     startTransition(async () => {
       try {
         await mutate(
-          async (currentTodo) => {
+          async () => {
             const response = await ky
               .put(key, {
                 json: {
@@ -312,17 +317,7 @@ export default function EditForm({ todo }: { todo: Todo }) {
               ),
             );
 
-            return currentTodo
-              ? {
-                  ...currentTodo,
-                  title: response.todo.title,
-                  description: response.todo.description,
-                  location: response.todo.location,
-                  doneAt: response.todo.doneAt,
-                  updatedAt: response.todo.updatedAt,
-                  images: response.todo.images,
-                }
-              : currentTodo;
+            return toTodo(response.todo);
           },
           {
             revalidate: false,

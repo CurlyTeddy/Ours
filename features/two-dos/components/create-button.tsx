@@ -26,7 +26,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useState, useTransition } from "react";
-import { createSchema, maxFileSize } from "@/features/two-dos/models/views";
+import {
+  createSchema,
+  maxFileSize,
+  toTodo,
+} from "@/features/two-dos/models/views";
 import { defaultTodoLocation } from "@/features/two-dos/models/location";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ErrorMessage from "@/components/ui/error-message";
@@ -91,13 +95,7 @@ function CreateButton() {
               throw error;
             }
 
-            return [
-              ...todos,
-              {
-                ...response.todo,
-                status: !!response.todo.doneAt,
-              },
-            ];
+            return [...todos, toTodo(response.todo)];
           },
           {
             revalidate: false,
