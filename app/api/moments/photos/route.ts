@@ -93,7 +93,6 @@ async function POST(
           new PutObjectCommand({
             Bucket: bucket,
             Key: `carousel/${imageKey}`,
-            ContentType: "image/*",
           }),
           { expiresIn: 300 },
         ),
