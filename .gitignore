@@ -54,4 +54,6 @@ lib/generated/*
 **/*local*
 
 # agent skills: links into .agents/skills, restored by the skills CLI from skills-lock.json
-.claude/skills
+.claude/skills/*
+# project-owned skill, versioned because it edits itself
+!.claude/skills/implement-feature/
