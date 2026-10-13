@@ -3,80 +3,31 @@ import { createId } from "@paralleldrive/cuid2";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod/v4";
-import { getCachedSignedUrl } from "@/lib/s3-client";
-import s3Client from "@/lib/s3-client";
-import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import s3Client, { bucket } from "@/lib/s3-client";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { HttpErrorPayload } from "@/lib/error";
 import {
   TodoCreateResponse,
-  TodoDto,
   TodoResponse,
 } from "@/features/two-dos/models/responses";
 import { TodoCreateRequest } from "@/features/two-dos/models/requests";
 import {
   todoLocationSchema,
-  todoLocationSelect,
   toLocationWrite,
 } from "@/features/two-dos/models/location";
+import { todoInclude, toTodoDto } from "@/features/two-dos/todo-dto";
 import { validateSessionToken } from "@/features/auth/session";
 import { cookies } from "next/headers";
-import { env } from "@/lib/env";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
   try {
     const todos = await prisma.todo.findMany({
       orderBy: { priority: "asc" },
-      include: {
-        createdBy: {
-          select: {
-            name: true,
-            image: true,
-          },
-        },
-        location: { select: todoLocationSelect },
-      },
+      include: todoInclude,
     });
 
-    const todoDto = await Promise.all(
-      todos.map(async (todo) => ({
-        id: todo.todoId,
-        title: todo.title,
-        description: todo.description,
-        location: todo.location,
-        createdAt: todo.createdAt.toISOString(),
-        updatedAt: todo.updatedAt.toISOString(),
-        doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
-        priority: todo.priority,
-        images: todo.imageKeys
-          ? await Promise.all(
-              todo.imageKeys.split(",").map(async (key) => ({
-                key,
-                url: await getCachedSignedUrl(
-                  s3Client,
-                  new GetObjectCommand({
-                    Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                    Key: `two-do/${key}`,
-                  }),
-                ),
-              })),
-            )
-          : [],
-        createdBy: {
-          name: todo.createdBy.name,
-          imageUrl:
-            todo.createdBy.image !== null
-              ? await getCachedSignedUrl(
-                  s3Client,
-                  new GetObjectCommand({
-                    Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                    Key: `avatar/${todo.createdBy.image}`,
-                  }),
-                )
-              : null,
-        },
-      })),
-    );
+    const todoDto = await Promise.all(todos.map(toTodoDto));
 
     return NextResponse.json(
       { todos: todoDto },
@@ -152,15 +103,7 @@ async function POST(
       });
 
       const newTodo = await txn.todo.create({
-        include: {
-          createdBy: {
-            select: {
-              name: true,
-              image: true,
-            },
-          },
-          location: { select: todoLocationSelect },
-        },
+        include: todoInclude,
         data: {
           title,
           description,
@@ -171,49 +114,14 @@ async function POST(
         },
       });
 
-      const todo: TodoDto = {
-        id: newTodo.todoId,
-        title: newTodo.title,
-        description: newTodo.description,
-        location: newTodo.location,
-        createdAt: newTodo.createdAt.toISOString(),
-        updatedAt: newTodo.updatedAt.toISOString(),
-        doneAt: newTodo.doneAt ? newTodo.doneAt.toISOString() : null,
-        priority: newTodo.priority,
-        images: await Promise.all(
-          imageKeys.map(async (key) => ({
-            key,
-            url: await getCachedSignedUrl(
-              s3Client,
-              new GetObjectCommand({
-                Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                Key: `two-do/${key}`,
-              }),
-            ),
-          })),
-        ),
-        createdBy: {
-          name: newTodo.createdBy.name,
-          imageUrl:
-            user.image !== null
-              ? await getCachedSignedUrl(
-                  s3Client,
-                  new GetObjectCommand({
-                    Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                    Key: `avatar/${user.image}`,
-                  }),
-                  { expiresIn: 300 },
-                )
-              : null,
-        },
-      };
+      const todo = await toTodoDto(newTodo);
 
       const signedUrls = await Promise.all(
         imageKeys.map((key) => {
           return getSignedUrl(
             s3Client,
             new PutObjectCommand({
-              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+              Bucket: bucket,
               Key: `two-do/${key}`,
             }),
           );

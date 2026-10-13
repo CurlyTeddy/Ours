@@ -2,24 +2,18 @@ import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
 import {
   defaultLocationId,
   todoLocationSchema,
-  todoLocationSelect,
   toLocationWrite,
 } from "@/features/two-dos/models/location";
 import {
   TodoDto,
   TodoUpdateResponse,
 } from "@/features/two-dos/models/responses";
+import { todoInclude, toTodoDto } from "@/features/two-dos/todo-dto";
 import { prisma } from "@/lib/database-client";
-import { env } from "@/lib/env";
 import { HttpErrorPayload } from "@/lib/error";
 import { Prisma } from "@prisma/client";
-import s3Client from "@/lib/s3-client";
-import {
-  DeleteObjectCommand,
-  GetObjectCommand,
-  PutObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getCachedSignedUrl } from "@/lib/s3-client";
+import s3Client, { bucket } from "@/lib/s3-client";
+import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { createId } from "@paralleldrive/cuid2";
 import { DateTime } from "luxon";
 import { revalidatePath } from "next/cache";
@@ -36,60 +30,14 @@ async function GET(
   try {
     const todo = await prisma.todo.findUnique({
       where: { todoId: id },
-      include: {
-        createdBy: {
-          select: {
-            name: true,
-            image: true,
-          },
-        },
-        location: { select: todoLocationSelect },
-      },
+      include: todoInclude,
     });
 
     if (todo === null) {
       return NextResponse.json({ message: "Todo not found." }, { status: 404 });
     }
 
-    const imageKeys = todo.imageKeys ? todo.imageKeys.split(",") : [];
-
-    const todoDto: TodoDto = {
-      id: todo.todoId,
-      title: todo.title,
-      description: todo.description,
-      location: todo.location,
-      createdAt: todo.createdAt.toISOString(),
-      updatedAt: todo.updatedAt.toISOString(),
-      doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
-      priority: todo.priority,
-      images: await Promise.all(
-        imageKeys.map(async (key) => ({
-          key,
-          url: await getCachedSignedUrl(
-            s3Client,
-            new GetObjectCommand({
-              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-              Key: `two-do/${key}`,
-            }),
-          ),
-        })),
-      ),
-      createdBy: {
-        name: todo.createdBy.name,
-        imageUrl:
-          todo.createdBy.image !== null
-            ? await getCachedSignedUrl(
-                s3Client,
-                new GetObjectCommand({
-                  Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                  Key: `avatar/${todo.createdBy.image}`,
-                }),
-              )
-            : null,
-      },
-    };
-
-    return NextResponse.json(todoDto, { status: 200 });
+    return NextResponse.json(await toTodoDto(todo), { status: 200 });
   } catch (error) {
     console.error("Error fetching todo:", error);
     return NextResponse.json(
@@ -181,15 +129,7 @@ async function PUT(
                   .join(",")
               : null,
         },
-        include: {
-          createdBy: {
-            select: {
-              name: true,
-              image: true,
-            },
-          },
-          location: { select: todoLocationSelect },
-        },
+        include: todoInclude,
       });
 
       if (updatedTodo.locationId !== todo.locationId) {
@@ -201,8 +141,6 @@ async function PUT(
           },
         });
       }
-
-      const bucket = `images-${env.NEXT_PUBLIC_ENVIRONMENT}`;
 
       // Letting frontend to upload files can cause race condition. A user might delete an object
       // that is not yet uploaded by another user, this can be mitigated by adding retry mechanism
@@ -242,53 +180,14 @@ async function PUT(
       payload.removedKeys.map((key) =>
         s3Client.send(
           new DeleteObjectCommand({
-            Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+            Bucket: bucket,
             Key: `two-do/${key}`,
           }),
         ),
       ),
     );
 
-    const { updatedTodo } = payload;
-    const newImageKeys = updatedTodo.imageKeys
-      ? updatedTodo.imageKeys.split(",")
-      : [];
-
-    const todo: TodoDto = {
-      id: updatedTodo.todoId,
-      title: updatedTodo.title,
-      description: updatedTodo.description,
-      location: updatedTodo.location,
-      createdAt: updatedTodo.createdAt.toISOString(),
-      updatedAt: updatedTodo.updatedAt.toISOString(),
-      doneAt: updatedTodo.doneAt ? updatedTodo.doneAt.toISOString() : null,
-      priority: updatedTodo.priority,
-      images: await Promise.all(
-        newImageKeys.map(async (key) => ({
-          key,
-          url: await getCachedSignedUrl(
-            s3Client,
-            new GetObjectCommand({
-              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-              Key: `two-do/${key}`,
-            }),
-          ),
-        })),
-      ),
-      createdBy: {
-        name: updatedTodo.createdBy.name,
-        imageUrl:
-          updatedTodo.createdBy.image !== null
-            ? await getCachedSignedUrl(
-                s3Client,
-                new GetObjectCommand({
-                  Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                  Key: `avatar/${updatedTodo.createdBy.image}`,
-                }),
-              )
-            : null,
-      },
-    };
+    const todo = await toTodoDto(payload.updatedTodo);
 
     revalidatePath("/twodo");
     return NextResponse.json(
@@ -341,7 +240,7 @@ async function DELETE(
       await Promise.all(
         imageKeys.map((key) => {
           const command = new DeleteObjectCommand({
-            Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+            Bucket: bucket,
             Key: `two-do/${key}`,
           });
           return s3Client.send(command);

@@ -15,6 +15,7 @@ vi.mock("@/lib/database-client", () => ({
 }));
 vi.mock("@/lib/s3-client", () => ({
   default: { send: vi.fn() },
+  bucket: "images-test",
   getCachedSignedUrl: () => Promise.resolve("https://r2.test/get"),
 }));
 vi.mock("@aws-sdk/s3-request-presigner", () => ({

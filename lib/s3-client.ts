@@ -2,7 +2,6 @@ import { env } from "@/lib/env";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { redis } from "@/lib/database-client";
-import { RequestPresigningArguments } from "@smithy/types";
 
 const globalS3 = globalThis as unknown as {
   s3Client: S3Client | undefined;
@@ -25,58 +24,36 @@ if (env.NEXT_PUBLIC_ENVIRONMENT !== "prod") {
   globalS3.s3Client = s3Client;
 }
 
-/**
- * @summary Wrapper around AWS SDK's getSignedUrl that caches results in Redis.
- *
- * @description If no expired time is provided in options, default cached time is 5 minutes.
- *
- * @param client - S3 client instance
- * @param command - S3 command (GetObjectCommand or PutObjectCommand)
- * @param options - Options including expiresIn (in seconds)
- * @returns Promise resolving to signed URL
- *
- * @example
- * ```typescript
- * const url = await getCachedSignedUrl(
- *   s3Client,
- *   new GetObjectCommand({
- *     Bucket: 'my-bucket',
- *     Key: 'path/to/file.jpg'
- *   }),
- *   { expiresIn: 300 }
- * );
- * ```
- */
-async function getCachedSignedUrl(
-  client: S3Client,
-  command: GetObjectCommand,
-  options: RequestPresigningArguments = { expiresIn: 300 },
-): Promise<string> {
-  const expireTime = options.expiresIn;
-  if (expireTime === undefined || expireTime < 60) {
-    throw RangeError("Expire time needs to be at least 60 seconds.");
-  }
+const bucket = `images-${env.NEXT_PUBLIC_ENVIRONMENT}`;
+const signedUrlSeconds = 300;
+
+// Cached so repeat loads get the same URL, which lets browsers and next/image reuse the image.
+async function getCachedSignedUrl(key: string): Promise<string> {
+  const sign = () =>
+    getSignedUrl(s3Client, new GetObjectCommand({ Bucket: bucket, Key: key }), {
+      expiresIn: signedUrlSeconds,
+    });
 
   // Commands sent while disconnected wait in the offline queue, so skip the cache instead.
   if (!redis.isReady) {
-    return getSignedUrl(client, command, options);
+    return sign();
   }
 
-  const cacheKey = `presigned:${command.input.Key}`;
+  const cacheKey = `presigned:${key}`;
 
   const cachedUrl = await redis.get(cacheKey);
   if (cachedUrl !== null) {
     return cachedUrl;
   }
 
-  const signedUrl = await getSignedUrl(client, command, options);
+  const signedUrl = await sign();
 
   // Half the lifetime, so every URL served from cache still has at least half left
-  await redis.setEx(cacheKey, Math.floor(expireTime / 2), signedUrl);
+  await redis.setEx(cacheKey, signedUrlSeconds / 2, signedUrl);
 
   return signedUrl;
 }
 
-export { getCachedSignedUrl };
+export { bucket, getCachedSignedUrl };
 
 export default s3Client;

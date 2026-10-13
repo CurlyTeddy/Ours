@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database-client";
-import s3Client from "@/lib/s3-client";
-import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getCachedSignedUrl } from "@/lib/s3-client";
+import s3Client, { bucket, getCachedSignedUrl } from "@/lib/s3-client";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { createId } from "@paralleldrive/cuid2";
 import { HttpErrorPayload } from "@/lib/error";
 import z from "zod";
-import { env } from "@/lib/env";
 import {
   PhotoResponse,
   PhotoUploadResponse,
@@ -25,13 +23,7 @@ async function GET(): Promise<NextResponse<PhotoResponse | HttpErrorPayload>> {
         photos.map(async (photo) => ({
           photoId: photo.photoId,
           imageKey: photo.imageKey,
-          imageUrl: await getCachedSignedUrl(
-            s3Client,
-            new GetObjectCommand({
-              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-              Key: `carousel/${photo.imageKey}`,
-            }),
-          ),
+          imageUrl: await getCachedSignedUrl(`carousel/${photo.imageKey}`),
           createdAt: photo.createdAt.toISOString(),
         })),
       ),
@@ -99,7 +91,7 @@ async function POST(
         getSignedUrl(
           s3Client,
           new PutObjectCommand({
-            Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
+            Bucket: bucket,
             Key: `carousel/${imageKey}`,
             ContentType: "image/*",
           }),
@@ -112,13 +104,7 @@ async function POST(
       photos: await Promise.all(
         photos.map(async (photo) => ({
           ...photo,
-          imageUrl: await getCachedSignedUrl(
-            s3Client,
-            new GetObjectCommand({
-              Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-              Key: `carousel/${photo.imageKey}`,
-            }),
-          ),
+          imageUrl: await getCachedSignedUrl(`carousel/${photo.imageKey}`),
           createdAt: photo.createdAt.toISOString(),
         })),
       ),

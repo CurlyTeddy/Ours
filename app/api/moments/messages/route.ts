@@ -10,9 +10,6 @@ import {
 } from "@/features/moments/models/responses";
 import { MessageCreateRequest } from "@/features/moments/models/requests";
 import { getCachedSignedUrl } from "@/lib/s3-client";
-import s3Client from "@/lib/s3-client";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { env } from "@/lib/env";
 
 async function GET(
   request: NextRequest,
@@ -56,13 +53,7 @@ async function GET(
           author: message.author.name,
           authorImage:
             message.author.image !== null
-              ? await getCachedSignedUrl(
-                  s3Client,
-                  new GetObjectCommand({
-                    Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                    Key: `avatar/${message.author.image}`,
-                  }),
-                )
+              ? await getCachedSignedUrl(`avatar/${message.author.image}`)
               : null,
         })),
       ),
@@ -131,13 +122,7 @@ async function POST(
       author: message.author.name,
       authorImage:
         message.author.image !== null
-          ? await getCachedSignedUrl(
-              s3Client,
-              new GetObjectCommand({
-                Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                Key: `avatar/${message.author.image}`,
-              }),
-            )
+          ? await getCachedSignedUrl(`avatar/${message.author.image}`)
           : null,
     });
   } catch {

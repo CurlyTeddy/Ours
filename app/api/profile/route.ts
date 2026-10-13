@@ -9,15 +9,9 @@ import z from "zod";
 import { prisma } from "@/lib/database-client";
 import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
-import { getCachedSignedUrl } from "@/lib/s3-client";
-import {
-  DeleteObjectCommand,
-  GetObjectCommand,
-  PutObjectCommand,
-} from "@aws-sdk/client-s3";
-import s3Client from "@/lib/s3-client";
+import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import s3Client, { bucket, getCachedSignedUrl } from "@/lib/s3-client";
 import { cookies } from "next/headers";
-import { env } from "@/lib/env";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export async function GET(
@@ -42,13 +36,7 @@ export async function GET(
       imageKey: user.image,
       imageUrl:
         user.image !== null
-          ? await getCachedSignedUrl(
-              s3Client,
-              new GetObjectCommand({
-                Bucket: `images-${env.NEXT_PUBLIC_ENVIRONMENT}`,
-                Key: `avatar/${user.image}`,
-              }),
-            )
+          ? await getCachedSignedUrl(`avatar/${user.image}`)
           : null,
     });
   } catch (error) {
@@ -107,8 +95,6 @@ export async function PUT(
         })
       )?.image ?? null;
 
-    const bucket = `images-${env.NEXT_PUBLIC_ENVIRONMENT}`;
-
     if (image === currentImage) {
       const profile = await prisma.user.update({
         where: { userId: user.id },
@@ -126,13 +112,7 @@ export async function PUT(
             imageKey: image,
             imageUrl:
               image !== null
-                ? await getCachedSignedUrl(
-                    s3Client,
-                    new GetObjectCommand({
-                      Bucket: bucket,
-                      Key: `avatar/${image}`,
-                    }),
-                  )
+                ? await getCachedSignedUrl(`avatar/${image}`)
                 : null,
           },
         },
@@ -168,13 +148,7 @@ export async function PUT(
           imageKey: profile.image,
           imageUrl:
             profile.image !== null
-              ? await getCachedSignedUrl(
-                  s3Client,
-                  new GetObjectCommand({
-                    Bucket: bucket,
-                    Key: `avatar/${profile.image}`,
-                  }),
-                )
+              ? await getCachedSignedUrl(`avatar/${profile.image}`)
               : null,
         },
         signedUrl,
