@@ -151,3 +151,33 @@ describe("R1/R5: Two-do create crops dropped images", () => {
     expect(screen.queryByText("a.jpg")).toBeNull();
   });
 });
+
+describe("Two-do create failed upload", () => {
+  test("deletes the todo it created and shows an error", async () => {
+    const deleted: string[] = [];
+    server.use(
+      http.put(
+        "https://r2.test/:id",
+        () => new HttpResponse("<Error/>", { status: 500 }),
+      ),
+      http.delete("/api/todos/:id", ({ params }) => {
+        deleted.push(params.id as string);
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { user, input } = await openCreateDialog();
+
+    await user.type(screen.getByLabelText("Title"), "Dory");
+    await user.upload(
+      input,
+      new File(["g"], "party.gif", { type: "image/gif" }),
+    );
+    await screen.findByAltText("party.gif");
+    await user.click(screen.getByRole("button", { name: "Add Todo" }));
+
+    await waitFor(() => expect(deleted).toEqual(["t1"]));
+    expect(
+      await screen.findByText("Failed to create todo. Please try again later."),
+    ).toBeDefined();
+  });
+});

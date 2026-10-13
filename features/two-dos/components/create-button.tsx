@@ -76,14 +76,20 @@ function CreateButton() {
               .json<TodoCreateResponse>();
             signedUrls = response.signedUrls;
 
-            await Promise.all(
-              signedUrls.map((url, index) =>
-                ky.put(url, {
-                  headers: { "Content-Type": formData.images[index].type },
-                  body: formData.images[index],
-                }),
-              ),
-            );
+            try {
+              await Promise.all(
+                signedUrls.map((url, index) =>
+                  ky.put(url, {
+                    headers: { "Content-Type": formData.images[index].type },
+                    body: formData.images[index],
+                  }),
+                ),
+              );
+            } catch (error) {
+              // The todo already exists; drop it so a retry does not leave a broken duplicate
+              await ky.delete(`${key}/${response.todo.id}`).catch(() => null);
+              throw error;
+            }
 
             return [
               ...todos,
