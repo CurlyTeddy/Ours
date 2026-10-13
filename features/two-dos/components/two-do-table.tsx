@@ -222,9 +222,11 @@ export function TwodoTable() {
                     alt={row.original.title}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    // Next serves animated GIFs as-is anyway; this skips the /_next/image hop
                     unoptimized={images[0].key
                       .substring(0, images[0].key.lastIndexOf("-"))
-                      .endsWith("gif")}
+                      .toLowerCase()
+                      .endsWith(".gif")}
                     loading="eager"
                     className="rounded-lg object-cover"
                   />
