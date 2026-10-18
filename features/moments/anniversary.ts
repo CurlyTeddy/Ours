@@ -1,3 +1,5 @@
+import type { SpecialDay } from "@/features/moments/models/responses";
+
 const millisecondsPerDay = 1000 * 60 * 60 * 24;
 
 // Local dates, so the day turns at the viewer's midnight rather than UTC's.
@@ -17,24 +19,63 @@ function getDaysTogether(timestamp: number) {
   return daysBetween(relationshipStart, startOfDay(timestamp));
 }
 
-function getNextAnniversary(timestamp: number) {
-  const today = startOfDay(timestamp);
-  let anniversary = new Date(today.getFullYear(), 10, 1);
-  if (anniversary < today) {
-    anniversary = new Date(today.getFullYear() + 1, 10, 1);
-  }
+interface UpcomingSpecialDay {
+  specialDayId: string | null;
+  name: string;
+  daysLeft: number;
+  label: string;
+}
 
+// The first occurrence on or after today; Feb 29 falls on Feb 28 in non-leap years.
+function nextOccurrence(today: Date, month: number, day: number) {
+  const occurrenceIn = (year: number) =>
+    new Date(
+      year,
+      month - 1,
+      Math.min(day, new Date(year, month, 0).getDate()),
+    );
+
+  const thisYear = occurrenceIn(today.getFullYear());
+  return thisYear < today ? occurrenceIn(today.getFullYear() + 1) : thisYear;
+}
+
+function getUpcomingSpecialDays(
+  timestamp: number,
+  specialDays: Pick<SpecialDay, "specialDayId" | "name" | "month" | "day">[],
+): UpcomingSpecialDay[] {
+  const today = startOfDay(timestamp);
+  const anniversary = nextOccurrence(
+    today,
+    relationshipStart.getMonth() + 1,
+    relationshipStart.getDate(),
+  );
   const years = anniversary.getFullYear() - relationshipStart.getFullYear();
 
-  return {
-    daysLeft: daysBetween(today, anniversary),
-    label: anniversary.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    }),
-    yearLabel: `${years}${ordinalSuffix(years)} Year Anniversary`,
-  };
+  const candidates = [
+    {
+      specialDayId: null,
+      name: `${years}${ordinalSuffix(years)} Year Anniversary`,
+      date: anniversary,
+    },
+    ...specialDays.map((specialDay) => ({
+      specialDayId: specialDay.specialDayId,
+      name: specialDay.name,
+      date: nextOccurrence(today, specialDay.month, specialDay.day),
+    })),
+  ];
+
+  // sort is stable, so ties keep the anniversary first, then the input order
+  return candidates
+    .map(({ date, ...candidate }) => ({
+      ...candidate,
+      daysLeft: daysBetween(today, date),
+      label: date.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }),
+    }))
+    .sort((a, b) => a.daysLeft - b.daysLeft);
 }
 
 function ordinalSuffix(value: number) {
@@ -55,4 +96,5 @@ function ordinalSuffix(value: number) {
   }
 }
 
-export { getDaysTogether, getNextAnniversary };
+export { getDaysTogether, getUpcomingSpecialDays };
+export type { UpcomingSpecialDay };

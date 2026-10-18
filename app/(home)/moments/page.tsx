@@ -1,9 +1,8 @@
 "use client";
 
-import { CalendarHeart, MessageCircleHeart, Sparkles } from "lucide-react";
+import { MessageCircleHeart, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoveMap } from "@/features/moments/components/love-map";
 import { GoogleMapsProvider } from "@/components/providers/google-maps";
@@ -14,10 +13,8 @@ import { useMessages } from "@/features/moments/hooks/use-messages";
 import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
 import { SharedMusicPlayer } from "@/features/music/components/shared-music-player";
 import { useEffect, useState } from "react";
-import {
-  getDaysTogether,
-  getNextAnniversary,
-} from "@/features/moments/anniversary";
+import { getDaysTogether } from "@/features/moments/anniversary";
+import { SpecialDayCountdown } from "@/features/moments/components/special-day-countdown";
 
 export default function Page() {
   const { photos, isLoading: isPhotosLoading } = usePhotos();
@@ -47,7 +44,6 @@ export default function Page() {
 
   const daysTogether = getDaysTogether(now);
   const openTodos = todos.filter((todo) => !todo.status).length;
-  const anniversary = getNextAnniversary(now);
 
   return (
     <main className="pb-10">
@@ -119,29 +115,7 @@ export default function Page() {
             <LoveMap />
           </GoogleMapsProvider>
 
-          <Card className="overflow-hidden rounded-4xl border-primary/20 bg-primary text-primary-foreground">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <CalendarHeart className="size-6" />
-                <CardTitle>Next Anniversary</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="pb-8 text-center">
-              <div className="text-6xl font-bold leading-none">
-                {anniversary.daysLeft}
-              </div>
-              <div className="mt-2 text-sm font-semibold uppercase tracking-[0.12em] opacity-85">
-                Days Left
-              </div>
-              <div className="mt-8 flex flex-col gap-6 text-sm">
-                <Separator className="bg-primary-foreground/25" />
-                <div>
-                  <p className="font-semibold">{anniversary.label}</p>
-                  <p className="opacity-80">{anniversary.yearLabel}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <SpecialDayCountdown now={now} />
         </aside>
       </section>
     </main>

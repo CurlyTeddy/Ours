@@ -1,6 +1,9 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+// The PopoverCalendar string format; kept here so server code can parse it without the component.
+const dateFormat = "MMM dd, yyyy";
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -28,4 +31,4 @@ function formatTime(seconds: number): string {
   return plural(Math.round(seconds / 86400), "day");
 }
 
-export { cn, formatTime };
+export { cn, dateFormat, formatTime };

@@ -25,6 +25,7 @@ interface AlertDialogButtonProps {
     | "link";
   buttonSize?: "default" | "sm" | "lg" | "icon";
   buttonClassName?: string;
+  buttonAriaLabel?: string;
   disabled?: boolean;
 
   alertTitle: string;
@@ -42,6 +43,7 @@ export default function AlertDialogButton({
   buttonVariant = "default",
   buttonSize = "default",
   buttonClassName = "cursor-pointer",
+  buttonAriaLabel,
   disabled = false,
   alertTitle,
   alertDescription,
@@ -82,6 +84,7 @@ export default function AlertDialogButton({
           variant={buttonVariant}
           size={buttonSize}
           className={buttonClassName}
+          aria-label={buttonAriaLabel}
           disabled={disabled}
         >
           {children}

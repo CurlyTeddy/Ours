@@ -11,8 +11,7 @@ import { useFormContext, UseFormRegisterReturn } from "react-hook-form";
 import { useState } from "react";
 import { DateTime } from "luxon";
 import { useTimeZone } from "@/components/providers/time-zone";
-
-const dateFormat = "MMM dd, yyyy";
+import { dateFormat } from "@/lib/utils";
 
 export default function PopoverCalendar({
   ...props

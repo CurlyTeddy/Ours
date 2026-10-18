@@ -106,3 +106,13 @@ model SharedMusic {
 
   @@map("shared_music")
 }
+
+model SpecialDay {
+  specialDayId String   @id @default(cuid()) @map("special_day_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  name         String
+  month        Int
+  day          Int
+
+  @@map("special_day")
+}

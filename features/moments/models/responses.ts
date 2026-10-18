@@ -29,10 +29,24 @@ interface BulletinMessageResponse {
   totalCount: number;
 }
 
+interface SpecialDay {
+  specialDayId: string;
+  name: string;
+  month: number;
+  day: number;
+  createdAt: string;
+}
+
+interface SpecialDayResponse {
+  specialDays: SpecialDay[];
+}
+
 export type {
   Photo,
   PhotoResponse,
   PhotoUploadResponse,
   BulletinMessage,
   BulletinMessageResponse,
+  SpecialDay,
+  SpecialDayResponse,
 };

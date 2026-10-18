@@ -29,7 +29,7 @@ If the argument is an existing `docs/specs/*.md`, resume at **Build**.
    - **Goal**
    - **Requirements**: numbered `R1…`, each one testable.
    - **Inputs & validation**: every field with its type, bounds and error message.
-   - **Interfaces**: file path and export name of every route (method, request, response, status codes), component, hook and Zod schema. Both agents code against these, in parallel. Interfaces are yours to decide; don't put them to the user.
+   - **Interfaces**: file path and export name of every route (method, request, response, status codes), component, hook and Zod schema. Both agents code against these, in parallel. Interfaces are yours to decide; don't put them to the user. Give each route handler's exact signature, such as `GET()` or `DELETE(request, { params })`, because the test writer calls handlers directly and a guessed argument list fails `tsc`.
    - **Data model changes**
    - **User flows**: numbered e2e scenarios.
    - **Libraries**: each with the reason.
@@ -92,6 +92,7 @@ Every message between you and an agent goes through `SendMessage` to the agent I
    - what was not checked.
 
    Leave everything uncommitted. Mention that the new files are intent-to-add (`git reset` undoes that).
+9. **Delete the spec** after the report: `git reset -- docs/specs/<slug>.md` then remove the file. The user doesn't keep feature specs; the code and tests are the record.
 
 ## Evolve
 
