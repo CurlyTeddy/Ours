@@ -93,6 +93,10 @@ Every requirement `Rn` gets a `describe("Rn: …")` containing:
 
 The implementation is being written right now. Code against the spec's **Interfaces** section, and derive expectations only from the spec. Failing runs and "module not found" errors are expected until the builder lands; any other type error is yours to fix. Report spec gaps first.
 
+Never write a file outside `*.test.ts(x)` and `__mocks__/`, not even a throwaway stub: the builder writes those paths concurrently, and your stub can overwrite or be mistaken for its work. To sanity-check a suite, stub with `vi.mock` inside the test instead.
+
+A module that imports `next/font/google` fails under Vitest (`Playpen_Sans is not a function`); mock `next/font/google` in any test that pulls one in.
+
 ## Phase: white-box
 
 Read the implementation files you were given. Add tests for every branch, `catch` and condition (both ways) not yet covered, in the same layers. Run `pnpm test run`. For each failure, fix it if the test is wrong. If the code contradicts the spec, report it with the spec line instead of touching the code.

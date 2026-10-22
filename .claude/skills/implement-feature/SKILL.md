@@ -35,6 +35,8 @@ If the argument is an existing `docs/specs/*.md`, resume at **Build**.
    - **Libraries**: each with the reason.
    - **Out of scope**
 
+   When the feature ports a reference build (a design handoff), write requirements against what the reference actually does, not what its notes or checklist claim. Open it at phone and desktop width first; a checklist line like "the book fits on phones" was false for the reference and cost an escalation.
+
    Done when every grilled decision appears in the spec. Go straight on to Build, in the same turn.
 
 ## Build
@@ -74,11 +76,11 @@ Every message between you and an agent goes through `SendMessage` to the agent I
    Done when a round reports no Must fix or Should fix.
 6. **Final gates.**
    - Run `pnpm exec prettier --write $(git diff --name-only --diff-filter=d HEAD)`. Nothing commits, so the lint-staged hook never formats.
-   - Then run `pnpm lint` (auto-fixes the whole repo), `pnpm exec tsc --noEmit`, `pnpm test run` and `pnpm build`.
+   - Then run `pnpm lint` (auto-fixes the whole repo; an untracked input folder such as a design handoff gets linted too, so add `--ignore-pattern "<folder>/**"` via `pnpm exec eslint . --fix` rather than editing the ESLint config for a temporary folder), `pnpm exec tsc --noEmit`, `pnpm test run` and `pnpm build`.
    - Read lint and type errors through `mcp__ide__getDiagnostics` with each file's URI, not by parsing ESLint output; it's one call per file and needs no script. If a gate fails on something this change didn't cause, such as generated output, fix the root cause in its config through the file's owner rather than working around it.
    - Send failures to the file's owner. Done when all pass in one sweep.
 7. **E2E loop** (cap 5 rounds).
-   - First round: spawn `subagent_type: general-purpose` with `model: sonnet` and the prompt `Read .claude/skills/implement-feature/E2E-AGENT.md and follow it. Spec: <path>.`
+   - First round: spawn `subagent_type: general-purpose` with `model: sonnet` and the prompt `Read .claude/skills/implement-feature/E2E-AGENT.md and follow it. Spec: <path>. Regression flows: <list or none>.` Pick regression flows only for areas the diff changes (from `git diff --name-only HEAD`), never the whole list. A landing-page-only change needs none of the post-login areas. The user stopped a full-list run as wasted time.
    - On any failure, send the failing rows to the builder. If the cause isn't obvious, add `Diagnose with mattpocock-skills:diagnosing-bugs first.`
    - Then rerun step 4 and invoke `mattpocock-skills:code-review` with `Fixed point: HEAD. The change is the uncommitted working tree: diff it with "git diff HEAD" (new files are intent-to-add). Spec: <path>. There is no issue tracker; skip that lookup.` Send its Spec findings, its hard Standards violations, and any smell with a clear fix to the builder.
    - Then message the e2e agent to re-verify the failed flows plus any flow the fix touched.

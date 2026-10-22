@@ -37,6 +37,7 @@
     "clsx": "^2.1.1",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
+    "gsap": "3.12.5",
     "ky": "^1.14.3",
     "lucide-react": "^0.503.0",
     "luxon": "^3.7.2",
@@ -54,6 +55,7 @@
     "swr": "^2.4.1",
     "tailwind-merge": "^3.5.0",
     "tailwind-scrollbar-hide": "^2.0.0",
+    "three": "0.149.0",
     "use-debounce": "^10.1.0",
     "zod": "^3.25.76"
   },
@@ -68,6 +70,7 @@
     "@types/node": "^20.19.35",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "@types/three": "0.149.0",
     "@vitejs/plugin-react": "^6.1.2",
     "eslint": "^9.39.3",
     "eslint-plugin-boundaries": "^5.4.0",

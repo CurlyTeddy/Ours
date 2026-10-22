@@ -20,11 +20,12 @@ Do every check through the Chrome MCP tools (`mcp__chrome-devtools__*`: navigate
    powershell.exe -Command "Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue"
    ```
    If it does, reuse it: the user's own server would otherwise make yours fail or move ports. Otherwise start one in the background with `node --inspect node_modules/next/dist/bin/next dev` (the VS Code "Next.js: debug full stack" configuration), and wait for the `Local:` URL.
-4. **Log in** at `http://localhost:3000/login` as email `fake@gmail.com`, password `12345678` (username `agent1`).
+4. **Logged-out flows** run in a fresh isolated context (`new_page` with an isolated context). The shared headless profile keeps session cookies from earlier runs: `/login` silently redirecting to `/moments` means you are still logged in.
+5. **Log in** at `http://localhost:3000/login` as email `fake@gmail.com`, password `12345678` (username `agent1`).
 
 ## Flows
 
-Verify every flow in the spec's **User flows** section. Then run the **regression flows** below for each area the change touches.
+Verify every flow in the spec's **User flows** section. Then run only the **regression flows** your prompt names: the orchestrator picks them from the areas the diff touches. If your prompt names none, run none. A flow that ends on another page (for example, login lands on `/moments`) checks only that the page arrived. Don't exercise that page's features.
 
 For each flow:
 1. Navigate to the page.
@@ -44,6 +45,8 @@ A flow **fails** when the outcome differs from the spec, or when:
 - at phone width, an element is clipped, overlaps another, or is too small to tap;
 - `list_console_messages` shows an error during the flow (hydration errors included);
 - `list_network_requests` shows a 5xx during the flow.
+
+When the spec ports a reference build (a handoff page), compare a suspected visual failure against the reference at the same viewport before reporting it. A difference that the reference shows too is not a failure. A reference page with no viewport meta lays out at 980px under mobile emulation, so compare it with non-mobile emulation at the same width.
 
 **Known false positive:** the automation's synthetic clicks break Radix focus management. That logs `TypeError: Cannot read properties of null (reading 'focus')` from Radix dropdowns, which never happens in a real browser. Ignore it. If a Radix dropdown can't be operated at all, mark the flow **blocked (CDP)**, not failed.
 
@@ -79,7 +82,7 @@ Prefix the title or name of every record you create with `[e2e]`, so it's recogn
 - **Theme**: the dark-mode switch works and persists after reload.
 - **Navigation**:
   - the Moments and Two Do links work;
-  - when logged out, the landing page shows `Login to Our Space`.
+  - when logged out, the landing page `/` is the pop-up storybook: scrolled to the bottom, it shows a `Log in` button that opens the "Welcome home" dialog.
 
 ## Report
 

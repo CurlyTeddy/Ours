@@ -1,0 +1,290 @@
+/* Layout: a fixed WebGL stage (the book on a table) under a fixed caption plate; a tall empty scroll track drives the timeline.
+   Scoped to the storybook root: its own paper palette, light only, whatever the site theme is. */
+.root {
+  --ink: #3a2f2a;
+  --paper: #f6efe2;
+  --navy: #2f4468;
+  --mist: #9fb6c9;
+  --foil: #e9d3a6;
+  color-scheme: light;
+  position: relative;
+  min-height: 100svh;
+  background: #e9e1d4;
+  color: var(--ink);
+  font-family: var(--f-ui), "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+/* ---------- fixed stage ---------- */
+.bgs {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+/* The sky's layers and items are built by sky.ts with plain class names. */
+.bgs :global(.bg) {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.bgs :global(.bg.first) {
+  opacity: 1;
+}
+.bgs :global(.sk) {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.bgs :global(.sk) svg {
+  display: block;
+}
+.bgs :global(.sk) i {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.bgs :global(.twinkle) i {
+  animation: twinkle 3.2s ease-in-out infinite alternate;
+  animation-delay: var(--dl);
+}
+.bgs :global(.petal) i {
+  background: var(--c);
+  clip-path: polygon(50% 0, 100% 72%, 0 100%);
+  opacity: 0.9;
+  animation: sway 4.6s ease-in-out infinite alternate;
+  animation-delay: var(--dl);
+}
+@keyframes twinkle {
+  from {
+    opacity: 0.3;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes sway {
+  from {
+    transform: rotate(-24deg) translateX(-6px);
+  }
+  to {
+    transform: rotate(26deg) translateX(8px);
+  }
+}
+.gl {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+.gl.ready {
+  opacity: 1;
+}
+.scroll {
+  position: relative;
+  z-index: 0;
+  width: 1px;
+  pointer-events: none;
+}
+
+.ui {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  padding-top: calc(env(safe-area-inset-top, 0px) + clamp(18px, 6vh, 64px));
+  padding-bottom: calc(
+    env(safe-area-inset-bottom, 0px) + clamp(18px, 6vh, 60px)
+  );
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+/* The overlay stays hidden until the first frame is on screen. */
+.pending {
+  visibility: hidden;
+}
+.heads,
+.caps {
+  display: grid;
+  width: 100%;
+  max-width: 820px;
+  min-width: 0;
+  text-align: center;
+}
+.heads > *,
+.caps > * {
+  grid-area: 1/1;
+  min-width: 0;
+}
+.caps {
+  grid-row: 3;
+}
+.chEl {
+  visibility: hidden;
+  opacity: 0;
+}
+.eyebrow {
+  margin: 0;
+  font: 700 clamp(15px, 1.5vw, 19px) / 1 var(--f-hand);
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+  opacity: 0.8;
+}
+.heads .chEl {
+  text-shadow: 0 0 18px rgba(255, 252, 246, 0.75);
+}
+.chTitle {
+  margin: 0.28em 0 0;
+  font: 400 clamp(26px, 3.8vw, 46px) / 1.08 var(--f-display);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.caption {
+  display: inline-block;
+  margin: 0 auto;
+  max-width: 32ch;
+  padding: 0.3em 0.9em 0.4em;
+  border-radius: 16px;
+  background: rgba(255, 251, 245, 0.74);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 26px -18px rgba(40, 30, 20, 0.45);
+  font: 400 clamp(20px, 2.1vw, 27px) / 1.25 var(--f-hand);
+  text-wrap: balance;
+}
+.kicker {
+  margin: 0;
+  font: 400 clamp(19px, 2vw, 25px) / 1.3 var(--f-hand);
+  color: #6d5a4f;
+}
+.hintWrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + max(18px, 5vh));
+  display: flex;
+  justify-content: center;
+}
+.hint {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font: 700 12px/1 var(--f-ui);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #7c6a5e;
+}
+.chev {
+  width: 12px;
+  height: 12px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  animation: nudge 1.8s ease-in-out infinite;
+}
+@keyframes nudge {
+  0%,
+  100% {
+    transform: translateY(-2px) rotate(45deg);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(5px) rotate(45deg);
+    opacity: 1;
+  }
+}
+
+/* ---------- ending ---------- */
+.endTitle {
+  margin: 0;
+  font: 400 clamp(36px, 5.6vw, 68px) / 1 var(--f-display);
+  color: #22364f;
+  text-wrap: balance;
+}
+.endLine {
+  margin: 0.5em 0 0;
+  font: 400 clamp(19px, 2vw, 25px) / 1.2 var(--f-hand);
+  color: #3e5670;
+}
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ---------- loading veil ---------- */
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+.veil.gone {
+  opacity: 0;
+}
+.veil p {
+  margin: 0;
+  font: 400 22px/1 var(--f-hand);
+  color: #7c6a5e;
+}
+
+/* ---------- still version (reduced motion, or no WebGL) ---------- */
+.still {
+  background: #e9e1d4;
+}
+.sSec {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  padding-block: clamp(56px, 10vh, 110px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.sEnd {
+  min-height: 70vh;
+  align-items: center;
+}
+.sInner {
+  width: 100%;
+  max-width: 980px;
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  min-width: 0;
+}
+.sImg {
+  width: 100%;
+  max-width: 960px;
+  height: auto;
+  border-radius: 12px;
+  display: block;
+  box-shadow: 0 26px 50px -24px rgba(40, 30, 20, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chev,
+  .bgs :global(.twinkle) i,
+  .bgs :global(.petal) i {
+    animation: none;
+  }
+  .gl,
+  .veil {
+    transition: none;
+  }
+}

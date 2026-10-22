@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   resolve: { tsconfigPaths: true },
+  // Inline PostCSS config: Vite cannot load postcss.config.mjs (Next's string plugin form), and tests need no Tailwind.
+  css: { postcss: {} },
   test: {
     environment: "jsdom",
     // RTL only auto-cleans the DOM between tests when afterEach is global
