@@ -36,6 +36,12 @@ For each flow:
 
 Run every flow at two widths: phone (`emulate` to 375x812) and desktop (1280x800). Most users are on phones. Avoid `resize_page`: after it, the page stops receiving clicks and keys even after a reload; switching widths needs a fresh `new_page` plus `emulate`.
 
+The first `next dev` compile of a route or API takes 2–3s. Poll for the expected state with an `evaluate_script` loop before you screenshot.
+
+A dialog fading in looks dim and seems to sit behind other layers. Wait about 600ms and check `elementFromPoint` before you report a stacking bug. To check an extended hit area, probe 2.9px past the visual edge, not 3.0px: sub-pixel rounding returns the container exactly at the boundary.
+
+`fill` on an `<input type="date">` does not fire React's change handler. Click the month spinbutton, then `type_text` the digits, e.g. "10192026".
+
 For hidden file inputs (`className="hidden"`), un-hide the input with `evaluate_script` (`el.classList.remove("hidden")`), then use `upload_file` on it.
 
 The MCP has no wheel or pinch input: dispatch synthetic `WheelEvent`s or two-finger `TouchEvent`s on the target with `evaluate_script`, and read the resulting state from the DOM (e.g. the `transform` of `.reactEasyCrop_Image` for crop zoom).
@@ -46,7 +52,7 @@ A flow **fails** when the outcome differs from the spec, or when:
 - `list_console_messages` shows an error during the flow (hydration errors included);
 - `list_network_requests` shows a 5xx during the flow.
 
-When the spec ports a reference build (a handoff page), compare a suspected visual failure against the reference at the same viewport before reporting it. A difference that the reference shows too is not a failure. A reference page with no viewport meta lays out at 980px under mobile emulation, so compare it with non-mobile emulation at the same width.
+When the spec ports a reference build (a handoff page), compare a suspected visual failure against the reference at the same viewport before reporting it. A difference that the reference shows too is not a failure. A reference page with no viewport meta lays out at 980px under mobile emulation, so compare it with non-mobile emulation at the same width. In a `.dc.html` handoff, the playable page (e.g. `Main.dc.html`) renders as an unfilled template (`{{cal.day}}`). Compare against the static artboards (e.g. `Mobile.dc.html`) instead.
 
 **Known false positive:** the automation's synthetic clicks break Radix focus management. That logs `TypeError: Cannot read properties of null (reading 'focus')` from Radix dropdowns, which never happens in a real browser. Ignore it. If a Radix dropdown can't be operated at all, mark the flow **blocked (CDP)**, not failed.
 
@@ -62,12 +68,11 @@ Prefix the title or name of every record you create with `[e2e]`, so it's recogn
   - signup with a bad invite code shows `Invalid invite code. Please check your input.`;
   - logged out, a protected route redirects to `/login?callbackUrl=…`;
   - logout from the avatar dropdown.
-- **Moments**:
-  - the photo carousel loads;
-  - upload a photo;
-  - delete a photo through the confirm dialog;
-  - the message board shows messages;
-  - the days-together counter shows.
+- **Moments** (the sticky-note wall):
+  - the wall loads with the "Since 2022" / "Day N" chips and the calendar;
+  - create a note from the pad, and it persists after reload;
+  - delete a note through the confirm dialog;
+  - Map mode shows the globe and pins.
 - **Two-Dos**:
   - the table loads;
   - create a todo from the Add dialog;
@@ -79,7 +84,7 @@ Prefix the title or name of every record you create with `[e2e]`, so it's recogn
   - `/profile` loads;
   - a display-name change persists after reload;
   - saving shows `Profile updated successfully!`.
-- **Theme**: the dark-mode switch works and persists after reload.
+- **Theme**: the header's sun/moon theme toggle works and persists after reload.
 - **Navigation**:
   - the Moments and Two Do links work;
   - when logged out, the landing page `/` is the pop-up storybook: scrolled to the bottom, it shows a `Log in` button that opens the "Welcome home" dialog.

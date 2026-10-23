@@ -16,6 +16,7 @@ const row = (n: number, name = `Day ${n.toString()}`) => ({
   name,
   month: n,
   day: n,
+  year: null as number | null,
 });
 const post = (body: unknown) =>
   POST(
@@ -40,11 +41,11 @@ beforeEach(() => {
   );
 });
 
-describe("R1/R2: GET /api/moments/special-days", () => {
+describe("R37: GET /api/moments/special-days", () => {
   test("answers every day with each field, ordered by createdAt ascending", async () => {
     vi.mocked(prisma.specialDay.findMany).mockResolvedValue([
       row(1, "Halloween"),
-      row(2, "生日 🎂"),
+      { ...row(2, "生日 🎂"), year: 2026 },
     ] as never);
 
     const response = await GET();
@@ -57,6 +58,7 @@ describe("R1/R2: GET /api/moments/special-days", () => {
           name: "Halloween",
           month: 1,
           day: 1,
+          year: null,
           createdAt: "2026-01-01T00:00:00.000Z",
         },
         {
@@ -64,6 +66,7 @@ describe("R1/R2: GET /api/moments/special-days", () => {
           name: "生日 🎂",
           month: 2,
           day: 2,
+          year: 2026,
           createdAt: "2026-01-02T00:00:00.000Z",
         },
       ],
@@ -95,7 +98,7 @@ describe("R1/R2: GET /api/moments/special-days", () => {
   });
 });
 
-describe("R2/R13: POST /api/moments/special-days", () => {
+describe("R23/R37: POST /api/moments/special-days", () => {
   test("stores the trimmed name and answers the new day", async () => {
     const response = await post({ name: "  Halloween  ", month: 10, day: 31 });
 
@@ -105,6 +108,7 @@ describe("R2/R13: POST /api/moments/special-days", () => {
       name: "Halloween",
       month: 10,
       day: 31,
+      year: null,
       createdAt: "2026-10-17T04:00:00.000Z",
     });
     expect(created()).toHaveLength(1);
@@ -112,6 +116,36 @@ describe("R2/R13: POST /api/moments/special-days", () => {
       name: "Halloween",
       month: 10,
       day: 31,
+      year: null,
+    });
+  });
+
+  test("stores and answers a one-time day's year", async () => {
+    const response = await post({
+      name: "Trip",
+      month: 10,
+      day: 27,
+      year: 2026,
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ name: "Trip", year: 2026 });
+    expect(created()[0][0].data).toEqual({
+      name: "Trip",
+      month: 10,
+      day: 27,
+      year: 2026,
+    });
+  });
+
+  test("an explicit null year is every year", async () => {
+    await post({ name: "x", month: 1, day: 1, year: null });
+
+    expect(created()[0][0].data).toEqual({
+      name: "x",
+      month: 1,
+      day: 1,
+      year: null,
     });
   });
 
@@ -122,11 +156,14 @@ describe("R2/R13: POST /api/moments/special-days", () => {
     ["Feb 29", { name: "Leap", month: 2, day: 29 }],
     ["Dec 31", { name: "Eve", month: 12, day: 31 }],
     ["Apr 30", { name: "x", month: 4, day: 30 }],
+    ["Feb 29 2028", { name: "Leap", month: 2, day: 29, year: 2028 }],
+    ["year 1900", { name: "x", month: 1, day: 1, year: 1900 }],
+    ["year 2200", { name: "x", month: 1, day: 1, year: 2200 }],
   ])("accepts a %s", async (_, body) => {
     const response = await post(body);
 
     expect(response.status).toBe(200);
-    expect(created()[0][0].data).toEqual(body);
+    expect(created()[0][0].data).toEqual({ year: null, ...body });
   });
 
   test("a duplicate name and date is still created", async () => {
@@ -152,6 +189,11 @@ describe("R2/R13: POST /api/moments/special-days", () => {
     ["Apr 31", { name: "x", month: 4, day: 31 }],
     ["Nov 31", { name: "x", month: 11, day: 31 }],
     ["string day", { name: "x", month: 1, day: "1" }],
+    ["Feb 29 2026", { name: "x", month: 2, day: 29, year: 2026 }],
+    ["year 1899", { name: "x", month: 1, day: 1, year: 1899 }],
+    ["year 2201", { name: "x", month: 1, day: 1, year: 2201 }],
+    ["fractional year", { name: "x", month: 1, day: 1, year: 2026.5 }],
+    ["string year", { name: "x", month: 1, day: 1, year: "2026" }],
     ["missing name", { month: 1, day: 1 }],
     ["missing month", { name: "x", day: 1 }],
     ["missing day", { name: "x", month: 1 }],
@@ -187,7 +229,12 @@ describe("R2/R13: POST /api/moments/special-days", () => {
 
     expect(response.status).toBe(200);
     expect(created()).toHaveLength(1);
-    expect(created()[0][0].data).toEqual({ name: "x", month: 1, day: 1 });
+    expect(created()[0][0].data).toEqual({
+      name: "x",
+      month: 1,
+      day: 1,
+      year: null,
+    });
   });
 
   test("a validation failure does not reach Prisma or log an error", async () => {

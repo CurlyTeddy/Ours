@@ -4,7 +4,8 @@
    Spread canvas: 2048 × 1332 px ↔ X ∈ [−1, 1], Z ∈ [−0.65 (head), 0.65 (foot)].
    ===================================================================== */
 import * as THREE from "three";
-import { corben, gaegu, nunito } from "@/components/ui/storybook-fonts";
+import { corben, gaegu } from "@/components/ui/storybook-fonts";
+import { nunito } from "@/components/ui/fonts";
 import { STORY } from "@/features/storybook/story";
 import {
   D,

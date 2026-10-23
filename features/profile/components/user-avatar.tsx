@@ -16,12 +16,12 @@ export default function UserAvatar() {
   }, [user, router]);
 
   return (
-    <Avatar className="cursor-pointer">
+    <Avatar className="size-9 cursor-pointer sm:size-10">
       <AvatarImage
         src={user?.imageUrl ? user.imageUrl : undefined}
         alt="My account"
       />
-      <AvatarFallback className="font-semibold bg-linear-to-br from-primary/10 to-primary/20 text-primary">
+      <AvatarFallback className="bg-[#4F70A8] text-sm font-black text-white sm:text-[15px]">
         {user?.name && user.name.length > 0 ? user.name[0].toUpperCase() : "U"}
       </AvatarFallback>
     </Avatar>

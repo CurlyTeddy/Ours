@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useId, useState } from "react";
-import { Heart } from "lucide-react";
+import { Heart, LoaderCircle } from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -10,7 +10,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { corben, gaegu, nunito } from "@/components/ui/storybook-fonts";
+import { corben, gaegu } from "@/components/ui/storybook-fonts";
+import { nunito } from "@/components/ui/fonts";
 import { authenticate } from "@/features/auth/actions";
 import { cn } from "@/lib/utils";
 
@@ -79,7 +80,7 @@ function LoginCard() {
         aria-live="polite"
         className="min-h-[1.2em] font-(family-name:--f-ui) text-sm leading-[1.45] font-semibold text-[#7a3b44]"
       >
-        {isPending ? "Checking…" : emptyError ? emptyFields : message}
+        {isPending ? null : emptyError ? emptyFields : message}
       </p>
       <div className="mt-1 flex flex-wrap gap-2.5">
         <DialogClose
@@ -93,11 +94,15 @@ function LoginCard() {
         <button
           type="submit"
           disabled={isPending}
+          aria-busy={isPending}
           className={cn(
             button,
-            "border border-[#22364f] bg-[#2f4468] text-[#f6efe2] hover:bg-[#22364f]",
+            "inline-flex items-center justify-center gap-2 border border-[#22364f] bg-[#2f4468] text-[#f6efe2] hover:bg-[#22364f]",
           )}
         >
+          {isPending ? (
+            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+          ) : null}
           Log in
         </button>
       </div>

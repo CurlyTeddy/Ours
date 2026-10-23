@@ -13,6 +13,8 @@ vi.mock("next/font/google", () => {
     Corben: font("Corben"),
     Gaegu: font("Gaegu"),
     Nunito: font("Nunito"),
+    Caveat: font("Caveat"),
+    Homemade_Apple: font("Homemade Apple"),
     Playpen_Sans: font("Playpen"),
   };
 });

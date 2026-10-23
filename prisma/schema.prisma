@@ -20,6 +20,7 @@ model User {
   session          Session[]
   bulletinMessages BulletinMessage[]
   selectedMusic    SharedMusic?
+  momentNotes      MomentNote[]
 
   @@map("user")
 }
@@ -55,13 +56,14 @@ model Todo {
 }
 
 model Location {
-  locationId String  @id @default(cuid()) @map("location_id")
-  placeId    String? @unique @map("place_id")
-  name       String
-  address    String
-  latitude   Float
-  longitude  Float
-  todos      Todo[]
+  locationId  String       @id @default(cuid()) @map("location_id")
+  placeId     String?      @unique @map("place_id")
+  name        String
+  address     String
+  latitude    Float
+  longitude   Float
+  todos       Todo[]
+  momentNotes MomentNote[]
 
   @@map("location")
 }
@@ -113,6 +115,45 @@ model SpecialDay {
   name         String
   month        Int
   day          Int
+  // null = every year
+  year         Int?
 
   @@map("special_day")
+}
+
+model MomentNote {
+  noteId      String    @id @default(cuid()) @map("note_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  authorId    String    @map("author_id")
+  author      User      @relation(fields: [authorId], references: [userId], onUpdate: Cascade, onDelete: Cascade)
+  text        String
+  color       String
+  pattern     String
+  photoKey    String?   @unique @map("photo_key")
+  songVideoId String?   @map("song_video_id")
+  song        Song?     @relation(fields: [songVideoId], references: [videoId], onUpdate: Cascade, onDelete: SetNull)
+  locationId  String?   @map("location_id")
+  location    Location? @relation(fields: [locationId], references: [locationId], onUpdate: Cascade, onDelete: SetNull)
+  // Local calendar date "yyyy-MM-dd", not an instant
+  date        String?
+  x           Float
+  y           Float
+  rotation    Float
+  z           Int
+
+  @@index([songVideoId])
+  @@index([locationId])
+  @@map("moment_note")
+}
+
+// One row per YouTube video, shared by every note that uses it.
+model Song {
+  videoId      String       @id @map("video_id")
+  title        String
+  channelTitle String       @map("channel_title")
+  thumbnailUrl String       @map("thumbnail_url")
+  momentNotes  MomentNote[]
+
+  @@map("song")
 }

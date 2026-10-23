@@ -30,7 +30,7 @@ If the argument is an existing `docs/specs/*.md`, resume at **Build**.
    - **Requirements**: numbered `R1…`, each one testable.
    - **Inputs & validation**: every field with its type, bounds and error message.
    - **Interfaces**: file path and export name of every route (method, request, response, status codes), component, hook and Zod schema. Both agents code against these, in parallel. Interfaces are yours to decide; don't put them to the user. Give each route handler's exact signature, such as `GET()` or `DELETE(request, { params })`, because the test writer calls handlers directly and a guessed argument list fails `tsc`.
-   - **Data model changes**
+   - **Data model changes**: normalize to 3NF. Put details that depend on an outside ID (a Google place, a YouTube video) in their own table, and point at it with a foreign key. Reuse an existing table such as `location` (Two-Dos, unique `placeId`) through `connectOrCreate`. The user rejected flat `place_*`/`song_*` columns on a note, because then every feature that pins places needs its own query.
    - **User flows**: numbered e2e scenarios.
    - **Libraries**: each with the reason.
    - **Out of scope**
@@ -76,7 +76,7 @@ Every message between you and an agent goes through `SendMessage` to the agent I
    Done when a round reports no Must fix or Should fix.
 6. **Final gates.**
    - Run `pnpm exec prettier --write $(git diff --name-only --diff-filter=d HEAD)`. Nothing commits, so the lint-staged hook never formats.
-   - Then run `pnpm lint` (auto-fixes the whole repo; an untracked input folder such as a design handoff gets linted too, so add `--ignore-pattern "<folder>/**"` via `pnpm exec eslint . --fix` rather than editing the ESLint config for a temporary folder), `pnpm exec tsc --noEmit`, `pnpm test run` and `pnpm build`.
+   - Then run `pnpm lint` (auto-fixes the whole repo; an untracked input folder such as a design handoff gets linted too, so add `--ignore-pattern "<folder>/**"` via `pnpm exec eslint . --fix` rather than editing the ESLint config for a temporary folder), `pnpm exec tsc --noEmit`, `pnpm test run` and `pnpm build`. When the change deletes a route, `tsc` and `build` fail on stale `.next/types` and `.next/dev/types` validators. Build without the cache (`rm -rf .next && pnpm build`), or clear only those two folders, then rerun; Next regenerates them.
    - Read lint and type errors through `mcp__ide__getDiagnostics` with each file's URI, not by parsing ESLint output; it's one call per file and needs no script. If a gate fails on something this change didn't cause, such as generated output, fix the root cause in its config through the file's owner rather than working around it.
    - Send failures to the file's owner. Done when all pass in one sweep.
 7. **E2E loop** (cap 5 rounds).

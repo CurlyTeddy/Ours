@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { corben, gaegu, nunito } from "@/components/ui/storybook-fonts";
+import { corben, gaegu } from "@/components/ui/storybook-fonts";
+import { nunito } from "@/components/ui/fonts";
 import { cn } from "@/lib/utils";
 import StorybookStill from "@/features/storybook/components/storybook-still";
 import type { StageElements } from "@/features/storybook/stage";

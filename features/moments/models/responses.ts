@@ -1,32 +1,36 @@
-interface Photo {
-  photoId: string;
-  imageKey: string;
-  imageUrl: string;
+import type {
+  NoteColor,
+  NotePattern,
+  NotePlace,
+  NoteSong,
+} from "@/features/moments/models/requests";
+
+interface Note {
+  noteId: string;
+  text: string;
+  color: NoteColor;
+  pattern: NotePattern;
+  photoKey: string | null;
+  photoUrl: string | null;
+  song: NoteSong | null;
+  place: NotePlace | null;
+  date: string | null;
+  x: number;
+  y: number;
+  rotation: number;
+  z: number;
+  author: { id: string; name: string; imageUrl: string | null };
   createdAt: string;
 }
 
-interface PhotoResponse {
-  photos: Photo[];
+interface NoteListResponse {
+  notes: Note[];
 }
 
-interface PhotoUploadResponse {
-  photos: Photo[];
-  uploadUrls: string[];
-}
-
-interface BulletinMessage {
-  messageId: string;
-  content: string;
-  createdAt: string;
-  updateAt: string;
-  author: string;
-  authorImage: string | null;
-}
-
-interface BulletinMessageResponse {
-  messages: BulletinMessage[];
-  nextCursor: string | null;
-  totalCount: number;
+// uploadUrl is set only when the request asked for a new photo.
+interface NoteSaveResponse {
+  note: Note;
+  uploadUrl: string | null;
 }
 
 interface SpecialDay {
@@ -34,6 +38,7 @@ interface SpecialDay {
   name: string;
   month: number;
   day: number;
+  year: number | null;
   createdAt: string;
 }
 
@@ -42,11 +47,11 @@ interface SpecialDayResponse {
 }
 
 export type {
-  Photo,
-  PhotoResponse,
-  PhotoUploadResponse,
-  BulletinMessage,
-  BulletinMessageResponse,
+  Note,
+  NoteSong,
+  NotePlace,
+  NoteListResponse,
+  NoteSaveResponse,
   SpecialDay,
   SpecialDayResponse,
 };

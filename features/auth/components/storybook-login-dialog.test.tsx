@@ -12,6 +12,8 @@ vi.mock("next/font/google", () => {
     Corben: font("Corben"),
     Gaegu: font("Gaegu"),
     Nunito: font("Nunito"),
+    Caveat: font("Caveat"),
+    Homemade_Apple: font("Homemade Apple"),
     Playpen_Sans: font("Playpen"),
   };
 });
@@ -174,7 +176,7 @@ describe("R11: submit", () => {
     expect(screen.getByRole("dialog")).toBeDefined();
   });
 
-  test('pending: button disabled and status "Checking…"', async () => {
+  test("pending: button disabled and busy", async () => {
     let finish!: (v: string) => void;
     auth.mockReturnValue(
       new Promise<string>((r) => {
@@ -186,8 +188,10 @@ describe("R11: submit", () => {
     await user.type(screen.getByLabelText("Password"), "password123");
     await user.click(submit());
 
-    await expectStatus("Checking…");
-    expect((submit() as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() =>
+      expect((submit() as HTMLButtonElement).disabled).toBe(true),
+    );
+    expect(submit().getAttribute("aria-busy")).toBe("true");
 
     await act(async () => {
       finish("Invalid credential.");

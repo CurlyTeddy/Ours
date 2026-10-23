@@ -8,6 +8,8 @@ vi.mock("next/font/google", () => {
     Corben: font(),
     Gaegu: font(),
     Nunito: font(),
+    Caveat: font(),
+    Homemade_Apple: font(),
     Playpen_Sans: font(),
   };
 });

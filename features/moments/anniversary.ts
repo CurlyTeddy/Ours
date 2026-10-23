@@ -22,26 +22,34 @@ function getDaysTogether(timestamp: number) {
 interface UpcomingSpecialDay {
   specialDayId: string | null;
   name: string;
+  date: Date;
   daysLeft: number;
-  label: string;
+  year: number | null;
 }
 
-// The first occurrence on or after today; Feb 29 falls on Feb 28 in non-leap years.
-function nextOccurrence(today: Date, month: number, day: number) {
-  const occurrenceIn = (year: number) =>
-    new Date(
-      year,
-      month - 1,
-      Math.min(day, new Date(year, month, 0).getDate()),
-    );
+// Feb 29 falls on Feb 28 in non-leap years.
+function dateIn(year: number, month: number, day: number) {
+  return new Date(
+    year,
+    month - 1,
+    Math.min(day, new Date(year, month, 0).getDate()),
+  );
+}
 
-  const thisYear = occurrenceIn(today.getFullYear());
-  return thisYear < today ? occurrenceIn(today.getFullYear() + 1) : thisYear;
+// The first occurrence on or after today.
+function nextOccurrence(today: Date, month: number, day: number) {
+  const thisYear = dateIn(today.getFullYear(), month, day);
+  return thisYear < today
+    ? dateIn(today.getFullYear() + 1, month, day)
+    : thisYear;
 }
 
 function getUpcomingSpecialDays(
   timestamp: number,
-  specialDays: Pick<SpecialDay, "specialDayId" | "name" | "month" | "day">[],
+  specialDays: Pick<
+    SpecialDay,
+    "specialDayId" | "name" | "month" | "day" | "year"
+  >[],
 ): UpcomingSpecialDay[] {
   const today = startOfDay(timestamp);
   const anniversary = nextOccurrence(
@@ -54,26 +62,25 @@ function getUpcomingSpecialDays(
   const candidates = [
     {
       specialDayId: null,
-      name: `${years}${ordinalSuffix(years)} Year Anniversary`,
+      name: `${years}${ordinalSuffix(years)} Anniversary`,
       date: anniversary,
+      year: null,
     },
-    ...specialDays.map((specialDay) => ({
-      specialDayId: specialDay.specialDayId,
-      name: specialDay.name,
-      date: nextOccurrence(today, specialDay.month, specialDay.day),
-    })),
+    // A one-time day keeps its own year and drops out once it has passed.
+    ...specialDays.flatMap(({ specialDayId, name, month, day, year }) => {
+      const date =
+        year === null
+          ? nextOccurrence(today, month, day)
+          : dateIn(year, month, day);
+      return date < today ? [] : [{ specialDayId, name, date, year }];
+    }),
   ];
 
   // sort is stable, so ties keep the anniversary first, then the input order
   return candidates
-    .map(({ date, ...candidate }) => ({
+    .map((candidate) => ({
       ...candidate,
-      daysLeft: daysBetween(today, date),
-      label: date.toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      }),
+      daysLeft: daysBetween(today, candidate.date),
     }))
     .sort((a, b) => a.daysLeft - b.daysLeft);
 }

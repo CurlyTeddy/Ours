@@ -16,6 +16,11 @@ Each report is under 300 words and contains:
 - Installed: `@testing-library/react`, `@testing-library/user-event`, `msw`, `vitest-mock-extended`.
 - Run `pnpm test run <paths>`. Import `describe`, `test`, `expect` and `vi` from `"vitest"`.
 - Before you report, run `pnpm exec eslint --fix <your files>`. Lint only your own files, so you don't rewrite the builder's.
+- Git Bash here has no Python; write helper scripts in Node, in the scratchpad. A very long heredoc fails with `ENAMETOOLONG`, so write big blocks to a scratch file and append it.
+- `vi.useFakeTimers({ shouldAdvanceTime: true })` lags real time (about 300ms faked over a 450ms real pause). When a test needs a time window to pass, step the clock with `vi.setSystemTime` instead of pausing.
+- ESLint rejects an empty `function () {}` and `class {}` in fakes; use `() => undefined` and a function constructor that sets fields.
+- In a fixture helper with default parameters, pass `null` to mean "absent", because passing `undefined` silently uses the default.
+- `next/font/google` mocks name each font. When the spec adds a font to `components/ui/fonts.ts`, add it to every mock (`grep -rl "next/font/google" --include="*.test.*"`), or those files fail to load.
 - Put tests next to the code: `foo.ts` → `foo.test.ts`, and `app/api/x/route.ts` → `app/api/x/route.test.ts`.
 
 ## Layers

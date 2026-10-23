@@ -1,23 +1,5 @@
 import z from "zod/v4";
 
-interface SharedMusic {
-  selectedById: string;
-  videoId: string;
-  title: string;
-  channelTitle: string;
-  thumbnailUrl: string;
-  selectedBy: string | null;
-  updatedAt: string;
-}
-
-interface MusicResponse {
-  shared: SharedMusic[];
-}
-
-interface MusicSelectionResponse {
-  music: SharedMusic;
-}
-
 interface MusicSearchResult {
   videoId: string;
   title: string;
@@ -67,12 +49,6 @@ const youTubeSearchResponseSchema = z.object({
     .optional(),
 });
 
-export type {
-  SharedMusic,
-  MusicResponse,
-  MusicSelectionResponse,
-  MusicSearchResult,
-  MusicSearchResponse,
-};
+export type { MusicSearchResult, MusicSearchResponse };
 
 export { youTubeSearchItemSchema, youTubeSearchResponseSchema };

@@ -4,7 +4,6 @@ import * as React from "react";
 import { Switch as SwitchPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
 
 function Switch({
   className,
@@ -29,27 +28,4 @@ function Switch({
   );
 }
 
-function DarkModeSwitch() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
-  return (
-    <Switch
-      checked={theme === "dark"}
-      onCheckedChange={(newChecked) => {
-        setTheme(newChecked ? "dark" : "light");
-      }}
-      id="dark-mode"
-    />
-  );
-}
-
-export { DarkModeSwitch };
+export { Switch };

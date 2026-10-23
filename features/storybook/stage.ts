@@ -6,7 +6,8 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { corben, gaegu, nunito } from "@/components/ui/storybook-fonts";
+import { corben, gaegu } from "@/components/ui/storybook-fonts";
+import { nunito } from "@/components/ui/fonts";
 import { buildSky } from "@/features/storybook/sky";
 import { ENVS, STORY, envIndices } from "@/features/storybook/story";
 import { Book } from "@/features/storybook/three/book";
