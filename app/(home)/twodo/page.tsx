@@ -1,9 +1,14 @@
-import { TwodoTable } from "@/features/two-dos/components/two-do-table";
+import { Suspense } from "react";
+import { GoogleMapsProvider } from "@/components/providers/google-maps";
+import { TwoDoBoard } from "@/features/two-dos/components/two-do-board";
 
 export default function Page() {
   return (
-    <main className="flex flex-col flex-1 mx-10 mb-10">
-      <TwodoTable />
-    </main>
+    <GoogleMapsProvider>
+      {/* The board reads ?list=, which needs a Suspense boundary to build */}
+      <Suspense>
+        <TwoDoBoard />
+      </Suspense>
+    </GoogleMapsProvider>
   );
 }

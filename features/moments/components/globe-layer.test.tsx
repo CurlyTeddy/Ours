@@ -111,17 +111,43 @@ describe("R25: globe layer", () => {
     expect(landDots().length).toBeGreaterThan(0);
   });
 
-  test("a dashed route links two or more places", () => {
-    layer({ route: [taipei, tokyo] });
+  test("R27: a dashed segment links two places", () => {
+    layer({ route: [{ from: taipei, to: tokyo, solid: false }] });
 
     expect(calls).toContainEqual(["setLineDash", [[4, 8]]]);
     expect(calls.some(([name]) => name === "lineTo")).toBe(true);
   });
 
-  test("one place draws no route", () => {
-    layer({ route: [taipei] });
+  test("R27: a solid segment draws without a dash", () => {
+    layer({ route: [{ from: taipei, to: tokyo, solid: true }] });
 
-    expect(calls.some(([name]) => name === "setLineDash")).toBe(false);
+    expect(calls).not.toContainEqual(["setLineDash", [[4, 8]]]);
+    expect(calls.some(([name]) => name === "lineTo")).toBe(true);
+  });
+
+  test("R27: mixed segments draw both styles", () => {
+    const osaka = { lon: 135.5, lat: 34.7 };
+    layer({
+      route: [
+        { from: taipei, to: tokyo, solid: true },
+        { from: tokyo, to: osaka, solid: false },
+      ],
+    });
+
+    expect(calls).toContainEqual(["setLineDash", [[4, 8]]]);
+    // The solid segment is drawn with no dash at some point
+    const dashes = calls
+      .filter(([name]) => name === "setLineDash")
+      .map(([, [dash]]) => dash);
+    expect(dashes).toContainEqual([]);
+    expect(calls.some(([name]) => name === "lineTo")).toBe(true);
+  });
+
+  test("no segments draw no route", () => {
+    layer({ route: [] });
+
+    expect(calls.some(([name]) => name === "lineTo")).toBe(false);
+    expect(calls).not.toContainEqual(["setLineDash", [[4, 8]]]);
   });
 
   test("a radius past the screen corners fills the board instead of a disc", () => {
@@ -176,5 +202,67 @@ describe("R25: globe layer", () => {
         name: "Dot globe showing the places on our notes",
       }),
     ).toBeDefined();
+  });
+});
+
+describe("R27: to-do pins (white-box)", () => {
+  const todoPin = (
+    name: string,
+    mark: "idea" | "done" | number,
+    extra: Record<string, unknown> = {},
+  ) => ({ ...pin(name), mark, ...extra });
+  const dots = () =>
+    Array.from(document.querySelectorAll(".pin-dot")).map((el) => ({
+      text: el.textContent,
+      className: el.className,
+    }));
+
+  test("✦ for an idea, ✓ when done, the number for an undone stop", () => {
+    layer({
+      pins: [
+        todoPin("Ramen", "idea"),
+        todoPin("Temple", "done"),
+        todoPin("Food", 2),
+      ],
+    });
+
+    expect(dots().map((d) => d.text)).toEqual(["✦", "✓", "2"]);
+    expect(dots()[0].className).toContain("bg-[#FAEDBE]");
+    expect(dots()[1].className).toContain("bg-[#4F70A8]");
+    expect(dots()[2].className).toContain("bg-white");
+    expect(
+      Array.from(document.querySelectorAll(".pin-label")).map(
+        (el) => el.textContent,
+      ),
+    ).toEqual(["Ramen", "Temple", "Food"]);
+  });
+
+  test("a to-do pin has no note count", () => {
+    layer({ pins: [todoPin("Ramen", "idea")] });
+
+    expect(screen.queryByText(/· 2/)).toBeNull();
+  });
+
+  test("near the right edge the label flips to the left", () => {
+    layer({
+      pins: [
+        todoPin("Left", 1, { labelLeft: true }),
+        todoPin("Right", 2, { labelLeft: false }),
+      ],
+    });
+
+    const wrappers = Array.from(document.querySelectorAll(".pin-dot")).map(
+      (el) => (el.parentElement as HTMLElement).className,
+    );
+    expect(wrappers[0]).toContain("flex-row-reverse");
+    expect(wrappers[1]).not.toContain("flex-row-reverse");
+  });
+
+  test("a to-do pin on the far side is hidden", () => {
+    layer({ pins: [todoPin("Far", "done", { visible: false })] });
+
+    const wrapper = document.querySelector(".pin-dot")
+      ?.parentElement as HTMLElement;
+    expect(wrapper.style.visibility).toBe("hidden");
   });
 });

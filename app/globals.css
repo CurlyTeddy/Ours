@@ -148,6 +148,9 @@
   --color-us-seg-ink: var(--us-seg-on-ink);
   --color-us-scrim: var(--us-scrim);
   --color-us-danger: var(--us-danger);
+  --color-us-sel: var(--us-sel-line);
+  --color-us-drop: var(--us-drop);
+  --color-us-dash: var(--us-dash);
   --font-ui:
     var(--f-ui), "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
   --font-hand: var(--f-caveat), "PingFang TC", "Microsoft JhengHei", cursive;
@@ -171,6 +174,9 @@
   --animate-pop: pop 0.42s cubic-bezier(0.2, 0.9, 0.25, 1.12) both;
   --animate-rise: rise 0.35s 0.06s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-float-up: float-up linear infinite;
+  --animate-pin-dot: pin-dot 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  --animate-nope: nope 0.4s ease;
+  --animate-sheet-up: sheet-up 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
 
   @keyframes peek-out {
     from {
@@ -243,6 +249,36 @@
       transform: translate(-50%, -26px);
     }
   }
+  @keyframes pin-dot {
+    from {
+      opacity: 0;
+      margin-top: -36px;
+    }
+    to {
+      opacity: 1;
+      margin-top: 0;
+    }
+  }
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes nope {
+    0%,
+    100% {
+      transform: none;
+    }
+    25% {
+      transform: translateX(-5px);
+    }
+    75% {
+      transform: translateX(5px);
+    }
+  }
   @keyframes fade {
     from {
       opacity: 0;
@@ -310,6 +346,9 @@
   --us-seg-on-ink: #ffffff;
   --us-scrim: rgba(233, 238, 246, 0.76);
   --us-danger: #a8505f;
+  --us-sel-line: rgba(79, 112, 168, 0.45);
+  --us-drop: rgba(79, 112, 168, 0.14);
+  --us-dash: #9db4db;
   transition:
     background-color 0.5s ease,
     color 0.5s ease;
@@ -336,6 +375,9 @@
   --us-seg-on-ink: #131b29;
   --us-scrim: rgba(9, 13, 21, 0.72);
   --us-danger: #e58a98;
+  --us-sel-line: rgba(143, 176, 232, 0.5);
+  --us-drop: rgba(143, 176, 232, 0.16);
+  --us-dash: #4e6a99;
 }
 
 /* Paper stays paper in dark mode: notes, calendar and map card keep light ink. */

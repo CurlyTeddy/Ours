@@ -20,16 +20,21 @@ vi.mock("@/features/moments/components/moments-wall", () => ({
   MomentsWall: () => <div data-testid="wall" />,
 }));
 
-import Page from "@/app/(home)/moments/page";
+import Layout from "@/app/(home)/(wall)/layout";
+import MomentsPage from "@/app/(home)/(wall)/moments/page";
+import MapPage from "@/app/(home)/(wall)/map/page";
 
-describe("R1: /moments", () => {
-  test("renders only the wall, inside the Google Maps provider", () => {
-    const { container } = render(<Page />);
+describe("R23: /moments and /map share one wall", () => {
+  test("the layout renders one MomentsWall inside the Google Maps provider", () => {
+    render(<Layout>{null}</Layout>);
 
     const maps = screen.getByTestId("maps");
-    expect(container.children).toHaveLength(1);
-    expect(container.firstElementChild).toBe(maps);
-    expect(maps.children).toHaveLength(1);
-    expect(maps.firstElementChild).toBe(screen.getByTestId("wall"));
+    expect(screen.getAllByTestId("wall")).toHaveLength(1);
+    expect(maps.contains(screen.getByTestId("wall"))).toBe(true);
+  });
+
+  test("both pages render nothing of their own", () => {
+    expect(MomentsPage()).toBeNull();
+    expect(MapPage()).toBeNull();
   });
 });

@@ -35,15 +35,49 @@ vi.mock("next/font/google", () => {
     Playpen_Sans: font(),
   };
 });
+// The URL lives in a store so push/replace re-render the wall the way the shared
+// (wall) layout does when the route changes.
+const nav = vi.hoisted(() => {
+  let pathname = "/moments";
+  let search = "";
+  let params = new URLSearchParams();
+  const listeners = new Set<() => void>();
+  const go = (url: string) => {
+    const [path, query = ""] = url.split("?");
+    pathname = path || pathname;
+    search = query;
+    params = new URLSearchParams(query);
+    listeners.forEach((listener) => listener());
+  };
+  return {
+    go,
+    reset: () => {
+      pathname = "/moments";
+      search = "";
+      params = new URLSearchParams();
+    },
+    path: () => pathname,
+    search: () => search,
+    params: () => params,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    push: vi.fn((url: string) => go(url)),
+    replace: vi.fn((url: string) => go(url)),
+  };
+});
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
+    push: nav.push,
+    replace: nav.replace,
     refresh: vi.fn(),
     back: vi.fn(),
+    prefetch: vi.fn(),
   }),
-  useSearchParams: () => new URLSearchParams(),
-  usePathname: () => "/moments",
+  useSearchParams: () =>
+    useSyncExternalStore(nav.subscribe, nav.params, nav.params),
+  usePathname: () => useSyncExternalStore(nav.subscribe, nav.path, nav.path),
 }));
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), {
@@ -305,6 +339,8 @@ const halloween = {
 const db = {
   notes: [] as Note[],
   specialDays: [] as (typeof halloween | Record<string, unknown>)[],
+  todos: [] as Record<string, unknown>[],
+  trips: [] as Record<string, unknown>[],
 };
 const requests: { method: string; path: string; body: unknown }[] = [];
 const sent = (method: string, path: string | RegExp) =>
@@ -347,6 +383,8 @@ const defaultHandlers = () => [
     }),
   ),
   http.get("/api/moments/notes", () => HttpResponse.json({ notes: db.notes })),
+  http.get("/api/todos", () => HttpResponse.json({ todos: db.todos })),
+  http.get("/api/trips", () => HttpResponse.json({ trips: db.trips })),
   http.post("/api/moments/notes", async ({ request }) => {
     const { photo, ...body } = (await record(request)) as Record<
       string,
@@ -475,6 +513,9 @@ beforeEach(() => {
     SizedResizeObserver as unknown as typeof ResizeObserver;
   db.notes = structuredClone([n1, n2, n3, n4]);
   db.specialDays = [structuredClone(halloween)];
+  db.todos = [];
+  db.trips = [];
+  nav.reset();
   requests.length = 0;
   maps.places = null;
   songPlayer.reset();
@@ -540,6 +581,12 @@ const openEditorFor = async (
   await user.click(noteButton(name));
   return screen.findByRole("dialog", { name: "Edit note" });
 };
+// Route changes go through the nav store, like the header tabs do
+const goTo = async (url: string) => {
+  await act(async () => {
+    nav.go(url);
+  });
+};
 const zoomLabel = () =>
   screen.getByRole("button", {
     name: /^Zoom (level: .+\. Show the whole globe|\d+%\. Reset to 100%)$/,
@@ -567,12 +614,9 @@ describe("R4/R6: wall content", () => {
     expect(
       screen.getByRole("button", { name: "Open Love Map: 2 places" }),
     ).toBeDefined();
-    expect(
-      screen.getByRole("button", { name: "Wall" }).getAttribute("aria-pressed"),
-    ).toBe("true");
-    expect(
-      screen.getByRole("button", { name: "Map" }).getAttribute("aria-pressed"),
-    ).toBe("false");
+    // R23: the bottom Wall/Map toggle is gone; the header tabs switch modes
+    expect(screen.queryByRole("button", { name: "Wall" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Map" })).toBeNull();
     expect(allNotes()).toHaveLength(4);
   });
 });
@@ -2140,27 +2184,17 @@ describe("R25/R26/R27: map mode", () => {
     expect(within(card).getByText("2 places · tap to open")).toBeDefined();
     await user.click(card);
 
-    await waitFor(() =>
-      expect(
-        screen
-          .getByRole("button", { name: "Map" })
-          .getAttribute("aria-pressed"),
-      ).toBe("true"),
-    );
-    expect(screen.getByRole("heading", { name: "Our Places" })).toBeDefined();
+    // R23: the card navigates to /map
+    await waitFor(() => expect(nav.path()).toBe("/map"));
+    expect(await screen.findByRole("heading", { name: "Map" })).toBeDefined();
   });
 
-  test("Map shows pins, counts, controls and the Todos link", async () => {
-    const { user } = await renderWall();
+  test("Map shows pins, counts, controls and the info chip", async () => {
+    await renderWall();
 
-    await user.click(screen.getByRole("button", { name: "Map" }));
+    await goTo("/map");
 
-    expect(
-      await screen.findByRole("heading", { name: "Our Places" }),
-    ).toBeDefined();
-    expect(
-      screen.getByRole("button", { name: "Wall" }).getAttribute("aria-pressed"),
-    ).toBe("false");
+    expect(await screen.findByRole("heading", { name: "Map" })).toBeDefined();
     expect(
       await screen.findAllByText(exactText("Taipei · 1")),
     ).not.toHaveLength(0);
@@ -2172,8 +2206,10 @@ describe("R25/R26/R27: map mode", () => {
       screen.getByText("Drag to spin · scroll or pinch to zoom"),
     ).toBeDefined();
     expect(
-      screen.getByRole("link", { name: /Explore Todos/ }).getAttribute("href"),
-    ).toBe("/twodo");
+      screen.getAllByText(exactText("2 places · 2 notes on the map")),
+    ).not.toHaveLength(0);
+    // R28: only to-do layers link to Two Do
+    expect(screen.queryByRole("link", { name: /Open in Two Do/ })).toBeNull();
     expect(
       screen.getByRole("button", { name: "Fit our places" }),
     ).toBeDefined();
@@ -2184,8 +2220,8 @@ describe("R25/R26/R27: map mode", () => {
 
   test("the level button shows the whole globe; + zooms past it", async () => {
     const { user } = await renderWall();
-    await user.click(screen.getByRole("button", { name: "Map" }));
-    await screen.findByRole("heading", { name: "Our Places" });
+    await goTo("/map");
+    await screen.findByRole("heading", { name: "Map" });
 
     await user.click(zoomLabel());
     await waitFor(
@@ -2209,8 +2245,8 @@ describe("R25/R26/R27: map mode", () => {
 
   test("tapping a note in map mode opens the editor", async () => {
     const { user } = await renderWall();
-    await user.click(screen.getByRole("button", { name: "Map" }));
-    await screen.findByRole("heading", { name: "Our Places" });
+    await goTo("/map");
+    await screen.findByRole("heading", { name: "Map" });
 
     await user.click(noteButton(/^hello wall/));
 
@@ -2221,8 +2257,8 @@ describe("R25/R26/R27: map mode", () => {
 
   test("notes don't drag in map mode", async () => {
     const { user } = await renderWall();
-    await user.click(screen.getByRole("button", { name: "Map" }));
-    await screen.findByRole("heading", { name: "Our Places" });
+    await goTo("/map");
+    await screen.findByRole("heading", { name: "Map" });
     const note = noteButton(/^hello wall/);
 
     await user.pointer([
@@ -2252,9 +2288,9 @@ describe("R25/R26/R27: map mode", () => {
       ),
     );
 
-    await user.click(screen.getByRole("button", { name: "Map" }));
-    await screen.findByRole("heading", { name: "Our Places" });
-    await user.click(screen.getByRole("button", { name: "Wall" }));
+    await goTo("/map");
+    await screen.findByRole("heading", { name: "Map" });
+    await goTo("/moments");
 
     expect(
       await screen.findByRole("heading", { name: "Our Moments" }),
@@ -2279,14 +2315,14 @@ describe("R25/R26/R27: map mode", () => {
 describe("R28: phone layout", () => {
   beforeEach(() => setViewport(390, 844));
 
-  test("shows the phone hint, icon toggle and New pad", async () => {
+  test("shows the phone hint and New pad, and no mode toggle", async () => {
     await renderWall();
 
     expect(
       screen.getByText("Hold a note to hear its song · pinch to zoom"),
     ).toBeDefined();
-    expect(screen.getByRole("button", { name: "Wall" })).toBeDefined();
-    expect(screen.getByRole("button", { name: "Map" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Wall" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Map" })).toBeNull();
     expect(within(pad()).getByText("New")).toBeDefined();
     expect(zoomLabel().getAttribute("aria-label")).toBe(
       "Zoom 50%. Reset to 100%",
@@ -2329,23 +2365,23 @@ describe("R28: phone layout", () => {
     ).toBeDefined();
   });
 
-  test("map mode lists place chips and a Globe fit", async () => {
-    const { user } = await renderWall();
+  test("map mode shows the layer chips, the phone hint and a Globe fit", async () => {
+    await renderWall();
 
-    await user.click(screen.getByRole("button", { name: "Map" }));
+    await goTo("/map");
 
     expect(
       await screen.findByText("Drag to spin · pinch to zoom"),
     ).toBeDefined();
+    const chips = screen.getByRole("group", { name: "Show on map" });
     expect(
-      screen.getByRole("button", { name: /^Taipei.*1 note$/ }),
+      within(chips)
+        .getByRole("button", { name: /Notes/ })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      screen.getByRole("button", { name: /^Zoom level: .+\. Fit our places$/ }),
     ).toBeDefined();
-    expect(
-      screen.getByRole("button", { name: /^Tokyo.*1 note$/ }),
-    ).toBeDefined();
-    expect(
-      screen.getByRole("link", { name: /Explore Todos/ }).getAttribute("href"),
-    ).toBe("/twodo");
   });
 });
 
@@ -2563,7 +2599,7 @@ describe("R10: gesture edge cases (white-box)", () => {
 
     await user.pointer({ keys: "[MouseLeft>]", target: note });
     await waitFor(() => expect(songPlayer.play).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("button", { name: "Map" }));
+    await goTo("/map");
 
     await waitFor(() => expect(songPlayer.stop).toHaveBeenCalled());
   });
@@ -2875,15 +2911,15 @@ describe("R5: panning and zooming the wall (white-box)", () => {
 describe("R25/R26: map details (white-box)", () => {
   const openMap = async () => {
     const view = await renderWall();
-    await view.user.click(screen.getByRole("button", { name: "Map" }));
-    await screen.findByRole("heading", { name: "Our Places" });
+    await goTo("/map");
+    await screen.findByRole("heading", { name: "Map" });
     return view;
   };
   const renderMap = async (firstNote: RegExp) => {
     render(<MomentsWall />, { wrapper });
     await screen.findByRole("button", { name: firstNote });
-    fireEvent.click(screen.getByRole("button", { name: "Map" }));
-    await screen.findByRole("heading", { name: "Our Places" });
+    await goTo("/map");
+    await screen.findByRole("heading", { name: "Map" });
   };
   const level = () => zoomLabel().getAttribute("aria-label");
 
@@ -3041,29 +3077,15 @@ describe("R25/R26: map details (white-box)", () => {
     ).not.toHaveLength(0);
   });
 
-  test("pressing the active view does nothing", async () => {
-    const { user } = await renderWall();
-    await user.click(screen.getByRole("button", { name: "Zoom in" }));
-    await waitFor(() =>
-      expect(zoomLabel().getAttribute("aria-label")).toBe(
-        "Zoom 125%. Reset to 100%",
-      ),
-    );
-
-    await user.click(screen.getByRole("button", { name: "Wall" }));
-
-    expect(zoomLabel().getAttribute("aria-label")).toBe(
-      "Zoom 125%. Reset to 100%",
-    );
-  });
-
-  test("phone: a place chip flies to that place", async () => {
+  test("phone: the Globe button fits our places", async () => {
     setViewport(390, 844);
-    const { user } = await renderWall();
-    await user.click(screen.getByRole("button", { name: "Map" }));
+    await renderWall();
+    await goTo("/map");
     await screen.findByText("Drag to spin · pinch to zoom");
 
-    await user.click(screen.getByRole("button", { name: /^Taipei.*1 note$/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Zoom level: .+\. Fit our places$/ }),
+    );
 
     await waitFor(
       () =>
@@ -3071,21 +3093,9 @@ describe("R25/R26: map details (white-box)", () => {
           screen
             .getByRole("button", { name: /^Zoom level: .+\. Fit our places$/ })
             .getAttribute("aria-label"),
-        ).toBe("Zoom level: City. Fit our places"),
+        ).not.toBe("Zoom level: Globe. Fit our places"),
       { timeout: 2500 },
     );
-  });
-
-  test("phone: two notes at a place say '2 notes'", async () => {
-    setViewport(390, 844);
-    db.notes = [n1, { ...n2, place: taipei }];
-    const { user } = await renderWall();
-
-    await user.click(screen.getByRole("button", { name: "Map" }));
-
-    expect(
-      await screen.findByRole("button", { name: /^Taipei.*2 notes$/ }),
-    ).toBeDefined();
   });
 });
 
@@ -4011,5 +4021,601 @@ describe("R21/R22/R23: calendar and special days edge cases (white-box)", () => 
     const rows = within(dialog).getAllByRole("listitem");
     expect(rows[0].className).toContain("bg-us-subtle");
     expect(rows[1].className).not.toContain("bg-us-subtle");
+  });
+});
+
+// ---------- map layers (trips & map tab) ----------
+
+const kyotoPlace = {
+  name: "Kyoto",
+  address: "Kyoto, Japan",
+  placeId: "place-kyoto",
+  latitude: 35.01,
+  longitude: 135.77,
+};
+const osakaPlace = {
+  name: "Osaka",
+  address: "Osaka, Japan",
+  placeId: "place-osaka",
+  latitude: 34.69,
+  longitude: 135.5,
+};
+const todoDto = (
+  id: string,
+  title: string,
+  patch: Record<string, unknown>,
+): Record<string, unknown> => ({
+  id,
+  title,
+  description: null,
+  location: null,
+  tripId: null,
+  createdAt: "2026-01-02T12:00:00.000Z",
+  updatedAt: "2026-01-02T12:00:00.000Z",
+  doneAt: null,
+  priority: 1,
+  images: [],
+  createdBy: { name: "Teddy", imageUrl: null },
+  ...patch,
+});
+const japanTrip = {
+  id: "trip1",
+  name: "Japan",
+  startDate: "2025-12-20",
+  endDate: "2026-01-05",
+  position: 1,
+};
+const taipeiTrip = {
+  id: "trip2",
+  name: "Taipei weekend",
+  startDate: null,
+  endDate: null,
+  position: 2,
+};
+const donePast = "2025-01-10T12:00:00.000Z";
+const seedTodos = () => {
+  db.trips = [structuredClone(japanTrip), structuredClone(taipeiTrip)];
+  db.todos = [
+    todoDto("i1", "Ramen class", { priority: 1, location: tokyo }),
+    todoDto("i2", "Sunset hike", { priority: 5 }),
+    todoDto("s1", "Kyoto temple", {
+      tripId: "trip1",
+      doneAt: donePast,
+      priority: 2,
+      location: kyotoPlace,
+    }),
+    todoDto("s2", "Osaka food", {
+      tripId: "trip1",
+      priority: 3,
+      location: osakaPlace,
+    }),
+    todoDto("s3", "Nara deer", { tripId: "trip1", priority: 4 }),
+    todoDto("u1", "Night market", {
+      doneAt: donePast,
+      priority: 6,
+      location: taipei,
+    }),
+  ];
+};
+const renderMapAt = async (url: string) => {
+  nav.go(url);
+  const user = userEvent.setup();
+  const view = render(<MomentsWall />, { wrapper });
+  await screen.findByRole("heading", { name: "Map" });
+  await screen.findByRole("button", { name: /Japan/ });
+  return { user, ...view };
+};
+const layersCard = () => screen.getByRole("group", { name: "Show on map" });
+const layerRow = (name: RegExp) =>
+  within(layersCard()).getByRole("button", { name });
+const pinLabels = () =>
+  Array.from(document.querySelectorAll(".pin-label")).map((el) =>
+    el.textContent?.trim(),
+  );
+const globeLevel = () => zoomLabel().getAttribute("aria-label");
+
+describe("R25: the Show on map card", () => {
+  beforeEach(seedTodos);
+
+  test("lists Notes, Inspiration, Unsorted, the Trips label and each trip", async () => {
+    await renderMapAt("/map");
+
+    const notes = layerRow(/^Notes/);
+    expect(notes.textContent).toContain("2 places · 2 notes");
+    expect(layerRow(/^Inspiration/).textContent).toContain(
+      "2 ideas · no trip yet",
+    );
+    expect(layerRow(/^Unsorted/).textContent).toContain(
+      "1 done · waiting for a trip",
+    );
+    expect(within(layersCard()).getByText("Trips")).toBeDefined();
+    expect(layerRow(/^Japan/).textContent).toContain("3 stops · 1 done");
+    const taipeiRow = layerRow(/^Taipei weekend/);
+    expect(taipeiRow.textContent).toContain("0 stops");
+    expect(taipeiRow.textContent).not.toContain("done");
+    const order = [
+      notes,
+      layerRow(/^Inspiration/),
+      layerRow(/^Unsorted/),
+      layerRow(/^Japan/),
+      taipeiRow,
+    ];
+    for (let i = 1; i < order.length; i++) {
+      expect(
+        order[i - 1].compareDocumentPosition(order[i]) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+  });
+
+  test("Notes is active on plain /map", async () => {
+    await renderMapAt("/map");
+
+    expect(layerRow(/^Notes/).getAttribute("aria-pressed")).toBe("true");
+    for (const name of [/^Inspiration/, /^Unsorted/, /^Japan/]) {
+      expect(layerRow(name).getAttribute("aria-pressed")).toBe("false");
+    }
+  });
+
+  test("one idea is singular; no Unsorted row when it is empty", async () => {
+    db.todos = db.todos.filter((t) => t.id !== "i2" && t.id !== "u1");
+    await renderMapAt("/map");
+
+    expect(layerRow(/^Inspiration/).textContent).toContain(
+      "1 idea · no trip yet",
+    );
+    expect(
+      within(layersCard()).queryByRole("button", { name: /^Unsorted/ }),
+    ).toBeNull();
+  });
+
+  test("R24: an unknown layer falls back to Notes", async () => {
+    await renderMapAt("/map?layer=bogus");
+
+    expect(layerRow(/^Notes/).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  test("R24: picking a layer replaces the URL without scrolling", async () => {
+    const { user } = await renderMapAt("/map");
+
+    await user.click(layerRow(/^Inspiration/));
+
+    await waitFor(() =>
+      expect(layerRow(/^Inspiration/).getAttribute("aria-pressed")).toBe(
+        "true",
+      ),
+    );
+    expect(nav.push).not.toHaveBeenCalled();
+    const [url, options] = nav.replace.mock.calls.at(-1) as unknown as [
+      string,
+      { scroll?: boolean } | undefined,
+    ];
+    expect(new URL(url, "http://x").searchParams.get("layer")).toBe(
+      "inspiration",
+    );
+    expect(new URL(url, "http://x").pathname).toBe("/map");
+    expect(options?.scroll).toBe(false);
+  });
+
+  test("R24: picking Notes clears the layer", async () => {
+    const { user } = await renderMapAt("/map?layer=trip1");
+
+    await user.click(layerRow(/^Notes/));
+
+    await waitFor(() =>
+      expect(layerRow(/^Notes/).getAttribute("aria-pressed")).toBe("true"),
+    );
+    const params = new URLSearchParams(nav.search());
+    expect([null, "notes"]).toContain(params.get("layer"));
+  });
+
+  test("the active trip lists its stops: marker, title, place", async () => {
+    await renderMapAt("/map?layer=trip1");
+
+    expect(layerRow(/^Japan/).getAttribute("aria-pressed")).toBe("true");
+    const stops = within(
+      screen.getByRole("list", { name: "Japan stops" }),
+    ).getAllByRole("listitem");
+    expect(stops).toHaveLength(3);
+    expect(within(stops[0]).getByText("Kyoto temple")).toBeDefined();
+    expect(within(stops[0]).getByText("Kyoto")).toBeDefined();
+    expect(within(stops[1]).getByText("Osaka food")).toBeDefined();
+    expect(within(stops[1]).getByText("Osaka")).toBeDefined();
+    expect(within(stops[2]).getByText("Nara deer")).toBeDefined();
+    expect(within(stops[0]).getByText("✓")).toBeDefined();
+    expect(within(stops[1]).getByText("2")).toBeDefined();
+    expect(within(stops[2]).getByText("3")).toBeDefined();
+    expect(within(stops[2]).getByRole("button")).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(within(stops[1]).getByRole("button")).toHaveProperty(
+      "disabled",
+      false,
+    );
+  });
+
+  test("an inactive trip shows no stops", async () => {
+    await renderMapAt("/map");
+
+    expect(screen.queryByRole("list", { name: "Japan stops" })).toBeNull();
+  });
+
+  test("a located stop flies the globe to it", async () => {
+    const { user } = await renderMapAt("/map?layer=trip1");
+    await user.click(zoomLabel());
+    await waitFor(
+      () =>
+        expect(globeLevel()).toBe("Zoom level: Globe. Show the whole globe"),
+      { timeout: 2500 },
+    );
+
+    await user.click(
+      within(screen.getByRole("list", { name: "Japan stops" })).getByRole(
+        "button",
+        { name: /Osaka food/ },
+      ),
+    );
+
+    await waitFor(
+      () =>
+        expect(globeLevel()).not.toBe(
+          "Zoom level: Globe. Show the whole globe",
+        ),
+      { timeout: 2500 },
+    );
+  }, 10000);
+});
+
+describe("R26/R27: layers on the globe", () => {
+  beforeEach(seedTodos);
+
+  test("Notes: note pins, no to-do pins", async () => {
+    await renderMapAt("/map");
+
+    expect(noteButton(/^hello wall/).tabIndex).toBe(0);
+    expect(pinLabels()).not.toContain("Ramen class");
+  });
+
+  test("Inspiration: notes step aside; located ideas become pins", async () => {
+    await renderMapAt("/map?layer=inspiration");
+
+    await waitFor(() => expect(pinLabels()).toEqual(["Ramen class"]));
+    expect(noteButton(/^hello wall/).tabIndex).toBe(-1);
+    expect(noteButton(/^beach day/).tabIndex).toBe(-1);
+  });
+
+  test("Unsorted: done pins", async () => {
+    await renderMapAt("/map?layer=unsorted");
+
+    await waitFor(() => expect(pinLabels()).toEqual(["Night market"]));
+  });
+
+  test("a trip: one pin per located stop, numbered or checked", async () => {
+    await renderMapAt("/map?layer=trip1");
+
+    await waitFor(() =>
+      expect(pinLabels()).toEqual(["Kyoto temple", "Osaka food"]),
+    );
+    const dots = Array.from(document.querySelectorAll(".pin-dot")).map((el) =>
+      el.textContent?.trim(),
+    );
+    expect(dots).toEqual(["✓", "2"]);
+  });
+
+  test("a layer with no pins keeps the current view", async () => {
+    db.todos = db.todos.filter((t) => t.tripId !== "trip1");
+    const { user } = await renderMapAt("/map");
+    const before = globeLevel();
+
+    await user.click(layerRow(/^Japan/));
+    await pause(900);
+
+    expect(globeLevel()).toBe(before);
+    expect(pinLabels()).toEqual([]);
+  });
+});
+
+describe("R28/R30: map chips and the fit button", () => {
+  beforeEach(seedTodos);
+
+  test.each([
+    ["/map", "2 places · 2 notes on the map", "Fit our places", null],
+    [
+      "/map?layer=inspiration",
+      "Inspiration · 2 ideas not on a trip yet",
+      "Fit these places",
+      "/twodo?list=inspiration",
+    ],
+    [
+      "/map?layer=unsorted",
+      "Unsorted · 1 done, waiting for a trip",
+      "Fit these places",
+      "/twodo?list=unsorted",
+    ],
+    [
+      "/map?layer=trip1",
+      "Japan · 3 stops in itinerary order",
+      "Fit this trip",
+      "/twodo?list=trip1",
+    ],
+  ])("%s: info, hint, fit and Two Do link", async (url, info, fit, href) => {
+    await renderMapAt(url);
+
+    expect(screen.getAllByText(exactText(info))).not.toHaveLength(0);
+    expect(
+      screen.getByText("Drag to spin · scroll or pinch to zoom"),
+    ).toBeDefined();
+    expect(screen.getByRole("button", { name: fit })).toBeDefined();
+    const link = screen.queryByRole("link", { name: /Open in Two Do/ });
+    expect(link?.getAttribute("href") ?? null).toBe(href);
+  });
+
+  test("one idea is singular in the info chip", async () => {
+    db.todos = db.todos.filter((t) => t.id !== "i2");
+    await renderMapAt("/map?layer=inspiration");
+
+    expect(
+      screen.getAllByText(exactText("Inspiration · 1 idea not on a trip yet")),
+    ).not.toHaveLength(0);
+  });
+});
+
+describe("R29: phone map chips", () => {
+  beforeEach(() => {
+    seedTodos();
+    setViewport(390, 844);
+  });
+
+  test("a chip per layer, no stops, no info chip", async () => {
+    await renderMapAt("/map?layer=trip1");
+
+    const chips = layersCard();
+    expect(
+      within(chips)
+        .getByRole("button", { name: /Japan/ })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(within(chips).getByRole("button", { name: /Notes/ })).toBeDefined();
+    expect(
+      within(chips).getByRole("button", { name: /Inspiration/ }),
+    ).toBeDefined();
+    expect(screen.queryByRole("list", { name: "Japan stops" })).toBeNull();
+    expect(screen.queryByText("Japan · 3 stops in itinerary order")).toBeNull();
+    expect(screen.getByText("Drag to spin · pinch to zoom")).toBeDefined();
+  });
+
+  test("tapping a chip switches the layer", async () => {
+    const { user } = await renderMapAt("/map");
+
+    await user.click(
+      within(layersCard()).getByRole("button", { name: /Inspiration/ }),
+    );
+
+    await waitFor(() =>
+      expect(new URLSearchParams(nav.search()).get("layer")).toBe(
+        "inspiration",
+      ),
+    );
+  });
+});
+
+describe("R23: Moments and Map share one wall", () => {
+  test("Moments → Map → Moments keeps the wall mounted and its camera", async () => {
+    const { user } = await renderWall();
+    const note = noteButton(/^hello wall/);
+    await user.click(screen.getByRole("button", { name: "Zoom in" }));
+    await waitFor(() =>
+      expect(zoomLabel().getAttribute("aria-label")).toBe(
+        "Zoom 125%. Reset to 100%",
+      ),
+    );
+
+    await goTo("/map");
+    await screen.findByRole("heading", { name: "Map" });
+    await goTo("/moments");
+
+    expect(
+      await screen.findByRole("heading", { name: "Our Moments" }),
+    ).toBeDefined();
+    // Same element: the wall was not remounted
+    expect(noteButton(/^hello wall/)).toBe(note);
+    await waitFor(() =>
+      expect(zoomLabel().getAttribute("aria-label")).toBe(
+        "Zoom 125%. Reset to 100%",
+      ),
+    );
+  });
+});
+
+describe("R24–R28: map layers (white-box)", () => {
+  beforeEach(seedTodos);
+
+  test("an active trip with no stops lists none", async () => {
+    await renderMapAt("/map?layer=trip2");
+
+    expect(layerRow(/^Taipei weekend/).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(
+      screen.queryByRole("list", { name: "Taipei weekend stops" }),
+    ).toBeNull();
+    expect(
+      screen.getAllByText(
+        exactText("Taipei weekend · 0 stops in itinerary order"),
+      ),
+    ).not.toHaveLength(0);
+  });
+
+  test("picking a layer with pins flies to fit them", async () => {
+    const { user } = await renderMapAt("/map");
+    await user.click(zoomLabel());
+    await waitFor(
+      () =>
+        expect(globeLevel()).toBe("Zoom level: Globe. Show the whole globe"),
+      { timeout: 2500 },
+    );
+
+    await user.click(layerRow(/^Inspiration/));
+
+    // One located idea: framed at ~1200 m/px
+    await waitFor(
+      () =>
+        expect(globeLevel()).not.toBe(
+          "Zoom level: Globe. Show the whole globe",
+        ),
+      { timeout: 2500 },
+    );
+  }, 10000);
+
+  test("the fit button on a trip frames its stops", async () => {
+    const { user } = await renderMapAt("/map?layer=trip1");
+    await user.click(zoomLabel());
+    await waitFor(
+      () =>
+        expect(globeLevel()).toBe("Zoom level: Globe. Show the whole globe"),
+      { timeout: 2500 },
+    );
+
+    await user.click(screen.getByRole("button", { name: "Fit this trip" }));
+
+    await waitFor(
+      () =>
+        expect(globeLevel()).not.toBe(
+          "Zoom level: Globe. Show the whole globe",
+        ),
+      { timeout: 2500 },
+    );
+  }, 10000);
+
+  test("a stop without a place can't fly", async () => {
+    const { user } = await renderMapAt("/map?layer=trip1");
+    // Let the fit-on-entry flight finish first
+    await pause(1500);
+    const before = globeLevel();
+
+    await user.click(
+      within(screen.getByRole("list", { name: "Japan stops" })).getByRole(
+        "button",
+        { name: /Nara deer/ },
+      ),
+    );
+    await pause(600);
+
+    expect(globeLevel()).toBe(before);
+  });
+
+  test("a trip layer while trips are still loading shows Notes, then the trip", async () => {
+    server.use(
+      http.get("/api/trips", async () => {
+        await delay(150);
+        return HttpResponse.json({ trips: db.trips });
+      }),
+    );
+    nav.go("/map?layer=trip1");
+    render(<MomentsWall />, { wrapper });
+
+    expect(
+      await screen.findByRole("button", { name: /^Japan/ }, { timeout: 2000 }),
+    ).toBeDefined();
+    await waitFor(() =>
+      expect(layerRow(/^Japan/).getAttribute("aria-pressed")).toBe("true"),
+    );
+  });
+
+  test("a to-do pin keeps its title and the notes leave the tab order", async () => {
+    await renderMapAt("/map?layer=unsorted");
+
+    await waitFor(() => expect(pinLabels()).toEqual(["Night market"]));
+    expect(
+      Array.from(document.querySelectorAll(".pin-dot")).map((el) =>
+        el.textContent?.trim(),
+      ),
+    ).toEqual(["✓"]);
+    for (const note of allNotes()) expect(note.tabIndex).toBe(-1);
+  });
+
+  test("an idea pin is ✦", async () => {
+    await renderMapAt("/map?layer=inspiration");
+
+    await waitFor(() =>
+      expect(
+        Array.from(document.querySelectorAll(".pin-dot")).map((el) =>
+          el.textContent?.trim(),
+        ),
+      ).toEqual(["✦"]),
+    );
+  });
+
+  test("the Two Do link encodes the layer", async () => {
+    db.trips = [{ ...japanTrip, id: "a b" }];
+    db.todos = db.todos.map((t) =>
+      t.tripId === "trip1" ? { ...t, tripId: "a b" } : t,
+    );
+    await renderMapAt("/map?layer=a%20b");
+
+    expect(
+      screen.getByRole("link", { name: /Open in Two Do/ }).getAttribute("href"),
+    ).toBe("/twodo?list=a%20b");
+  });
+
+  test("leaving the map hides the layer card", async () => {
+    await renderMapAt("/map?layer=trip1");
+
+    await goTo("/moments");
+
+    expect(
+      await screen.findByRole("heading", { name: "Our Moments" }),
+    ).toBeDefined();
+    expect(screen.queryByRole("group", { name: "Show on map" })).toBeNull();
+  });
+
+  test("a failed to-do load still shows the notes layer", async () => {
+    server.use(
+      http.get("/api/todos", () =>
+        HttpResponse.json({ message: "Failed" }, { status: 500 }),
+      ),
+    );
+    nav.go("/map");
+    render(<MomentsWall />, { wrapper });
+
+    expect(await screen.findByRole("heading", { name: "Map" })).toBeDefined();
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(layerRow(/^Notes/).getAttribute("aria-pressed")).toBe("true");
+  });
+});
+
+describe("R23/R26: map mode hides the wall header", () => {
+  test("no Our Places text; the title group is aria-hidden behind a Map heading", async () => {
+    await renderWall();
+
+    await goTo("/map");
+
+    expect(await screen.findByRole("heading", { name: "Map" })).toBeDefined();
+    expect(screen.queryByText(/Our Places/)).toBeNull();
+    // The title always reads "Our Moments"; in map mode it is out of the a11y tree
+    expect(screen.queryByRole("heading", { name: "Our Moments" })).toBeNull();
+    const title = screen.getByRole("heading", {
+      name: "Our Moments",
+      hidden: true,
+    });
+    expect(title.closest('[aria-hidden="true"]')).not.toBeNull();
+    for (const text of ["Since 2022", "Day 1451"]) {
+      expect(
+        screen.getByText(text).closest('[aria-hidden="true"]'),
+      ).not.toBeNull();
+    }
+  });
+
+  test("back on Moments the title is visible again and the Map heading is gone", async () => {
+    await renderWall();
+    await goTo("/map");
+    await screen.findByRole("heading", { name: "Map" });
+
+    await goTo("/moments");
+
+    const title = await screen.findByRole("heading", { name: "Our Moments" });
+    expect(title.closest('[aria-hidden="true"]')).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Map" })).toBeNull();
   });
 });

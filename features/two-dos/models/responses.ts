@@ -4,7 +4,8 @@ interface TodoDto {
   id: string;
   title: string;
   description: string | null;
-  location: TodoLocation;
+  location: TodoLocation | null;
+  tripId: string | null;
   createdAt: string;
   updatedAt: string;
   doneAt: string | null;
@@ -33,4 +34,14 @@ interface TodoUpdateResponse {
   imagesToUpload: { name: string; signedUrl: string }[];
 }
 
-export type { TodoDto, TodoResponse, TodoCreateResponse, TodoUpdateResponse };
+interface TodoPlacementResponse {
+  todo: TodoDto;
+}
+
+export type {
+  TodoDto,
+  TodoResponse,
+  TodoCreateResponse,
+  TodoUpdateResponse,
+  TodoPlacementResponse,
+};

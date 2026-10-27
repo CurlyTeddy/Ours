@@ -1,23 +1,28 @@
-import { TodoUpdateRequest } from "@/features/two-dos/models/requests";
 import {
-  defaultLocationId,
-  todoLocationSchema,
-  toLocationWrite,
-} from "@/features/two-dos/models/location";
+  todoPlacementSchema,
+  todoUpdateSchema,
+} from "@/features/two-dos/models/requests";
+import { toLocationWrite } from "@/features/two-dos/models/location";
 import {
   TodoDto,
+  TodoPlacementResponse,
   TodoUpdateResponse,
 } from "@/features/two-dos/models/responses";
 import { todoInclude, toTodoDto } from "@/features/two-dos/todo-dto";
+import {
+  deleteOrphanLocation,
+  isPrismaError,
+  nextPriority,
+  spotTakenMessage,
+  tripMissing,
+} from "@/features/two-dos/queries";
 import { prisma } from "@/lib/database-client";
 import { HttpErrorPayload } from "@/lib/error";
-import { Prisma } from "@prisma/client";
+import { parseBody } from "@/lib/parse-body";
 import s3Client, { bucket, deleteObjects } from "@/lib/s3-client";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { createId } from "@paralleldrive/cuid2";
-import { DateTime } from "luxon";
 import { NextRequest, NextResponse } from "next/server";
-import z from "zod/v4";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 async function GET(
@@ -51,28 +56,7 @@ async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<TodoUpdateResponse | HttpErrorPayload>> {
   const { id } = await params;
-  const requestPayload = (await request.json()) as TodoUpdateRequest;
-
-  const validatedFields = z
-    .object({
-      title: z.string().min(1, "Title is required"),
-      description: z.string().nullable(),
-      location: todoLocationSchema,
-      doneAt: z
-        .string()
-        .refine((date) => DateTime.fromISO(date).isValid, {
-          message: "Invalid date",
-        })
-        .nullable(),
-      imageNames: z.array(z.string().min(1, "Unexpected empty image key")),
-    })
-    .safeParse({
-      title: requestPayload.title,
-      description: requestPayload.description,
-      location: requestPayload.location,
-      doneAt: requestPayload.doneAt,
-      imageNames: requestPayload.imageNames,
-    });
+  const validatedFields = todoUpdateSchema.safeParse(await request.json());
 
   if (!validatedFields.success) {
     return NextResponse.json(
@@ -89,19 +73,24 @@ async function PUT(
   try {
     const payload = await prisma.$transaction(async (txn) => {
       const todo = await txn.todo.findUnique({
-        select: { imageKeys: true, locationId: true },
+        select: { imageKeys: true, locationId: true, tripId: true },
         where: { todoId: id },
       });
 
       if (todo === null) {
-        return null;
+        return "missing" as const;
       }
 
       const {
         imageNames: newImageNames,
         location,
+        tripId,
         ...rest
       } = validatedFields.data;
+      if (tripId !== null && (await tripMissing(txn, tripId))) {
+        return "trip" as const;
+      }
+
       const oldImageKeys = todo.imageKeys ? todo.imageKeys.split(",") : [];
       const oldImageSet = new Set(oldImageKeys);
       const imageIntersection = new Set(
@@ -119,7 +108,12 @@ async function PUT(
         where: { todoId: id },
         data: {
           ...rest,
-          location: toLocationWrite(location),
+          location: location ? toLocationWrite(location) : { disconnect: true },
+          trip:
+            tripId !== null ? { connect: { tripId } } : { disconnect: true },
+          // A to-do that changes list goes to the end of its new list
+          priority:
+            tripId !== todo.tripId ? await nextPriority(txn) : undefined,
           imageKeys:
             newImageNames.length > 0
               ? newImageNames
@@ -133,13 +127,7 @@ async function PUT(
       });
 
       if (updatedTodo.locationId !== todo.locationId) {
-        await txn.location.deleteMany({
-          where: {
-            locationId: todo.locationId,
-            NOT: { locationId: defaultLocationId },
-            todos: { none: {} },
-          },
-        });
+        await deleteOrphanLocation(txn, todo.locationId);
       }
 
       // Letting frontend to upload files can cause race condition. A user might delete an object
@@ -164,7 +152,7 @@ async function PUT(
       };
     });
 
-    if (payload === null) {
+    if (payload === "missing") {
       return NextResponse.json(
         {
           message: "Failed to upload todo. Cannot find the todo.",
@@ -173,6 +161,9 @@ async function PUT(
           status: 404,
         },
       );
+    }
+    if (payload === "trip") {
+      return NextResponse.json({ message: "Trip not found." }, { status: 400 });
     }
 
     // R2 deletes cannot roll back, so they run only after the update commits
@@ -201,6 +192,67 @@ async function PUT(
   }
 }
 
+// Moves a to-do between lists, ticks it, or reorders it, without touching its content.
+async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse<TodoPlacementResponse | HttpErrorPayload>> {
+  const { id } = await params;
+  const parsed = await parseBody(request, todoPlacementSchema);
+  if ("error" in parsed) return parsed.error;
+  const { tripId, done, priority } = parsed.data;
+
+  try {
+    const result = await prisma.$transaction(async (txn) => {
+      const todo = await txn.todo.findUnique({
+        select: { doneAt: true, tripId: true },
+        where: { todoId: id },
+      });
+      if (todo === null) return "missing" as const;
+      if (typeof tripId === "string" && (await tripMissing(txn, tripId))) {
+        return "trip" as const;
+      }
+
+      const now = new Date();
+      // A done date in the future is still a plan, so ticking it moves the date to now
+      const alreadyDone = todo.doneAt !== null && todo.doneAt < now;
+      let doneAt: Date | null | undefined;
+      if (done === false) doneAt = null;
+      else if (done && !alreadyDone) doneAt = now;
+      const moved = tripId !== undefined && tripId !== todo.tripId;
+      return txn.todo.update({
+        where: { todoId: id },
+        data: {
+          tripId,
+          doneAt,
+          priority: priority ?? (moved ? await nextPriority(txn) : undefined),
+        },
+        include: todoInclude,
+      });
+    });
+
+    if (result === "missing") {
+      return NextResponse.json({ message: "Todo not found." }, { status: 404 });
+    }
+    if (result === "trip") {
+      return NextResponse.json({ message: "Trip not found." }, { status: 400 });
+    }
+    return NextResponse.json(
+      { todo: await toTodoDto(result) },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("Error placing todo:", error);
+    if (isPrismaError(error, "P2002")) {
+      return NextResponse.json({ message: spotTakenMessage }, { status: 409 });
+    }
+    return NextResponse.json(
+      { message: "Failed to update todo. Please try again later." },
+      { status: 500 },
+    );
+  }
+}
+
 async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -214,13 +266,7 @@ async function DELETE(
           todoId: id,
         },
       });
-      await txn.location.deleteMany({
-        where: {
-          locationId: deletedTodo.locationId,
-          NOT: { locationId: defaultLocationId },
-          todos: { none: {} },
-        },
-      });
+      await deleteOrphanLocation(txn, deletedTodo.locationId);
       return deletedTodo;
     });
 
@@ -233,10 +279,7 @@ async function DELETE(
   } catch (error) {
     console.error("Error deleting todos:", error);
 
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2025"
-    ) {
+    if (isPrismaError(error, "P2025")) {
       return NextResponse.json(
         {
           message: "Failed to delete todo. Cannot find the todo.",
@@ -258,4 +301,4 @@ async function DELETE(
   }
 }
 
-export { GET, PUT, DELETE };
+export { GET, PUT, PATCH, DELETE };

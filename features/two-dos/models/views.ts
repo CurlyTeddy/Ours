@@ -1,4 +1,3 @@
-import { dateFormat } from "@/components/ui/popover-calendar";
 import {
   todoLocationSchema,
   TodoLocation,
@@ -9,12 +8,12 @@ import type { TodoDto } from "@/features/two-dos/models/responses";
 
 const maxFileSize = 1024 * 1024 * 5;
 
-const timeFormat = `${dateFormat} HH:mm`;
-
-const createSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  location: todoLocationSchema,
+// list is a ListKey: "inspiration", "unsorted" or a trip id
+const todoFormSchema = z.object({
+  title: z.string().trim().min(1, "Give it a title first"),
+  list: z.string(),
+  location: todoLocationSchema.nullable(),
+  description: z.string(),
   images: z.array(
     z
       .file()
@@ -23,15 +22,7 @@ const createSchema = z.object({
   ),
 });
 
-const updateSchema = z.object({
-  ...createSchema.shape,
-  doneAt: z
-    .string()
-    .refine((date) => !date || DateTime.fromFormat(date, dateFormat).isValid, {
-      message: "Invalid date",
-    })
-    .nullable(),
-});
+type TodoForm = z.infer<typeof todoFormSchema>;
 
 export interface Todo {
   id: string;
@@ -45,7 +36,9 @@ export interface Todo {
     name: string;
     imageUrl: string | null;
   };
-  location: TodoLocation;
+  location: TodoLocation | null;
+  tripId: string | null;
+  priority: number;
   updatedAt: string;
   doneAt: string | null;
   description: string | null;
@@ -59,6 +52,8 @@ function toTodo(todo: TodoDto): Todo {
     title: todo.title,
     description: todo.description,
     location: todo.location,
+    tripId: todo.tripId,
+    priority: todo.priority,
     doneAt: todo.doneAt,
     createdAt: todo.createdAt,
     createdBy: todo.createdBy,
@@ -69,4 +64,5 @@ function toTodo(todo: TodoDto): Todo {
   };
 }
 
-export { createSchema, updateSchema, maxFileSize, timeFormat, toTodo };
+export { maxFileSize, todoFormSchema, toTodo };
+export type { TodoForm };

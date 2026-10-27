@@ -11,13 +11,14 @@ import { Input } from "@/components/ui/input";
 import { TodoLocation } from "@/features/two-dos/models/location";
 import { cn } from "@/lib/utils";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, X } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useDebouncedCallback } from "use-debounce";
 
 interface LocationComboboxProps {
-  value: TodoLocation;
-  onChange: (location: TodoLocation) => void;
+  // null means no location yet
+  value: TodoLocation | null;
+  onChange: (location: TodoLocation | null) => void;
   disabled?: boolean;
 }
 
@@ -26,7 +27,8 @@ function LocationCombobox({
   onChange,
   disabled = false,
 }: LocationComboboxProps) {
-  const [inputValue, setInputValue] = useState(value.name);
+  const savedName = value?.name ?? "";
+  const [inputValue, setInputValue] = useState(savedName);
   const [predictions, setPredictions] = useState<
     google.maps.places.PlacePrediction[]
   >([]);
@@ -41,8 +43,8 @@ function LocationCombobox({
   const latestQuery = useRef("");
 
   useEffect(() => {
-    setInputValue(value.name);
-  }, [value.name]);
+    setInputValue(savedName);
+  }, [savedName]);
 
   const searchLocations = useDebouncedCallback((query: string) => {
     const trimmedQuery = query.trim();
@@ -146,12 +148,29 @@ function LocationCombobox({
               // Typed text that was never picked is not saved, so show the saved place again.
               window.setTimeout(() => {
                 setIsOpen(false);
-                setInputValue(value.name);
+                setInputValue(savedName);
               }, 150);
             }}
-            className="pr-9"
+            className={value ? "pr-18" : "pr-9"}
           />
         </FormControl>
+        {value && !disabled ? (
+          <button
+            type="button"
+            aria-label="Clear location"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              searchLocations.cancel();
+              latestQuery.current = "";
+              setPredictions([]);
+              setIsOpen(false);
+              onChange(null);
+            }}
+            className="absolute top-1/2 right-7 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-[#4F70A8]"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        ) : null}
         {isPending ? (
           <Loader2 className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
         ) : (
@@ -186,7 +205,9 @@ function LocationCombobox({
           </div>
         )}
       </div>
-      <p className="text-sm text-muted-foreground">{value.address}</p>
+      {value ? (
+        <p className="text-sm text-muted-foreground">{value.address}</p>
+      ) : null}
       {loadError && <p className="text-sm text-destructive">{loadError}</p>}
       <FormMessage />
     </FormItem>

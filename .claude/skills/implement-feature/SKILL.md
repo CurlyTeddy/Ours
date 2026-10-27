@@ -35,6 +35,8 @@ If the argument is an existing `docs/specs/*.md`, resume at **Build**.
    - **Libraries**: each with the reason.
    - **Out of scope**
 
+   When a handoff reworks a screen that already exists, diff the shipped screen against the reference element by element (titles, chips, what hides in each mode), and write a requirement for each difference. "Keep today's behaviour" carried a shipped "Our Places" title onto the Map tab, where the reference hides the whole title block, and the user had to correct it.
+
    When the feature ports a reference build (a design handoff), write requirements against what the reference actually does, not what its notes or checklist claim. Open it at phone and desktop width first; a checklist line like "the book fits on phones" was false for the reference and cost an escalation.
 
    Done when every grilled decision appears in the spec. Go straight on to Build, in the same turn.

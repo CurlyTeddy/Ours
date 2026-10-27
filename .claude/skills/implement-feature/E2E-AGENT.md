@@ -47,7 +47,7 @@ For hidden file inputs (`className="hidden"`), un-hide the input with `evaluate_
 The MCP has no wheel or pinch input: dispatch synthetic `WheelEvent`s or two-finger `TouchEvent`s on the target with `evaluate_script`, and read the resulting state from the DOM (e.g. the `transform` of `.reactEasyCrop_Image` for crop zoom).
 
 A flow **fails** when the outcome differs from the spec, or when:
-- at phone width, the page scrolls sideways (`evaluate_script`: `document.documentElement.scrollWidth > window.innerWidth`);
+- at phone width, the page or any scroll container in it scrolls sideways. Run this with `evaluate_script`: `[document.documentElement, ...document.querySelectorAll("*")].filter(el => el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== "hidden" && el.clientWidth > 300)`. Intentional chip rows are fine. The page-level check alone missed a `main` with `overflow-x: auto` that clipped a button;
 - at phone width, an element is clipped, overlaps another, or is too small to tap;
 - `list_console_messages` shows an error during the flow (hydration errors included);
 - `list_network_requests` shows a 5xx during the flow.
@@ -72,21 +72,19 @@ Prefix the title or name of every record you create with `[e2e]`, so it's recogn
   - the wall loads with the "Since 2022" / "Day N" chips and the calendar;
   - create a note from the pad, and it persists after reload;
   - delete a note through the confirm dialog;
-  - Map mode shows the globe and pins.
-- **Two-Dos**:
-  - the table loads;
-  - create a todo from the Add dialog;
-  - edit a todo at `/twodo/{id}/edit`;
-  - mark a todo done with the Done At date picker;
-  - delete a todo with its checkbox and the confirm dialog;
-  - status icons show a green check when done and a gray circle when not.
+  - the header's Map tab (`/map`) shows the globe and pins, and picking a trip in "Show on map" shows its numbered stops.
+- **Two-Dos** (trips board at `/twodo?list=…`):
+  - Inspiration loads with its rows, and the sidebar (phone: chips) lists the trips;
+  - create a trip, then add a to-do to it from "Add to this trip";
+  - tick an Inspiration idea and pick a trip in "Which trip was it on?", then Undo;
+  - edit a to-do in its dialog, then delete it through the confirm dialog.
 - **Profile**:
   - `/profile` loads;
   - a display-name change persists after reload;
   - saving shows `Profile updated successfully!`.
 - **Theme**: the header's sun/moon theme toggle works and persists after reload.
 - **Navigation**:
-  - the Moments and Two Do links work;
+  - the Moments, Two Do and Map links work;
   - when logged out, the landing page `/` is the pop-up storybook: scrolled to the bottom, it shows a `Log in` button that opens the "Welcome home" dialog.
 
 ## Report

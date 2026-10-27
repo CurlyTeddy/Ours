@@ -10,6 +10,7 @@ import {
   type PointerEvent,
 } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ky from "ky";
 import { DateTime } from "luxon";
 import { toast } from "sonner";
@@ -19,7 +20,6 @@ import {
   Disc3,
   Globe,
   Hand,
-  LayoutGrid,
   MapPin,
   Maximize,
   Minus,
@@ -46,7 +46,17 @@ import {
   zoomLevelName,
   type GlobeCamera,
   type LandMask,
+  type LonLat,
 } from "@/features/moments/globe";
+import {
+  parseMapLayer,
+  tripRoute,
+  type MapLayer,
+} from "@/features/moments/map-layers";
+import { MapLayers } from "@/features/moments/components/map-layers";
+import { useTodos } from "@/features/two-dos/hooks/use-two-dos";
+import { useTrips } from "@/features/two-dos/hooks/use-trips";
+import { listTodos } from "@/features/two-dos/lists";
 import { useNotes } from "@/features/moments/hooks/use-notes";
 import { useSongPlayer } from "@/features/moments/hooks/use-song-player";
 import { useSpecialDays } from "@/features/moments/hooks/use-special-days";
@@ -64,6 +74,7 @@ import { LoveMapCard } from "@/features/moments/components/love-map-card";
 import {
   GlobeLayer,
   type GlobePin,
+  type RouteSegment,
 } from "@/features/moments/components/globe-layer";
 import { HeartIcon } from "@/features/moments/components/heart-icon";
 
@@ -153,10 +164,25 @@ const earliestDate = (notes: Note[]) =>
     return date < min ? date : min;
   }, "9999");
 
-const placeLonLat = ({ longitude, latitude }: NotePlace) => ({
+const placeLonLat = ({
+  longitude,
+  latitude,
+}: Pick<NotePlace, "longitude" | "latitude">) => ({
   lon: longitude,
   lat: latitude,
 });
+
+const plural = (count: number, one: string, many: string) =>
+  `${count} ${count === 1 ? one : many}`;
+
+const isTripLayer = (layer: MapLayer) =>
+  layer !== "notes" && layer !== "inspiration" && layer !== "unsorted";
+
+const fitLabels = {
+  notes: "Fit our places",
+  trip: "Fit this trip",
+  list: "Fit these places",
+};
 
 function MomentsWall() {
   const { key: notesKey, notes, mutate: mutateNotes } = useNotes();
@@ -170,6 +196,20 @@ function MomentsWall() {
   const songPlayer = useSongPlayer();
   const isPhone = useMediaQuery("(max-width: 900px)");
   const { resolvedTheme } = useTheme();
+  const router = useRouter();
+  // /moments and /map share this wall; the path picks the mode, ?layer= what the map shows
+  const mode = usePathname() === "/map" ? "map" : "wall";
+  const layerParam = useSearchParams().get("layer");
+  const { todos, isLoading: todosLoading } = useTodos();
+  const { trips, isLoading: tripsLoading } = useTrips();
+  // Until both load a trip id is unknown, so the map shows Notes meanwhile
+  const layer: MapLayer =
+    todosLoading || tripsLoading
+      ? "notes"
+      : parseMapLayer(
+          layerParam,
+          trips.map((trip) => trip.id),
+        );
 
   const boardRef = useRef<HTMLElement>(null);
   const [board, setBoard] = useState<{ width: number; height: number }>();
@@ -177,7 +217,8 @@ function MomentsWall() {
   // Read on the client only, so the server never renders another timezone's day.
   const [now, setNow] = useState<number | null>(null);
 
-  const [mode, setMode] = useState<"wall" | "map">("wall");
+  // The mode the state below was last reset for; a route change resets it during render
+  const [shownMode, setShownMode] = useState(mode);
   // null follows the home camera for the current board width until the viewer moves it.
   const [wallCamera, setWallCamera] = useState<WallCamera | null>(null);
   const [cameraTransition, setCameraTransition] = useState<
@@ -295,34 +336,45 @@ function MomentsWall() {
   };
   const globe = globeCamera ?? entryGlobe();
 
-  // Frames every place, or falls back to the entry view when one is on the far side.
-  const fitGlobe = (): GlobeCamera => {
-    if (!places.length) return entryGlobe();
-    if (places.length === 1) {
-      const [{ place }] = places;
-      return {
-        lon: place.longitude,
-        lat: place.latitude,
-        radius: earthRadiusMeters / 150,
-      };
+  // A to-do layer: its list in order; only the stops with a place become pins.
+  const layerTodos = layer === "notes" ? [] : listTodos(todos, layer);
+  const located = layerTodos.flatMap((todo, index) =>
+    todo.location ? [{ todo, index, location: todo.location }] : [],
+  );
+  const fitLabel =
+    layer === "notes"
+      ? fitLabels.notes
+      : isTripLayer(layer)
+        ? fitLabels.trip
+        : fitLabels.list;
+
+  // Frames every point, or falls back to the entry view when one is on the far side.
+  // single is how many meters a pixel covers around a lone point; side keeps clear of the edges.
+  const framePoints = (
+    points: LonLat[],
+    single: number,
+    side: number,
+  ): GlobeCamera | null => {
+    if (!points.length) return null;
+    if (points.length === 1) {
+      const [point] = points;
+      return { ...point, radius: earthRadiusMeters / single };
     }
-    const center = sphericalCenter(
-      places.map(({ place }) => placeLonLat(place)),
-    );
+    const center = sphericalCenter(points);
     const unit = { lon: center.lon, lat: center.lat, radius: 1 };
     let maxX = 0;
     let maxY = 0;
     let minY = 0;
     let behind = false;
-    for (const { place } of places) {
-      const q = orthoForward(place.longitude, place.latitude, unit);
+    for (const point of points) {
+      const q = orthoForward(point.lon, point.lat, unit);
       if (q.c < 0.05) behind = true;
       maxX = Math.max(maxX, Math.abs(q.x));
       maxY = Math.max(maxY, q.y);
       minY = Math.min(minY, q.y);
     }
     if (behind) return { ...center, radius: baseGlobeRadius };
-    const limits = [(width / 2 - 150) / Math.max(maxX, 1e-6)];
+    const limits = [(width / 2 - side) / Math.max(maxX, 1e-6)];
     if (maxY > 0) limits.push((height / 2 - 190) / maxY);
     if (minY < 0) limits.push((height / 2 - 110) / -minY);
     return {
@@ -330,6 +382,40 @@ function MomentsWall() {
       radius: clamp(Math.min(...limits), minGlobeRadius, maxRadius),
     };
   };
+
+  // Clear of the Show on map card on desktop; phones keep only a small margin
+  const fitSide = width > 760 ? 380 : 60;
+  // Notes fall back to the entry view; a to-do layer with no places keeps the current view.
+  const fitGlobe = (): GlobeCamera | null =>
+    layer === "notes"
+      ? (framePoints(
+          places.map(({ place }) => placeLonLat(place)),
+          150,
+          fitSide,
+        ) ?? entryGlobe())
+      : framePoints(
+          located.map(({ location }) => placeLonLat(location)),
+          1200,
+          fitSide,
+        );
+
+  const flyToFit = () => {
+    const target = fitGlobe();
+    if (target) flyGlobe(target);
+  };
+
+  // A route change resets the per-mode state here, before paint, so the camera's
+  // slow transition is already on when the wall flies into the globe.
+  if (shownMode !== mode) {
+    setShownMode(mode);
+    setPress(undefined);
+    setDrag(undefined);
+    setBubbleNoteId(null);
+    setCameraTransition("slow");
+    setPanning(false);
+    setMapLive(false);
+    if (mode === "map") setGlobeCamera(entryGlobe());
+  }
 
   // Notes with a place sit above its pin, fanned out; the rest fade away.
   const mapTargets = new Map<
@@ -342,7 +428,22 @@ function MomentsWall() {
     0.42,
     0.62,
   );
-  if (isMap) {
+  if (isMap && layer !== "notes") {
+    for (const { todo, index, location } of located) {
+      const q = orthoForward(location.longitude, location.latitude, globe);
+      const x = width / 2 + q.x;
+      pins.push({
+        placeId: todo.id,
+        name: todo.title,
+        mark: todo.status ? "done" : isTripLayer(layer) ? index + 1 : "idea",
+        labelLeft: x > width - 230,
+        x,
+        y: height / 2 - q.y,
+        visible: q.c > 0.04,
+      });
+    }
+  }
+  if (isMap && layer === "notes") {
     for (const { place, notes: group } of places) {
       const q = orthoForward(place.longitude, place.latitude, globe);
       const x = width / 2 + q.x;
@@ -370,14 +471,34 @@ function MomentsWall() {
       });
     }
   }
-  const route = places
+  const notesRoute = places
     .map((group) => ({ ...group, first: earliestDate(group.notes) }))
     .toSorted((a, b) => (a.first < b.first ? -1 : 1))
     .map(({ place }) => placeLonLat(place));
+  let route: RouteSegment[] = [];
+  if (layer === "notes") {
+    route = notesRoute.slice(1).map((to, index) => ({
+      from: notesRoute[index],
+      to,
+      solid: false,
+    }));
+  } else if (isTripLayer(layer)) {
+    route = tripRoute(layerTodos);
+  }
   const mappedCount = places.reduce(
     (sum, group) => sum + group.notes.length,
     0,
   );
+
+  let mapInfo = `${places.length} places · ${mappedCount} notes on the map`;
+  if (layer === "inspiration") {
+    mapInfo = `Inspiration · ${plural(layerTodos.length, "idea", "ideas")} not on a trip yet`;
+  } else if (layer === "unsorted") {
+    mapInfo = `Unsorted · ${layerTodos.length} done, waiting for a trip`;
+  } else if (layer !== "notes") {
+    const trip = trips.find((other) => other.id === layer);
+    mapInfo = `${trip?.name ?? ""} · ${layerTodos.length} stops in itinerary order`;
+  }
 
   // ---------- coordinates ----------
 
@@ -490,25 +611,38 @@ function MomentsWall() {
     songPlayer.stop();
   };
 
-  const switchMode = (next: "wall" | "map") => {
-    if (next === mode) return;
+  // The rest of a mode switch: what lives outside React state.
+  const onModeShown = useEffectEvent(() => {
     stopSong();
     pointers.current.clear();
     panGesture.current = null;
     cancelAnimationFrame(animationFrame.current);
     window.clearTimeout(timers.current.live);
-    setMode(next);
-    setPress(undefined);
-    setDrag(undefined);
-    setBubbleNoteId(null);
-    setCameraTransition("slow");
-    setPanning(false);
-    setMapLive(false);
-    if (next === "map") {
-      setGlobeCamera(entryGlobe());
-      scheduleTimer("live", 820, () => setMapLive(true));
-    }
-  };
+    if (isMap) scheduleTimer("live", 820, () => setMapLive(true));
+  });
+  // Effect Events always see the latest render and must stay out of the deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => onModeShown(), [mode]);
+
+  // Choosing a layer flies to fit it. Entering on Notes keeps today's entry view instead.
+  const shownLayer = useRef<MapLayer | null>(null);
+  const onLayerShown = useEffectEvent(() => {
+    const previous = shownLayer.current;
+    shownLayer.current = isMap ? layer : null;
+    if (!isMap || previous === layer) return;
+    if (previous === null && layer === "notes") return;
+    stopSong();
+    flyToFit();
+  });
+  // Effect Events always see the latest render and must stay out of the deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => onLayerShown(), [isMap, layer]);
+
+  const pickLayer = (next: MapLayer) =>
+    router.replace(
+      next === "notes" ? "/map" : `/map?layer=${encodeURIComponent(next)}`,
+      { scroll: false },
+    );
 
   // ---------- notes ----------
 
@@ -1036,12 +1170,12 @@ function MomentsWall() {
           <path d="M32 52C18 42 6 32 6 19 6 10 13 5 20 5c6 0 10 4 12 9 2-5 6-9 12-9 7 0 14 5 14 14 0 13-12 23-26 33z" />
         </svg>
 
+        {/* The whole wall header fades out on the map; the map keeps only a hidden heading */}
         <div
+          aria-hidden={isMap}
           className={cn(
-            "pointer-events-none absolute top-10 left-21.5 z-1 flex origin-top-left flex-col gap-1 transition-transform duration-750 ease-us-slow",
-            // The map world is unscaled, so on a phone the title block shrinks to the corner on its own.
-            isMap &&
-              "max-[900px]:-translate-x-16.5 max-[900px]:-translate-y-6 max-[900px]:scale-[.413]",
+            "pointer-events-none absolute top-10 left-21.5 z-1 flex flex-col gap-1",
+            wallOnly,
           )}
         >
           <div className="flex items-center gap-2">
@@ -1052,17 +1186,8 @@ function MomentsWall() {
               </span>
             ) : null}
           </div>
-          <h1
-            key={mode}
-            className={cn(
-              "m-0 origin-left -rotate-3 pt-3.5 pl-1 font-title text-[92px] leading-[1.35] font-normal whitespace-nowrap text-us-ink",
-              isMap && "animate-[fade_.5s_ease_both]",
-            )}
-          >
-            Our{" "}
-            <span className="text-us-accent">
-              {isMap ? "Places" : "Moments"}
-            </span>
+          <h1 className="m-0 origin-left -rotate-3 pt-3.5 pl-1 font-title text-[92px] leading-[1.35] font-normal whitespace-nowrap text-us-ink">
+            Our <span className="text-us-accent">Moments</span>
           </h1>
           <svg
             aria-hidden="true"
@@ -1077,16 +1202,12 @@ function MomentsWall() {
           >
             <path d="M4 14C70 4 150 2 230 8c40 3 76 6 104 2" />
           </svg>
-          <p
-            className={cn(
-              "mt-2.5 max-w-105 text-[17px] leading-[1.6] font-semibold text-us-muted",
-              wallOnly,
-            )}
-          >
+          <p className="mt-2.5 max-w-105 text-[17px] leading-[1.6] font-semibold text-us-muted">
             A shared home for our photos, notes, plans, and the small moments
             that keep adding up.
           </p>
         </div>
+        {isMap ? <h2 className="sr-only">Map</h2> : null}
 
         <div className="contents" inert={isMap}>
           {upcoming.length ? (
@@ -1106,7 +1227,7 @@ function MomentsWall() {
           ) : null}
           <LoveMapCard
             places={places.map(({ place }) => place)}
-            onOpen={() => switchMode("map")}
+            onOpen={() => router.push("/map")}
             className={cn(isMap && "pointer-events-none opacity-0")}
           />
         </div>
@@ -1240,6 +1361,25 @@ function MomentsWall() {
         </>
       )}
 
+      {isMap ? (
+        <MapLayers
+          layer={layer}
+          isPhone={isPhone}
+          noteCounts={{ places: places.length, notes: mappedCount }}
+          todos={todos}
+          trips={trips}
+          onPick={pickLayer}
+          onFly={({ location }) => {
+            if (location) {
+              flyGlobe({
+                ...placeLonLat(location),
+                radius: earthRadiusMeters / 600,
+              });
+            }
+          }}
+        />
+      ) : null}
+
       {isMap && !isPhone ? (
         <div
           data-nopan=""
@@ -1252,18 +1392,20 @@ function MomentsWall() {
               className="text-[#4F70A8]"
               aria-hidden="true"
             />
-            {`${places.length} places · ${mappedCount} notes`}
+            {mapInfo}
           </span>
           <span className={cn(chip, "px-3.5 py-2 text-[12.5px]")}>
             Drag to spin · scroll or pinch to zoom
           </span>
-          <Link
-            href="/twodo"
-            className="inline-flex h-9.5 items-center gap-2 rounded-full border border-us-line bg-us-surface px-3.5 text-[13px] font-extrabold text-us-ink hover:bg-us-hover focus-visible:outline-3 focus-visible:outline-[#4F70A8]"
-          >
-            Explore Todos
-            <ArrowRight size={14} strokeWidth={2.4} aria-hidden="true" />
-          </Link>
+          {layer === "notes" ? null : (
+            <Link
+              href={`/twodo?list=${encodeURIComponent(layer)}`}
+              className="inline-flex h-9.5 items-center gap-2 rounded-full border border-us-line bg-us-surface px-3.5 text-[13px] font-extrabold text-us-ink hover:bg-us-hover focus-visible:outline-3 focus-visible:outline-[#4F70A8]"
+            >
+              Open in Two Do
+              <ArrowRight size={14} strokeWidth={2.4} aria-hidden="true" />
+            </Link>
+          )}
         </div>
       ) : null}
 
@@ -1272,61 +1414,23 @@ function MomentsWall() {
           <span
             className={cn(
               chip,
-              "absolute bottom-19 left-3 z-5 h-8.5 gap-1.5 px-2.75 text-[11.5px]",
+              "absolute bottom-21.5 left-3 z-5 h-8.5 gap-1.5 px-2.75 text-[11.5px]",
             )}
           >
             Drag to spin · pinch to zoom
           </span>
           <button
             type="button"
-            aria-label={`Zoom level: ${levelName}. Fit our places`}
-            onClick={() => flyGlobe(fitGlobe())}
+            aria-label={`Zoom level: ${levelName}. ${fitLabel}`}
+            onClick={flyToFit}
             className={cn(
               floating,
-              "absolute right-3 bottom-18 z-5 inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-[13px] font-extrabold text-us-ink focus-visible:outline-3 focus-visible:outline-[#4F70A8]",
+              "absolute right-3 bottom-20.5 z-5 inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-[13px] font-extrabold text-us-ink focus-visible:outline-3 focus-visible:outline-[#4F70A8]",
             )}
           >
             <Globe size={15} strokeWidth={2.2} aria-hidden="true" />
             {levelName}
           </button>
-          <div
-            role="group"
-            aria-label="Places"
-            className="absolute inset-x-0 bottom-4.5 z-5 flex gap-2 overflow-x-auto overscroll-x-contain px-3 [scrollbar-width:none]"
-          >
-            {places.map(({ place, notes: group }) => (
-              <button
-                key={place.placeId}
-                type="button"
-                onClick={() =>
-                  flyGlobe({
-                    lon: place.longitude,
-                    lat: place.latitude,
-                    radius: earthRadiusMeters / 150,
-                  })
-                }
-                className="inline-flex h-11 flex-none cursor-pointer items-center gap-1.5 rounded-full border border-us-line bg-us-surface px-4 text-sm font-extrabold text-us-ink focus-visible:outline-3 focus-visible:outline-[#4F70A8]"
-              >
-                <MapPin
-                  size={15}
-                  strokeWidth={2.4}
-                  className="text-[#4F70A8]"
-                  aria-hidden="true"
-                />
-                {place.name}
-                <span className="font-bold text-us-muted">
-                  {group.length === 1 ? "1 note" : `${group.length} notes`}
-                </span>
-              </button>
-            ))}
-            <Link
-              href="/twodo"
-              className="inline-flex h-11 flex-none items-center gap-1.5 rounded-full border border-us-line bg-us-surface px-4 text-sm font-extrabold text-us-ink focus-visible:outline-3 focus-visible:outline-[#4F70A8]"
-            >
-              Explore Todos
-              <ArrowRight size={14} strokeWidth={2.4} aria-hidden="true" />
-            </Link>
-          </div>
         </div>
       ) : null}
 
@@ -1375,8 +1479,8 @@ function MomentsWall() {
         />
         <button
           type="button"
-          aria-label={isMap ? "Fit our places" : "Fit everything on screen"}
-          onClick={() => (isMap ? flyGlobe(fitGlobe()) : fitWall())}
+          aria-label={isMap ? fitLabel : "Fit everything on screen"}
+          onClick={() => (isMap ? flyToFit() : fitWall())}
           className={roundButton}
         >
           {isMap ? (
@@ -1385,40 +1489,6 @@ function MomentsWall() {
             <Maximize size={17} strokeWidth={2.4} aria-hidden="true" />
           )}
         </button>
-      </div>
-
-      <div
-        data-nopan=""
-        role="group"
-        aria-label="View"
-        className={cn(
-          floating,
-          "absolute bottom-6 left-1/2 z-1500 flex -translate-x-1/2 gap-1 rounded-full p-1 max-[900px]:top-3 max-[900px]:right-3 max-[900px]:bottom-auto max-[900px]:left-auto max-[900px]:translate-x-0 max-[900px]:gap-0.5 max-[900px]:p-0.75",
-        )}
-      >
-        {(
-          [
-            { value: "wall", label: "Wall", icon: LayoutGrid },
-            { value: "map", label: "Map", icon: MapPin },
-          ] as const
-        ).map(({ value, label, icon: Icon }) => (
-          <button
-            key={value}
-            type="button"
-            aria-label={label}
-            aria-pressed={mode === value}
-            onClick={() => switchMode(value)}
-            className={cn(
-              "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-full px-4.5 text-sm font-extrabold transition-colors duration-450 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#4F70A8] relative max-[900px]:h-9.5 max-[900px]:w-11 max-[900px]:px-0 max-[900px]:after:absolute max-[900px]:after:inset-x-0 max-[900px]:after:-inset-y-0.75 max-[900px]:after:content-['']",
-              mode === value
-                ? "bg-us-seg text-us-seg-ink"
-                : "text-us-muted hover:text-us-ink",
-            )}
-          >
-            <Icon size={15} strokeWidth={2.2} aria-hidden="true" />
-            <span className="max-[900px]:hidden">{label}</span>
-          </button>
-        ))}
       </div>
 
       {editing && editingNote ? (

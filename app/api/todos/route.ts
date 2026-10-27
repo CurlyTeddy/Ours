@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/database-client";
 import { createId } from "@paralleldrive/cuid2";
 import { NextRequest, NextResponse } from "next/server";
-import z from "zod/v4";
 import s3Client, { bucket } from "@/lib/s3-client";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { HttpErrorPayload } from "@/lib/error";
@@ -9,11 +8,9 @@ import {
   TodoCreateResponse,
   TodoResponse,
 } from "@/features/two-dos/models/responses";
-import { TodoCreateRequest } from "@/features/two-dos/models/requests";
-import {
-  todoLocationSchema,
-  toLocationWrite,
-} from "@/features/two-dos/models/location";
+import { todoCreateSchema } from "@/features/two-dos/models/requests";
+import { toLocationWrite } from "@/features/two-dos/models/location";
+import { nextPriority, tripMissing } from "@/features/two-dos/queries";
 import { todoInclude, toTodoDto } from "@/features/two-dos/todo-dto";
 import { validateSessionToken } from "@/features/auth/session";
 import { cookies } from "next/headers";
@@ -50,21 +47,7 @@ async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
 async function POST(
   request: NextRequest,
 ): Promise<NextResponse<TodoCreateResponse | HttpErrorPayload>> {
-  const requestPayload = (await request.json()) as TodoCreateRequest;
-
-  const validatedFields = z
-    .object({
-      title: z.string().min(1, "Title is required"),
-      description: z.string().optional(),
-      location: todoLocationSchema,
-      imageNames: z.array(z.string()),
-    })
-    .safeParse({
-      title: requestPayload.title,
-      description: requestPayload.description,
-      location: requestPayload.location,
-      imageNames: requestPayload.imageNames,
-    });
+  const validatedFields = todoCreateSchema.safeParse(await request.json());
 
   if (!validatedFields.success) {
     return NextResponse.json(
@@ -92,7 +75,8 @@ async function POST(
     );
   }
 
-  const { title, description, location, imageNames } = validatedFields.data;
+  const { title, description, location, tripId, imageNames } =
+    validatedFields.data;
   // Keys are stored comma-joined, so a comma in a file name would split one key in two
   const imageKeys = imageNames.map(
     (name) => `${name.replaceAll(",", "_")}-${createId()}`,
@@ -100,18 +84,19 @@ async function POST(
 
   try {
     const payload = await prisma.$transaction(async (txn) => {
-      const maxPriority = await txn.todo.aggregate({
-        _max: { priority: true },
-      });
+      if (tripId !== null && (await tripMissing(txn, tripId))) {
+        return null;
+      }
 
       const newTodo = await txn.todo.create({
         include: todoInclude,
         data: {
           title,
           description,
-          location: toLocationWrite(location),
+          location: location ? toLocationWrite(location) : undefined,
+          trip: tripId !== null ? { connect: { tripId } } : undefined,
           createdBy: { connect: { userId: user.id } },
-          priority: (maxPriority._max.priority ?? 0) + 1,
+          priority: await nextPriority(txn),
           imageKeys: imageKeys.length > 0 ? imageKeys.join(",") : null,
         },
       });
@@ -132,6 +117,10 @@ async function POST(
 
       return { todo, signedUrls };
     });
+
+    if (payload === null) {
+      return NextResponse.json({ message: "Trip not found." }, { status: 400 });
+    }
 
     return NextResponse.json(payload, {
       status: 200,

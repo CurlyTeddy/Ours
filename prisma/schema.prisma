@@ -45,14 +45,30 @@ model Todo {
   doneAt      DateTime? @map("done_at")
   title       String
   description String?
-  location    Location  @relation(fields: [locationId], references: [locationId], onUpdate: Cascade)
-  locationId  String    @map("location_id")
+  location    Location? @relation(fields: [locationId], references: [locationId], onUpdate: Cascade, onDelete: SetNull)
+  locationId  String?   @map("location_id")
   priority    Float     @unique
   imageKeys   String?   @map("image_keys")
+  tripId      String?   @map("trip_id")
+  trip        Trip?     @relation(fields: [tripId], references: [tripId], onUpdate: Cascade, onDelete: SetNull)
 
   @@index([priority])
   @@index([locationId])
+  @@index([tripId])
   @@map("todo")
+}
+
+model Trip {
+  tripId    String   @id @default(cuid()) @map("trip_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  name      String
+  // Local calendar dates "yyyy-MM-dd", not instants
+  startDate String?  @map("start_date")
+  endDate   String?  @map("end_date")
+  position  Float    @unique
+  todos     Todo[]
+
+  @@map("trip")
 }
 
 model Location {

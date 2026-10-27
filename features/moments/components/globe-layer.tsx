@@ -14,14 +14,28 @@ import {
 } from "@/features/moments/globe";
 import { HeartIcon } from "@/features/moments/components/heart-icon";
 
+// A note place (heart and count) or, with a mark, a to-do (dot and title).
 interface GlobePin {
+  // The place id, or the to-do id for a to-do pin
   placeId: string;
   name: string;
-  count: number;
+  count?: number;
+  mark?: "idea" | "done" | number;
+  // The label sits left of the dot, near the right edge
+  labelLeft?: boolean;
   x: number;
   y: number;
   visible: boolean;
 }
+
+interface RouteSegment {
+  from: LonLat;
+  to: LonLat;
+  // Solid once both ends are done; dashed is the notes' route style
+  solid: boolean;
+}
+
+const pinMarks = { idea: "✦", done: "✓" };
 
 const palettes = {
   light: {
@@ -159,15 +173,18 @@ function drawGlobe(
     ctx.stroke();
   }
 
-  if (route.length > 1) {
-    ctx.strokeStyle = colors.route;
-    ctx.lineWidth = 2.4;
-    ctx.lineCap = "round";
-    ctx.setLineDash([4, 8]);
+  ctx.strokeStyle = colors.route;
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = "round";
+  // One stroke per style, so solid and dashed segments each draw once
+  for (const solid of [false, true]) {
+    const segments = route.filter((segment) => segment.solid === solid);
+    if (!segments.length) continue;
+    ctx.setLineDash(solid ? [] : [4, 8]);
     ctx.beginPath();
-    for (let k = 1; k < route.length; k++) {
+    for (const { from, to } of segments) {
       let penDown = false;
-      for (const point of greatCircle(route[k - 1], route[k], 96)) {
+      for (const point of greatCircle(from, to, 96)) {
         const q = orthoForward(point.lon, point.lat, camera);
         // Lift the pen behind the globe.
         if (q.c > 0) {
@@ -180,8 +197,8 @@ function drawGlobe(
       }
     }
     ctx.stroke();
-    ctx.setLineDash([]);
   }
+  ctx.setLineDash([]);
 }
 
 interface GlobeDrawing {
@@ -190,8 +207,52 @@ interface GlobeDrawing {
   height: number;
   dark: boolean;
   landMask: LandMask | null;
-  // Places in the order the route visits them
-  route: LonLat[];
+  route: RouteSegment[];
+}
+
+const pinLabel =
+  "pin-label inline-flex items-center gap-1 rounded-full bg-us-surface px-2.5 py-1.25 text-[12.5px] font-black whitespace-nowrap text-us-ink shadow-[0_6px_14px_-8px_rgba(31,43,66,.5)]";
+
+// A to-do pin: a dot (✦ idea, ✓ done, or its stop number) beside its title.
+function TodoPin({
+  pin,
+  mark,
+  index,
+}: {
+  pin: GlobePin;
+  mark: NonNullable<GlobePin["mark"]>;
+  index: number;
+}) {
+  return (
+    <div
+      className={cn(
+        "absolute flex animate-pin-dot items-center gap-1.5",
+        pin.labelLeft
+          ? "flex-row-reverse [transform:translate(calc(-100%+15px),-15px)]"
+          : "[transform:translate(-15px,-15px)]",
+      )}
+      style={{
+        left: `${pin.x.toFixed(1)}px`,
+        top: `${pin.y.toFixed(1)}px`,
+        visibility: pin.visible ? "visible" : "hidden",
+        animationDelay: `${0.1 + index * 0.1}s`,
+      }}
+    >
+      <span
+        className={cn(
+          "pin-dot flex size-7.5 flex-none items-center justify-center rounded-full text-[13px] font-black shadow-[0_6px_12px_-6px_rgba(31,43,66,.6)]",
+          mark === "done" && "bg-[#4F70A8] text-white ring-[2.5px] ring-white",
+          mark === "idea" &&
+            "bg-[#FAEDBE] text-[#8A6A12] ring-[2.5px] ring-white",
+          typeof mark === "number" &&
+            "bg-white text-[#4F70A8] inset-ring-[2.5px] inset-ring-[#4F70A8]",
+        )}
+      >
+        {typeof mark === "number" ? mark : pinMarks[mark]}
+      </span>
+      <span className={pinLabel}>{pin.name}</span>
+    </div>
+  );
 }
 
 function GlobeLayer({
@@ -221,28 +282,40 @@ function GlobeLayer({
       />
       {active ? (
         <>
-          {pins.map((pin, index) => (
-            <div
-              key={pin.placeId}
-              className="absolute flex animate-pin-drop flex-col items-center gap-1 [transform:translate(-50%,-26px)]"
-              style={{
-                left: `${pin.x.toFixed(1)}px`,
-                top: `${pin.y.toFixed(1)}px`,
-                visibility: pin.visible ? "visible" : "hidden",
-                animationDelay: `${0.25 + index * 0.12}s`,
-              }}
-            >
-              <HeartIcon
-                width={30}
-                height={30}
-                className="text-[#4F70A8] [&_path]:stroke-white [&_path]:stroke-[1.6]"
+          {pins.map((pin, index) =>
+            pin.mark !== undefined ? (
+              <TodoPin
+                key={pin.placeId}
+                pin={pin}
+                mark={pin.mark}
+                index={index}
               />
-              <span className="inline-flex items-center gap-1 rounded-full bg-us-surface px-2.5 py-1.25 text-[12.5px] font-black whitespace-nowrap text-us-ink shadow-[0_6px_14px_-8px_rgba(31,43,66,.5)]">
-                {pin.name}
-                <span className="font-bold text-us-muted"> · {pin.count}</span>
-              </span>
-            </div>
-          ))}
+            ) : (
+              <div
+                key={pin.placeId}
+                className="absolute flex animate-pin-drop flex-col items-center gap-1 [transform:translate(-50%,-26px)]"
+                style={{
+                  left: `${pin.x.toFixed(1)}px`,
+                  top: `${pin.y.toFixed(1)}px`,
+                  visibility: pin.visible ? "visible" : "hidden",
+                  animationDelay: `${0.25 + index * 0.12}s`,
+                }}
+              >
+                <HeartIcon
+                  width={30}
+                  height={30}
+                  className="text-[#4F70A8] [&_path]:stroke-white [&_path]:stroke-[1.6]"
+                />
+                <span className={pinLabel}>
+                  {pin.name}
+                  <span className="font-bold text-us-muted">
+                    {" "}
+                    · {pin.count}
+                  </span>
+                </span>
+              </div>
+            ),
+          )}
           {earthRadiusMeters / drawing.camera.radius < 60 ? (
             <div className="absolute top-5 left-1/2 flex -translate-x-1/2 animate-fade items-center gap-2 rounded-full border border-us-line bg-us-surface px-3.5 py-2.25 text-[12.5px] font-extrabold whitespace-nowrap text-us-muted shadow-[0_10px_24px_-14px_rgba(31,43,66,.55)]">
               <MapIcon size={15} strokeWidth={2.2} aria-hidden="true" />
@@ -256,4 +329,4 @@ function GlobeLayer({
 }
 
 export { GlobeLayer };
-export type { GlobePin };
+export type { GlobePin, RouteSegment };

@@ -18,6 +18,7 @@ async function toTodoDto(
     title: todo.title,
     description: todo.description,
     location: todo.location,
+    tripId: todo.tripId,
     createdAt: todo.createdAt.toISOString(),
     updatedAt: todo.updatedAt.toISOString(),
     doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
