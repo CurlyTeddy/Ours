@@ -268,7 +268,7 @@ function TripSidebar({
           selected={selected === "unsorted"}
           state={null}
           onSelect={onSelect}
-          className={cn(groupRow, "shadow-[inset_0_0_0_1.5px_var(--us-dash)]")}
+          className={groupRow}
         >
           <span
             aria-hidden="true"
