@@ -137,7 +137,8 @@ export default function Storybook({ login }: { login: React.ReactNode }) {
                 </div>
               ))}
               <div ref={endCap} className={cn(styles.chEl, styles.cta)}>
-                {login}
+                {/* Mount once in its final place: the still path would remount an auto-opened dialog and wipe its input. */}
+                {ready ? login : null}
               </div>
             </div>
             <div

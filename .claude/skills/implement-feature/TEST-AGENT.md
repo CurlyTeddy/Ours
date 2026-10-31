@@ -16,7 +16,7 @@ Each report is under 300 words and contains:
 - Installed: `@testing-library/react`, `@testing-library/user-event`, `msw`, `vitest-mock-extended`.
 - Run `pnpm test run <paths>`. Import `describe`, `test`, `expect` and `vi` from `"vitest"`.
 - Before you report, run `pnpm exec eslint --fix <your files>`. Lint only your own files, so you don't rewrite the builder's.
-- Git Bash here has no Python; write helper scripts in Node, in the scratchpad. A very long heredoc fails with `ENAMETOOLONG`, so write big blocks to a scratch file and append it.
+- Git Bash here has no Python; write helper scripts in Node, in the scratchpad. A very long heredoc fails with `ENAMETOOLONG`, so write big blocks to a scratch file and append it. Files can mix CRLF and LF, so a script matching `\n` silently finds nothing; prefer the Edit tool, or match `\r?\n`.
 - `vi.useFakeTimers({ shouldAdvanceTime: true })` lags real time (about 300ms faked over a 450ms real pause). When a test needs a time window to pass, step the clock with `vi.setSystemTime` instead of pausing.
 - ESLint rejects an empty `function () {}` and `class {}` in fakes; use `() => undefined` and a function constructor that sets fields.
 - In a fixture helper with default parameters, pass `null` to mean "absent", because passing `undefined` silently uses the default.

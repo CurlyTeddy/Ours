@@ -88,23 +88,21 @@ export async function authenticate(
   redirect(redirectUrl);
 }
 
-export async function signOutAction() {
+export async function signOutAction(): Promise<never> {
   const cookiesStore = await cookies();
   const token = cookiesStore.get("session");
-  if (token === undefined) {
-    console.info("User probably deletes session token manully.");
-    return;
+  if (token !== undefined) {
+    // deleteMany, so a session row that is already gone does not throw
+    await prisma.session.deleteMany({
+      where: {
+        sessionId: encodeHexLowerCase(
+          sha256(new TextEncoder().encode(token.value)),
+        ),
+      },
+    });
+    cookiesStore.delete("session");
   }
-
-  await prisma.session.delete({
-    where: {
-      sessionId: encodeHexLowerCase(
-        sha256(new TextEncoder().encode(token.value)),
-      ),
-    },
-  });
-  cookiesStore.delete("session");
-  redirect("/login");
+  redirect("/");
 }
 
 export interface State {
@@ -199,5 +197,5 @@ export async function register(
     };
   }
 
-  redirect("/login");
+  redirect("/");
 }

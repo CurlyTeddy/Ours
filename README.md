@@ -123,7 +123,7 @@ A personal web application for couples to document their relationship journey, m
 
 1. **Generate an invite code** (you can do this directly in the database or through [Prisma Seeding](https://www.prisma.io/docs/orm/prisma-migrate/workflows/seeding))
 2. **Sign up** using the invite code at `/signup`
-3. **Login** at `/login`
+3. **Login** at `/` (Log in button)
 4. **Start using the app** to document your journey together!
 
 ### Features Overview

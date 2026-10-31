@@ -8,10 +8,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const token = request.cookies.get("session")?.value;
 
   const { session, user } = await validateSessionToken(token);
-  if (
-    request.nextUrl.pathname === "/login" ||
-    request.nextUrl.pathname === "/signup"
-  ) {
+  if (request.nextUrl.pathname === "/signup") {
     if (session !== null && user !== null) {
       return NextResponse.redirect(new URL("/moments", request.url));
     }
@@ -19,7 +16,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   }
 
   if (session === null || user === null) {
-    // fetch follows redirects, so API callers would get the login page's HTML instead of JSON
+    // fetch follows redirects, so API callers would get the landing page's HTML instead of JSON
     if (request.nextUrl.pathname.startsWith("/api/")) {
       return NextResponse.json(
         { message: "Invalid or expired session." },
@@ -27,7 +24,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       );
     }
     return NextResponse.redirect(
-      new URL(`/login?callbackUrl=${request.nextUrl.pathname}`, request.url),
+      new URL(`/?callbackUrl=${request.nextUrl.pathname}`, request.url),
     );
   }
 

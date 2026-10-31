@@ -11,7 +11,7 @@ export default function UserAvatar() {
 
   useEffect(() => {
     if (user === null) {
-      router.replace("/login");
+      router.replace("/");
     }
   }, [user, router]);
 

@@ -233,3 +233,123 @@ describe("R10/R12: closing resets the card", () => {
     expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
   });
 });
+
+const renderWith = (callbackUrl?: string) => {
+  const user = userEvent.setup({ pointerEventsCheck: 0 });
+  render(<StorybookLoginDialog callbackUrl={callbackUrl} />);
+  return user;
+};
+const redirectInput = () =>
+  screen
+    .getByRole("dialog")
+    .querySelector<HTMLInputElement>('input[name="redirectTo"]');
+
+describe("R8: redirectTo follows callbackUrl", () => {
+  test.each(["/twodo", "/twodo/abc/edit", "/旅行🐻", "https://evil.example"])(
+    "callbackUrl %j is the hidden redirectTo, untouched",
+    async (callbackUrl) => {
+      renderWith(callbackUrl);
+      await screen.findByRole("dialog");
+      expect(redirectInput()?.type).toBe("hidden");
+      expect(redirectInput()?.value).toBe(callbackUrl);
+    },
+  );
+
+  test("absent callbackUrl falls back to /moments", async () => {
+    const user = renderWith(undefined);
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+    await screen.findByRole("dialog");
+    expect(redirectInput()?.value).toBe("/moments");
+  });
+
+  test("submit sends callbackUrl as redirectTo", async () => {
+    const user = renderWith("/twodo");
+    await screen.findByRole("dialog");
+    await user.type(screen.getByLabelText("Email"), "me@example.com");
+    await user.type(screen.getByLabelText("Password"), "password123");
+    await user.click(submit());
+    await waitFor(() => expect(auth).toHaveBeenCalledTimes(1));
+    expect(lastForm().get("redirectTo")).toBe("/twodo");
+  });
+
+  test("redirectTo survives close and reopen", async () => {
+    const user = renderWith("/map");
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+    await screen.findByRole("dialog");
+    expect(redirectInput()?.value).toBe("/map");
+  });
+});
+
+describe("R9: dialog starts open only with a callbackUrl", () => {
+  test("open on first render when callbackUrl is present", () => {
+    renderWith("/twodo");
+    expect(screen.getByRole("dialog")).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Welcome home" })).toBeDefined();
+  });
+
+  test('empty-string callbackUrl opens it, with redirectTo ""', () => {
+    renderWith("");
+    expect(screen.getByRole("dialog")).toBeDefined();
+    expect(redirectInput()?.value).toBe("");
+  });
+
+  test("closed on first render when callbackUrl is absent", () => {
+    renderWith(undefined);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  test('"Back to the book" closes the auto-opened dialog', async () => {
+    const user = renderWith("/twodo");
+    await user.click(screen.getByRole("button", { name: "Back to the book" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  test("Escape closes the auto-opened dialog, and Log in reopens it", async () => {
+    const user = renderWith("/twodo");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+    expect(await screen.findByRole("dialog")).toBeDefined();
+  });
+});
+
+describe("R10: signup link under the buttons", () => {
+  test.each([
+    ["with callbackUrl", "/twodo"],
+    ["without callbackUrl", undefined],
+  ])("%s: shows the invite line linking to /signup", async (_, callbackUrl) => {
+    const user = renderWith(callbackUrl);
+    if (!callbackUrl) {
+      await user.click(screen.getByRole("button", { name: "Log in" }));
+    }
+    const dialog = await screen.findByRole("dialog");
+    const link = screen.getByRole("link", { name: "Create an account" });
+
+    expect(dialog.contains(link)).toBe(true);
+    expect(link.getAttribute("href")).toBe("/signup");
+    expect(link.parentElement?.textContent).toBe(
+      "Have an invite code? Create an account",
+    );
+    // "under the buttons": the link comes after both dialog buttons in document order.
+    for (const name of ["Back to the book", "Log in"]) {
+      const button = screen.getByRole("button", { name });
+      expect(
+        button.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+  });
+
+  test("uses the dialog palette", async () => {
+    renderWith("/twodo");
+    const link = screen.getByRole("link", { name: "Create an account" });
+    const line = link.parentElement as HTMLElement;
+
+    expect(line.className).toContain("--f-ui");
+    expect(line.className).toContain("#6d6156");
+    expect(link.className).toContain("#2f4468");
+    expect(link.className).toContain("underline");
+  });
+});

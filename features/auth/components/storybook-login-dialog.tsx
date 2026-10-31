@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useId, useState } from "react";
+import Link from "next/link";
 import { Heart, LoaderCircle } from "lucide-react";
 import {
   Dialog,
@@ -24,7 +25,7 @@ const button =
   "min-h-11 flex-auto cursor-pointer touch-manipulation rounded-full px-5 py-3 font-(family-name:--f-ui) text-[13px] leading-none font-bold tracking-[.16em] uppercase select-none transition-[transform,background-color] duration-250 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#2f4468] active:scale-97 disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none";
 
 /* Lives inside the dialog content, so closing the dialog clears the form and its status line. */
-function LoginCard() {
+function LoginCard({ callbackUrl }: { callbackUrl?: string }) {
   const [message, formAction, isPending] = useActionState(
     authenticate,
     undefined,
@@ -74,7 +75,11 @@ function LoginCard() {
           className={input}
         />
       </label>
-      <input type="hidden" name="redirectTo" value="/moments" />
+      <input
+        type="hidden"
+        name="redirectTo"
+        value={callbackUrl ?? "/moments"}
+      />
       <p
         role="status"
         aria-live="polite"
@@ -106,13 +111,26 @@ function LoginCard() {
           Log in
         </button>
       </div>
+      <p className="-mb-2 font-(family-name:--f-ui) text-sm leading-[1.45] text-[#6d6156]">
+        Have an invite code?{" "}
+        <Link
+          href="/signup"
+          className="inline-flex min-h-11 touch-manipulation items-center font-semibold text-[#2f4468] underline underline-offset-3 hover:text-[#22364f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2f4468]"
+        >
+          Create an account
+        </Link>
+      </p>
     </form>
   );
 }
 
-export default function StorybookLoginDialog() {
+export default function StorybookLoginDialog({
+  callbackUrl,
+}: {
+  callbackUrl?: string;
+}) {
   return (
-    <Dialog>
+    <Dialog defaultOpen={callbackUrl !== undefined}>
       <DialogTrigger className="pointer-events-auto relative inline-flex cursor-pointer touch-manipulation items-center gap-2.5 overflow-hidden rounded-full border border-[#22364f] bg-[#2f4468] px-10 py-4 font-(family-name:--f-ui) text-sm leading-none font-bold tracking-[.2em] text-[#f6efe2] uppercase shadow-[0_14px_30px_-14px_rgba(25,40,65,.65)] select-none transition-[transform,background-color,box-shadow] duration-400 ease-[cubic-bezier(.2,.8,.2,1)] after:absolute after:inset-0 after:-translate-x-[120%] after:bg-[linear-gradient(105deg,rgba(255,255,255,0)_30%,rgba(255,255,255,.35)_50%,rgba(255,255,255,0)_70%)] after:transition-transform after:duration-900 after:ease-in-out hover:-translate-y-0.5 hover:bg-[#22364f] hover:shadow-[0_18px_36px_-14px_rgba(25,40,65,.75)] hover:after:translate-x-[120%] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22364f] active:translate-y-0 active:scale-97 active:duration-120 motion-reduce:transition-none motion-reduce:after:transition-none">
         <Heart aria-hidden="true" className="size-[15px]" strokeWidth={1.8} />
         Log in
@@ -126,7 +144,7 @@ export default function StorybookLoginDialog() {
           "w-[min(410px,calc(100vw-32px))] max-w-none gap-0 overflow-hidden rounded-[18px] border-0 bg-[#f6efe2] p-0 text-[#3a2f2a] shadow-[0_30px_80px_rgba(20,30,45,.45)] sm:max-w-none",
         )}
       >
-        <LoginCard />
+        <LoginCard callbackUrl={callbackUrl} />
       </DialogContent>
     </Dialog>
   );

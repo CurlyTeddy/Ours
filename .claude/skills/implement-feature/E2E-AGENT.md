@@ -20,8 +20,8 @@ Do every check through the Chrome MCP tools (`mcp__chrome-devtools__*`: navigate
    powershell.exe -Command "Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue"
    ```
    If it does, reuse it: the user's own server would otherwise make yours fail or move ports. Otherwise start one in the background with `node --inspect node_modules/next/dist/bin/next dev` (the VS Code "Next.js: debug full stack" configuration), and wait for the `Local:` URL.
-4. **Logged-out flows** run in a fresh isolated context (`new_page` with an isolated context). The shared headless profile keeps session cookies from earlier runs: `/login` silently redirecting to `/moments` means you are still logged in.
-5. **Log in** at `http://localhost:3000/login` as email `fake@gmail.com`, password `12345678` (username `agent1`).
+4. **Logged-out flows** run in a fresh isolated context (`new_page` with an isolated context). The shared headless profile keeps session cookies from earlier runs: `/signup` silently redirecting to `/moments` means you are still logged in.
+5. **Log in** at `http://localhost:3000/` (scroll to the bottom, click `Log in`, fill the "Welcome home" dialog) as email `fake@gmail.com`, password `12345678` (username `agent1`).
 
 ## Flows
 
@@ -66,8 +66,8 @@ Prefix the title or name of every record you create with `[e2e]`, so it's recogn
   - login with valid credentials;
   - login with invalid credentials shows `Invalid credential.`;
   - signup with a bad invite code shows `Invalid invite code. Please check your input.`;
-  - logged out, a protected route redirects to `/login?callbackUrl=…`;
-  - logout from the avatar dropdown.
+  - logged out, a protected route redirects to `/?callbackUrl=…` with the login dialog open;
+  - logout from the avatar dropdown lands on `/`.
 - **Moments** (the sticky-note wall):
   - the wall loads with the "Since 2022" / "Day N" chips and the calendar;
   - create a note from the pad, and it persists after reload;

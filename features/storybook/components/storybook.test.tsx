@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import type { StageElements, StageResult } from "@/features/storybook/stage";
@@ -355,5 +355,54 @@ describe("R7: boot failure falls back to text-only", () => {
       1,
     );
     expect(error).toHaveBeenCalled();
+  });
+});
+
+describe("login slot mounts once, after boot", () => {
+  let mounts = 0;
+  function CountingLogin() {
+    useEffect(() => {
+      mounts += 1;
+    }, []);
+    return <button type="button">counting-login</button>;
+  }
+
+  beforeEach(() => {
+    mounts = 0;
+  });
+
+  test.each<[string, StageResult]>([
+    ["stills", { kind: "stills", images }],
+    ["no-webgl", { kind: "no-webgl" }],
+    ["animated", { kind: "animated", dispose: () => undefined }],
+  ])("%s: hidden before boot, then mounted exactly once", async (_, result) => {
+    const d = deferred();
+    boot.mockReturnValue(d.promise);
+    render(<Storybook login={<CountingLogin />} />);
+    await waitFor(() => expect(boot).toHaveBeenCalled());
+
+    expect(screen.queryByRole("button", { name: "counting-login" })).toBeNull();
+    expect(mounts).toBe(0);
+
+    await act(async () => {
+      d.resolve(result);
+      await d.promise;
+    });
+
+    expect(
+      await screen.findAllByRole("button", { name: "counting-login" }),
+    ).toHaveLength(1);
+    expect(mounts).toBe(1);
+  });
+
+  test("boot failure: mounted exactly once on the text-only page", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    boot.mockRejectedValue(new Error("chunk failed"));
+    render(<Storybook login={<CountingLogin />} />);
+
+    expect(
+      await screen.findAllByRole("button", { name: "counting-login" }),
+    ).toHaveLength(1);
+    expect(mounts).toBe(1);
   });
 });
