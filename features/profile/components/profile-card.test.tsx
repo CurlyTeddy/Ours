@@ -21,7 +21,15 @@ import type { Profile } from "@/features/profile/models/responses";
 import { ProfileCard } from "@/features/profile/components/profile-card";
 
 vi.mock("react-easy-crop");
-vi.mock("@/lib/crop-image", () => ({ cropImage: vi.fn() }));
+vi.mock("@/lib/crop-image", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/crop-image")>()),
+  cropImage: vi.fn(),
+}));
+// jsdom decodes nothing; every picked file counts as decodable
+vi.mock("@/lib/decode-image", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/decode-image")>()),
+  toDecodable: vi.fn(async (file: File) => file),
+}));
 vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
 }));
@@ -45,14 +53,19 @@ const user0: Profile = {
 };
 const jpg = (name: string) => new File([name], name, { type: "image/jpeg" });
 const cropped = new Map<File, File>();
-let putJson: { image: string | null }[];
+let putJson: {
+  image: string | null;
+  imageFile?: { size: number; type: string } | null;
+}[];
 let uploaded: string[];
+let uploadTypes: (string | null)[];
 
 beforeEach(() => {
   vi.clearAllMocks();
   cropped.clear();
   putJson = [];
   uploaded = [];
+  uploadTypes = [];
   vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:mock");
   vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
   vi.mocked(cropImage).mockImplementation(async (file) => {
@@ -73,6 +86,7 @@ beforeEach(() => {
       });
     }),
     http.put("https://r2.test/avatar", async ({ request }) => {
+      uploadTypes.push(request.headers.get("content-type"));
       uploaded.push(await request.text());
       return new HttpResponse(null, { status: 200 });
     }),
@@ -149,6 +163,7 @@ describe("existing avatar", () => {
 
     await waitFor(() => expect(putJson).toHaveLength(1));
     expect(putJson[0].image).toBeNull();
+    expect(putJson[0].imageFile ?? null).toBeNull();
   });
 });
 
@@ -251,5 +266,90 @@ describe("R11: avatar picking the same file again", () => {
     expect(
       await screen.findByRole("dialog", { name: "Crop image" }),
     ).toBeDefined();
+  });
+});
+
+describe("R2: copy", () => {
+  test("recommends up to 5MB", () => {
+    setup();
+
+    expect(
+      screen.getByText("Recommended: Square image, up to 5MB"),
+    ).toBeDefined();
+    expect(screen.queryByText(/10MB/)).toBeNull();
+  });
+});
+
+describe("R12: file input", () => {
+  test("accepts images plus .heic and .heif", () => {
+    const { input } = setup();
+
+    expect(input.accept).toBe("image/*,.heic,.heif");
+  });
+
+  test("a HEIC with an empty type still opens the crop dialog", async () => {
+    const { user, input } = setup();
+
+    await user.upload(input, new File(["h"], "IMG_0001.HEIC", { type: "" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Crop image" }),
+    ).toBeDefined();
+  });
+});
+
+describe("R15/R18: avatar upload details", () => {
+  test("sends the cropped file's size and type, and PUTs with that Content-Type", async () => {
+    const me = jpg("me.jpg");
+    vi.mocked(cropImage).mockImplementationOnce(
+      async () => new File(["0123456789"], "me.jpg", { type: "image/jpeg" }),
+    );
+    const { user, input } = setup();
+
+    await user.upload(input, me);
+    await user.click(await screen.findByRole("button", { name: "Apply" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await save(user);
+
+    await waitFor(() => expect(uploaded).toHaveLength(1));
+    expect(putJson[0]).toMatchObject({
+      image: "me.jpg",
+      imageFile: { size: 10, type: "image/jpeg" },
+    });
+    expect(uploadTypes).toEqual(["image/jpeg"]);
+  });
+
+  test("a HEIC cropped to JPEG sends the JPEG name, size and type", async () => {
+    const pick = new File(["h"], "IMG_0001.HEIC", { type: "image/heic" });
+    vi.mocked(cropImage).mockImplementationOnce(
+      async () => new File(["jpeg!"], "IMG_0001.jpg", { type: "image/jpeg" }),
+    );
+    const { user, input } = setup();
+
+    await user.upload(input, pick);
+    await user.click(await screen.findByRole("button", { name: "Apply" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await save(user);
+
+    await waitFor(() => expect(uploaded).toHaveLength(1));
+    expect(putJson[0]).toMatchObject({
+      image: "IMG_0001.jpg",
+      imageFile: { size: 5, type: "image/jpeg" },
+    });
+    expect(uploadTypes).toEqual(["image/jpeg"]);
+  });
+
+  test("keeping the stored avatar sends no file details", async () => {
+    const { user } = setup({
+      ...user0,
+      imageKey: "me.jpg-abc",
+      imageUrl: "https://r2.test/me.jpg",
+    });
+
+    await save(user);
+
+    await waitFor(() => expect(putJson).toHaveLength(1));
+    expect(putJson[0].imageFile ?? null).toBeNull();
+    expect(uploaded).toEqual([]);
   });
 });

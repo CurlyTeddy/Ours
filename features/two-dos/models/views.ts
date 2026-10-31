@@ -5,8 +5,7 @@ import {
 import { DateTime } from "luxon";
 import { z } from "zod/v4";
 import type { TodoDto } from "@/features/two-dos/models/responses";
-
-const maxFileSize = 1024 * 1024 * 5;
+import { maxImageBytes } from "@/lib/image-upload";
 
 // list is a ListKey: "inspiration", "unsorted" or a trip id
 const todoFormSchema = z.object({
@@ -17,7 +16,7 @@ const todoFormSchema = z.object({
   images: z.array(
     z
       .file()
-      .max(maxFileSize)
+      .max(maxImageBytes)
       .mime(["image/gif", "image/jpeg", "image/png", "image/webp"]),
   ),
 });
@@ -64,5 +63,5 @@ function toTodo(todo: TodoDto): Todo {
   };
 }
 
-export { maxFileSize, todoFormSchema, toTodo };
+export { todoFormSchema, toTodo };
 export type { TodoForm };

@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import { z } from "zod/v4";
+import { imageUploadSchema } from "@/lib/image-upload";
 
 const noteColors = [
   "mist",
@@ -30,22 +31,40 @@ const notePlaceSchema = z.object({
   longitude: z.number().min(-180).max(180),
 });
 
-const noteSaveSchema = z.object({
+const noteContentSchema = z.object({
   text: z.string().max(200),
   color: z.enum(noteColors),
   pattern: z.enum(notePatterns),
   // "new" makes the API issue a fresh key and an upload URL; "keep" leaves the stored photo.
   photo: z.enum(["keep", "new", "none"]),
+  photoFile: imageUploadSchema.nullable().default(null),
   song: noteSongSchema.nullable(),
   place: notePlaceSchema.nullable(),
   date: z.string().refine(isIsoDate).nullable(),
 });
 
-const noteCreateSchema = noteSaveSchema.extend({
-  x: z.number(),
-  y: z.number(),
-  rotation: z.number().min(-8).max(8),
-});
+// A "new" photo's upload URL is signed for its exact size and type, so both must come with it.
+const hasPhotoFile = ({
+  photo,
+  photoFile,
+}: {
+  photo: string;
+  photoFile: unknown;
+}) => photo !== "new" || photoFile !== null;
+const missingPhotoFile = {
+  message: "Missing image details",
+  path: ["photoFile"],
+};
+
+const noteSaveSchema = noteContentSchema.refine(hasPhotoFile, missingPhotoFile);
+
+const noteCreateSchema = noteContentSchema
+  .extend({
+    x: z.number(),
+    y: z.number(),
+    rotation: z.number().min(-8).max(8),
+  })
+  .refine(hasPhotoFile, missingPhotoFile);
 
 const notePositionSchema = z.object({
   x: z.number(),

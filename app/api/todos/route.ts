@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/database-client";
 import { createId } from "@paralleldrive/cuid2";
 import { NextRequest, NextResponse } from "next/server";
-import s3Client, { bucket } from "@/lib/s3-client";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { presignImagePut } from "@/lib/s3-client";
 import { HttpErrorPayload } from "@/lib/error";
 import {
   TodoCreateResponse,
@@ -14,7 +13,6 @@ import { nextPriority, tripMissing } from "@/features/two-dos/queries";
 import { todoInclude, toTodoDto } from "@/features/two-dos/todo-dto";
 import { validateSessionToken } from "@/features/auth/session";
 import { cookies } from "next/headers";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 async function GET(): Promise<NextResponse<TodoResponse | HttpErrorPayload>> {
   try {
@@ -75,11 +73,10 @@ async function POST(
     );
   }
 
-  const { title, description, location, tripId, imageNames } =
-    validatedFields.data;
+  const { title, description, location, tripId, images } = validatedFields.data;
   // Keys are stored comma-joined, so a comma in a file name would split one key in two
-  const imageKeys = imageNames.map(
-    (name) => `${name.replaceAll(",", "_")}-${createId()}`,
+  const imageKeys = images.map(
+    ({ name }) => `${name.replaceAll(",", "_")}-${createId()}`,
   );
 
   try {
@@ -104,15 +101,9 @@ async function POST(
       const todo = await toTodoDto(newTodo);
 
       const signedUrls = await Promise.all(
-        imageKeys.map((key) => {
-          return getSignedUrl(
-            s3Client,
-            new PutObjectCommand({
-              Bucket: bucket,
-              Key: `two-do/${key}`,
-            }),
-          );
-        }),
+        imageKeys.map((key, index) =>
+          presignImagePut(`two-do/${key}`, images[index]),
+        ),
       );
 
       return { todo, signedUrls };

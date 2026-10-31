@@ -1,8 +1,7 @@
 import { Prisma } from "@prisma/client";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
-import s3Client, { bucket, getCachedSignedUrl } from "@/lib/s3-client";
+import { getCachedSignedUrl } from "@/lib/s3-client";
 import type {
   NoteColor,
   NoteCreateRequest,
@@ -43,17 +42,16 @@ const songWrite = (song: NoteSong) => ({
 // Keys are made here, never taken from the client, so a note can only ever point at its own object.
 const newPhotoKey = () => `notes/${createId()}`;
 
-// The browser PUTs the file here after the note row commits, as profile and Two-Dos do.
-const photoUploadUrl = (photoKey: string) =>
-  getSignedUrl(
-    s3Client,
-    new PutObjectCommand({ Bucket: bucket, Key: photoKey }),
-    { expiresIn: 300 },
-  );
+// Photo problems keep their message so the editor can say what was wrong; the rest stay generic.
+const invalidNoteMessage = (error: z.ZodError) =>
+  error.issues.find((issue) => issue.path[0] === "photoFile")?.message ??
+  "Invalid note";
 
 // On create a missing place or song is simply left out, and "keep" has nothing to keep.
 function toNoteCreate(
-  { song, place, photo, ...content }: NoteCreateRequest,
+  // photoFile only signs the upload URL; it is not a column
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  { song, place, photo, photoFile, ...content }: NoteCreateRequest,
   authorId: string,
   z: number,
 ): Prisma.MomentNoteCreateInput {
@@ -72,6 +70,9 @@ function toNoteUpdate({
   song,
   place,
   photo,
+  // photoFile only signs the upload URL; it is not a column
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  photoFile,
   ...content
 }: NoteSaveRequest): Prisma.MomentNoteUpdateInput {
   return {
@@ -141,9 +142,9 @@ async function toNote(row: NoteRow): Promise<Note> {
 }
 
 export {
+  invalidNoteMessage,
   isPrismaError,
   noteInclude,
-  photoUploadUrl,
   toNote,
   toNoteCreate,
   toNoteUpdate,

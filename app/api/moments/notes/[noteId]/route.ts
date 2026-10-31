@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database-client";
-import { deleteObjects } from "@/lib/s3-client";
+import { deleteObjects, presignImagePut } from "@/lib/s3-client";
 import { HttpErrorPayload } from "@/lib/error";
 import {
   notePositionSchema,
@@ -11,9 +11,9 @@ import type {
   NoteSaveResponse,
 } from "@/features/moments/models/responses";
 import {
+  invalidNoteMessage,
   isPrismaError,
   noteInclude,
-  photoUploadUrl,
   toNote,
   toNoteUpdate,
 } from "@/features/moments/note-mapping";
@@ -40,7 +40,10 @@ async function PUT(
   const validatedFields = noteSaveSchema.safeParse(body);
 
   if (!validatedFields.success) {
-    return invalidNote();
+    return NextResponse.json(
+      { message: invalidNoteMessage(validatedFields.error) },
+      { status: 400 },
+    );
   }
 
   try {
@@ -57,9 +60,10 @@ async function PUT(
           data: toNoteUpdate(validatedFields.data),
           include: noteInclude,
         });
+        const { photo, photoFile } = validatedFields.data;
         const uploadUrl =
-          validatedFields.data.photo === "new" && note.photoKey !== null
-            ? await photoUploadUrl(note.photoKey)
+          photo === "new" && note.photoKey !== null && photoFile !== null
+            ? await presignImagePut(note.photoKey, photoFile)
             : null;
         return {
           previousPhotoKey: previous?.photoKey ?? null,

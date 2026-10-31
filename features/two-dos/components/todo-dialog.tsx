@@ -16,6 +16,7 @@ import {
 import ErrorMessage from "@/components/ui/error-message";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
 import { getErrorMessage } from "@/lib/error";
+import type { ImageUpload } from "@/lib/image-upload";
 import { cn } from "@/lib/utils";
 import {
   BoardModal,
@@ -47,6 +48,13 @@ import {
 // Index prefix keeps same-named files (iOS names them all image.jpg) apart
 const imageName = (image: File, index: number) =>
   `${index.toString()}-${image.name}`;
+
+// The server signs each upload URL for this exact size and type; the form's mime check vouches for the type
+const imageUpload = (image: File, index: number) => ({
+  name: imageName(image, index),
+  size: image.size,
+  type: image.type as ImageUpload["type"],
+});
 
 const tripIdOf = (list: ListKey) =>
   list === "inspiration" || list === "unsorted" ? null : list;
@@ -91,7 +99,7 @@ function TodoDialog({
           description: data.description || undefined,
           location: data.location,
           tripId: tripIdOf(data.list),
-          imageNames: data.images.map(imageName),
+          images: data.images.map(imageUpload),
         } satisfies TodoCreateRequest,
       })
       .json<TodoCreateResponse>();
@@ -124,6 +132,7 @@ function TodoDialog({
         ...existingImages.map((image) => image.key),
         ...data.images.map(imageName),
       ],
+      uploads: data.images.map(imageUpload),
     } satisfies TodoUpdateRequest;
     const response = await ky
       .put(url, { json: request })

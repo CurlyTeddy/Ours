@@ -27,7 +27,15 @@ import type { TodoDto } from "@/features/two-dos/models/responses";
 import type { TripDto } from "@/features/two-dos/models/trip";
 
 vi.mock("react-easy-crop");
-vi.mock("@/lib/crop-image", () => ({ cropImage: vi.fn() }));
+vi.mock("@/lib/crop-image", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/crop-image")>()),
+  cropImage: vi.fn(),
+}));
+// jsdom decodes nothing; every picked file counts as decodable
+vi.mock("@/lib/decode-image", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/decode-image")>()),
+  toDecodable: vi.fn(async (file: File) => file),
+}));
 vi.mock("next/font/google", () => {
   const font = () => () => ({ className: "f", variable: "f", style: {} });
   return {
@@ -250,6 +258,8 @@ const record = async (request: Request) => {
   });
   return (body ?? {}) as Record<string, unknown>;
 };
+// Content-Type header of each R2 PUT (R18)
+const r2Types: (string | null)[] = [];
 const maxPriority = () => Math.max(0, ...db.todos.map((t) => t.priority));
 let nextId = 0;
 
@@ -312,7 +322,7 @@ const handlers = () => [
     db.todos = [...db.todos, todo];
     return HttpResponse.json({
       todo,
-      signedUrls: ((body.imageNames as string[] | undefined) ?? []).map(
+      signedUrls: ((body.images as unknown[] | undefined) ?? []).map(
         (_, i) => `https://r2.test/up${String(i)}`,
       ),
     });
@@ -358,6 +368,7 @@ const handlers = () => [
     return new HttpResponse(null, { status: 204 });
   }),
   http.put("https://r2.test/:name", async ({ request }) => {
+    r2Types.push(request.headers.get("content-type"));
     requests.push({ method: "PUT", path: "r2", body: await request.text() });
     return new HttpResponse(null, { status: 200 });
   }),
@@ -366,6 +377,7 @@ const handlers = () => [
 beforeEach(() => {
   db = fixtures();
   requests.length = 0;
+  r2Types.length = 0;
   nextId = 0;
   nav.set("");
   setViewport(1440);
@@ -1560,7 +1572,7 @@ describe("R17: new to-do", () => {
       title: "Picnic",
       tripId: null,
       location: null,
-      imageNames: [],
+      images: [],
     });
     await waitFor(() =>
       expect(rowTitles("Inspiration ideas")).toContain("Picnic"),
@@ -1688,15 +1700,18 @@ describe("R17: new to-do", () => {
 
     await waitFor(() =>
       expect(bodies("POST", "/api/todos")[0]).toMatchObject({
-        imageNames: ["0-a.jpg"],
+        images: [
+          { name: "0-a.jpg", size: "cropped-a.jpg".length, type: "image/jpeg" },
+        ],
       }),
     );
     await waitFor(() =>
       expect(sent("PUT", "r2").map((r) => r.body)).toEqual(["cropped-a.jpg"]),
     );
+    expect(r2Types).toEqual(["image/jpeg"]);
   });
 
-  test("an image over 5 MB is refused", async () => {
+  test("R14: a photo over 5 MB reaches the crop dialog instead of a toast", async () => {
     const { user } = await renderBoard();
 
     await user.click(screen.getByRole("button", { name: /Add idea/ }));
@@ -1706,10 +1721,45 @@ describe("R17: new to-do", () => {
       jpg("big.jpg", 5 * 1024 * 1024 + 1),
     );
 
-    expect(toast.info).toHaveBeenCalledWith(
+    expect(
+      await screen.findByRole("dialog", { name: "Crop image" }),
+    ).toBeDefined();
+    expect(toast.info).not.toHaveBeenCalledWith(
       "Images size need to be smaller than 5 MB.",
     );
-    expect(screen.queryByRole("dialog", { name: "Crop image" })).toBeNull();
+  });
+
+  test("R13: a GIF over 5 MB is dropped with a toast; a small one is added", async () => {
+    const { user } = await renderBoard();
+
+    await user.click(screen.getByRole("button", { name: /Add idea/ }));
+    const dialog = await screen.findByRole("dialog", { name: "New to-do" });
+    const huge = new File([new Uint8Array(5 * 1024 * 1024 + 1)], "huge.gif", {
+      type: "image/gif",
+    });
+    await user.upload(
+      document.querySelector('input[type="file"]') as HTMLInputElement,
+      [huge, new File(["gif"], "small.gif", { type: "image/gif" })],
+    );
+
+    await waitFor(() =>
+      expect(toast.info).toHaveBeenCalledWith(
+        "Images size need to be smaller than 5 MB.",
+      ),
+    );
+    expect(await within(dialog).findByAltText("small.gif")).toBeDefined();
+    expect(within(dialog).queryByAltText("huge.gif")).toBeNull();
+  });
+
+  test("R12: the file input accepts HEIC", async () => {
+    const { user } = await renderBoard();
+
+    await user.click(screen.getByRole("button", { name: /Add idea/ }));
+    await screen.findByRole("dialog", { name: "New to-do" });
+
+    expect(
+      (document.querySelector('input[type="file"]') as HTMLInputElement).accept,
+    ).toBe("image/*,.heic,.heif");
   });
 });
 
@@ -2481,6 +2531,9 @@ describe("R17: TodoDialog (white-box)", () => {
     await waitFor(() =>
       expect(bodies("PUT", "/api/todos/s1")[0]).toMatchObject({
         imageNames: ["kyoto.jpg-1", "0-fun.gif"],
+        uploads: [
+          { name: "0-fun.gif", size: "gif-fun.gif".length, type: "image/gif" },
+        ],
         tripId: "trip1",
       }),
     );

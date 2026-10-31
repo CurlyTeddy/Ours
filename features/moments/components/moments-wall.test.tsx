@@ -26,6 +26,11 @@ import { cropper } from "@/__mocks__/react-easy-crop";
 import type { Note } from "@/features/moments/models/responses";
 
 vi.mock("react-easy-crop");
+// jsdom decodes nothing; every picked file counts as decodable
+vi.mock("@/lib/decode-image", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/decode-image")>()),
+  toDecodable: vi.fn(async (file: File) => file),
+}));
 vi.mock("next/font/google", () => {
   const font = () => () => ({ className: "f", variable: "f", style: {} });
   return {
@@ -1075,6 +1080,7 @@ describe("R14/R18/R19/R30: the editor", () => {
       color: "lilac",
       pattern: "lines",
       photo: "none",
+      photoFile: null,
       song: inferno,
       place: taipei,
       date: null,
@@ -1257,7 +1263,7 @@ describe("R15/R36: background and photo", () => {
     ) as HTMLInputElement;
 
     expect(input.type).toBe("file");
-    expect(input.accept).toBe("image/*");
+    expect(input.accept).toBe("image/*,.heic,.heif");
     expect(input.multiple).toBe(false);
     await user.upload(
       input,
@@ -1333,7 +1339,8 @@ describe("R15/R36: background and photo", () => {
       (r) => r.body as Record<string, unknown>,
     );
     expect(first.photo).toBe("new");
-    expect(second).toEqual({ ...first, photo: "none" });
+    expect(first.photoFile).toEqual({ size: 3, type: "image/gif" });
+    expect(second).toEqual({ ...first, photo: "none", photoFile: null });
     await waitFor(() =>
       expect(screen.queryByRole("dialog", { name: "Edit note" })).toBeNull(),
     );
@@ -3199,7 +3206,9 @@ describe("R15/R19/R36: editor edge cases (white-box)", () => {
     expect(sent("PUT", /^\/api\/moments\/notes\/new/)[0].body).toEqual({
       ...content,
       photo: "none",
+      photoFile: null,
     });
+    expect(content.photoFile).toEqual({ size: 3, type: "image/gif" });
     await waitFor(() =>
       expect(screen.queryByRole("dialog", { name: "Edit note" })).toBeNull(),
     );
@@ -3310,6 +3319,38 @@ describe("R15/R19/R36: editor edge cases (white-box)", () => {
       expect(screen.queryByRole("dialog", { name: "Crop image" })).toBeNull(),
     );
     expect(within(editor()).getByText("Upload")).toBeDefined();
+  });
+
+  test("R12: a HEIC with an empty type gets through to the crop dialog", async () => {
+    const { user } = await renderWall();
+    const dialog = await openEditorFor(user, /^Empty note/);
+
+    fireEvent.change(within(dialog).getByLabelText(/background image/), {
+      target: { files: [new File(["h"], "IMG_0001.HEIC", { type: "" })] },
+    });
+
+    expect(
+      await screen.findByRole("dialog", { name: "Crop image" }),
+    ).toBeDefined();
+  });
+
+  test("R15: a new photo sends its size and type with photo new", async () => {
+    const { user } = await renderWall();
+    const dialog = await openEditorFor(user, /^Empty note/);
+
+    await user.upload(within(dialog).getByLabelText(/background image/), gif());
+    await waitFor(() =>
+      expect(within(editor()).getByText("Change")).toBeDefined(),
+    );
+    await user.click(
+      within(editor()).getByRole("button", { name: "Stick it" }),
+    );
+
+    await waitFor(() => expect(sent("PUT", "r2")).toHaveLength(1));
+    expect(sent("PUT", "/api/moments/notes/n2")[0].body).toMatchObject({
+      photo: "new",
+      photoFile: { size: 3, type: "image/gif" },
+    });
   });
 
   test("a non-image file is ignored", async () => {

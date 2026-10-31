@@ -13,9 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cropImage } from "@/lib/crop-image";
+import { cropImage, ImageTooLargeError } from "@/lib/crop-image";
+import { toDecodable } from "@/lib/decode-image";
+import { maxImageBytes } from "@/lib/image-upload";
 
 const isGif = (file: File) => file.type === "image/gif";
+// GIFs skip cropping and compression, so one over the limit can only be dropped
+const isOversizedGif = (file: File) => isGif(file) && file.size > maxImageBytes;
 const initialCrop: Point = { x: 0, y: 0 };
 
 export function ImageCropDialog({
@@ -36,7 +40,12 @@ export function ImageCropDialog({
   const [zoom, setZoom] = useState(1);
   const [area, setArea] = useState<Area | null>(null);
   const [isCropping, setIsCropping] = useState(false);
-  const [preview, setPreview] = useState<{ file: File; url: string }>();
+  // decoded is what the browser can draw: the file itself, or a JPEG made from a HEIC
+  const [preview, setPreview] = useState<{
+    file: File;
+    decoded: File;
+    url: string;
+  }>();
 
   // A new files array starts a new queue
   if (queue !== files) {
@@ -51,8 +60,11 @@ export function ImageCropDialog({
   const current = toCrop.at(outcomes.length);
 
   useEffect(() => {
+    if (files.some(isOversizedGif)) {
+      toast.info("Images size need to be smaller than 5 MB.");
+    }
     if (files.length > 0 && files.every(isGif)) {
-      onComplete(files);
+      onComplete(files.filter((file) => !isOversizedGif(file)));
     }
     // Only a new queue should trigger this, not a new onComplete identity
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,9 +72,24 @@ export function ImageCropDialog({
 
   useEffect(() => {
     if (!current) return;
-    const url = URL.createObjectURL(current);
-    setPreview({ file: current, url });
-    return () => URL.revokeObjectURL(url);
+    let cancelled = false;
+    let url: string | undefined;
+    toDecodable(current).then(
+      (decoded) => {
+        if (cancelled) return;
+        url = URL.createObjectURL(decoded);
+        setPreview({ file: current, decoded, url });
+      },
+      () => {
+        if (!cancelled) dropOnFailure();
+      },
+    );
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+    // A failure lands while current is unchanged, so this run's dropOnFailure is still the right one
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
   const advance = (outcome: File | null) => {
@@ -75,7 +102,10 @@ export function ImageCropDialog({
     if (next.length === toCrop.length) {
       let index = 0;
       onComplete(
-        files.flatMap((file) => (isGif(file) ? [file] : (next[index++] ?? []))),
+        files.flatMap((file) => {
+          if (isGif(file)) return isOversizedGif(file) ? [] : [file];
+          return next[index++] ?? [];
+        }),
       );
     }
   };
@@ -87,13 +117,19 @@ export function ImageCropDialog({
   };
 
   const onApply = async () => {
-    if (!current || !area) return;
+    if (!current || !area || preview?.file !== current) return;
     setIsCropping(true);
     try {
-      const cropped = await cropImage(current, area);
+      const cropped = await cropImage(preview.decoded, area);
       advance(cropped);
-    } catch {
-      dropOnFailure();
+    } catch (error) {
+      if (error instanceof ImageTooLargeError) {
+        // Named after the picked file: the error names the decoded copy (IMG_0001.jpg for a HEIC)
+        toast.error(`Couldn't shrink ${current.name} under 5 MB`);
+        advance(null);
+      } else {
+        dropOnFailure();
+      }
     } finally {
       setIsCropping(false);
     }
@@ -137,7 +173,11 @@ export function ImageCropDialog({
               onCropComplete={(_, pixels) => setArea(pixels)}
               mediaProps={{ onError: dropOnFailure }}
             />
-          ) : null}
+          ) : (
+            <p className="text-muted-foreground grid h-full place-items-center text-sm">
+              Preparing image…
+            </p>
+          )}
         </div>
 
         <DialogFooter>

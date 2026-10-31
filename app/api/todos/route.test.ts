@@ -2,17 +2,26 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { mockReset, type mockDeep } from "vitest-mock-extended";
 import { Prisma, type PrismaClient } from "@prisma/client";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const db = vi.hoisted(() => ({ prisma: undefined as unknown }));
-vi.mock("@/lib/env", () => ({ env: { NEXT_PUBLIC_ENVIRONMENT: "dev" } }));
+vi.mock("@/lib/env", () => ({
+  env: {
+    NEXT_PUBLIC_ENVIRONMENT: "dev",
+    R2_ENDPOINT: "https://r2.test",
+    R2_ACCESS_KEY: "a",
+    R2_SECRET_ACCESS_KEY: "b",
+  },
+}));
 vi.mock("@/lib/database-client", async () => {
   const { mockDeep } = await import("vitest-mock-extended");
   db.prisma = mockDeep<PrismaClient>();
   return { prisma: db.prisma, redis: mockDeep() };
 });
-vi.mock("@/lib/s3-client", () => ({
-  default: {},
-  bucket: "images-test",
+// Real module (presignImagePut may live here), with network-facing parts stubbed
+vi.mock("@/lib/s3-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/s3-client")>()),
   deleteObjects: vi.fn(),
   getCachedSignedUrl: vi.fn(async () => "https://signed"),
 }));
@@ -70,7 +79,7 @@ const post = (body: Record<string, unknown>) =>
         title: "Temple",
         location: null,
         tripId: null,
-        imageNames: [],
+        images: [],
         ...body,
       }),
     }),
@@ -98,6 +107,7 @@ const tripExists = (exists: boolean) => {
 
 beforeEach(() => {
   mockReset(prisma());
+  vi.mocked(getSignedUrl).mockClear();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   prisma().$transaction.mockImplementation((async (arg: unknown) =>
     typeof arg === "function"
@@ -260,7 +270,10 @@ describe("POST /api/todos (white-box)", () => {
 
   test("images get comma-safe keys and one signed URL each", async () => {
     const response = await post({
-      imageNames: ["0-a.jpg", "1-Paris, France.jpg"],
+      images: [
+        { name: "0-a.jpg", size: 10, type: "image/jpeg" },
+        { name: "1-Paris, France.jpg", size: 20, type: "image/jpeg" },
+      ],
     });
     const body = (await response.json()) as { signedUrls: string[] };
 
@@ -274,7 +287,7 @@ describe("POST /api/todos (white-box)", () => {
   });
 
   test("no images stores null keys", async () => {
-    await post({ imageNames: [] });
+    await post({ images: [] });
 
     expect(created().imageKeys).toBeNull();
   });
@@ -340,5 +353,145 @@ describe("toTodoDto (white-box)", () => {
     ]);
     expect(body.todos[0].createdBy.imageUrl).toBe("https://signed");
     expect(body.todos[0].doneAt).toBe("2025-01-10T12:00:00.000Z");
+  });
+});
+
+const signedPuts = () =>
+  vi.mocked(getSignedUrl).mock.calls.map(([, command, options]) => ({
+    input: (command as PutObjectCommand).input,
+    isPut: command instanceof PutObjectCommand,
+    options,
+  }));
+
+describe("R15: POST /api/todos validates each image", () => {
+  test("over 5 MB (user flow 6): 400 Images must be 5 MB or smaller, nothing written", async () => {
+    const response = await post({
+      images: [{ name: "0-big.jpg", size: 6_000_000, type: "image/jpeg" }],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "Images must be 5 MB or smaller",
+    });
+    expect(prisma().todo.create).not.toHaveBeenCalled();
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  test("one oversized image among good ones still fails the whole request", async () => {
+    const response = await post({
+      images: [
+        { name: "0-a.jpg", size: 10, type: "image/jpeg" },
+        { name: "1-b.jpg", size: 5 * 1024 * 1024 + 1, type: "image/jpeg" },
+      ],
+    });
+
+    expect(response.status).toBe(400);
+    expect(prisma().todo.create).not.toHaveBeenCalled();
+  });
+
+  test("a HEIC type (user flow 6): 400 Only JPEG, PNG, WebP or GIF", async () => {
+    const response = await post({
+      images: [{ name: "0-a.heic", size: 1000, type: "image/heic" }],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "Only JPEG, PNG, WebP or GIF images can be uploaded",
+    });
+    expect(prisma().todo.create).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["no size", { name: "0-a.jpg", type: "image/jpeg" }],
+    ["no type", { name: "0-a.jpg", size: 10 }],
+    ["an empty name", { name: "", size: 10, type: "image/jpeg" }],
+    ["a bare name", "0-a.jpg"],
+  ])("an image with %s: 400", async (_, image) => {
+    const response = await post({ images: [image] });
+
+    expect(response.status).toBe(400);
+    expect(prisma().todo.create).not.toHaveBeenCalled();
+  });
+
+  test("the old imageNames body: 400", async () => {
+    const response = await POST(
+      new NextRequest("http://localhost/api/todos", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Temple",
+          location: null,
+          tripId: null,
+          imageNames: ["0-a.jpg"],
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  test("exactly 5 MB is accepted", async () => {
+    const response = await post({
+      images: [{ name: "0-a.png", size: 5 * 1024 * 1024, type: "image/png" }],
+    });
+
+    expect(response.status).toBe(200);
+  });
+});
+
+describe("R16: POST /api/todos signs size and type", () => {
+  test("each PUT URL signs its image's Content-Type and Content-Length for 300 s", async () => {
+    await post({
+      images: [
+        { name: "0-a.jpg", size: 1234, type: "image/jpeg" },
+        { name: "1-b.gif", size: 5678, type: "image/gif" },
+      ],
+    });
+
+    // Request-only detail; Prisma would reject an unknown field
+    expect(created()).not.toHaveProperty("images");
+    const keys = String(created().imageKeys).split(",");
+    expect(signedPuts()).toEqual([
+      {
+        isPut: true,
+        input: {
+          Bucket: "images-dev",
+          Key: `two-do/${keys[0]}`,
+          ContentType: "image/jpeg",
+          ContentLength: 1234,
+        },
+        options: expect.objectContaining({
+          expiresIn: 300,
+          signableHeaders: new Set(["content-type", "content-length"]),
+        }),
+      },
+      {
+        isPut: true,
+        input: {
+          Bucket: "images-dev",
+          Key: `two-do/${keys[1]}`,
+          ContentType: "image/gif",
+          ContentLength: 5678,
+        },
+        options: expect.objectContaining({ expiresIn: 300 }),
+      },
+    ]);
+  });
+
+  test("keys keep the name rule: comma-safe, one per image, in order", async () => {
+    await post({
+      images: [{ name: "0-相片 🐶.jpg", size: 1, type: "image/jpeg" }],
+    });
+
+    expect(created().imageKeys).toMatch(/^0-相片 🐶\.jpg-\w+$/);
+  });
+
+  test("a presign failure is a 500", async () => {
+    vi.mocked(getSignedUrl).mockRejectedValueOnce(new Error("r2 down"));
+
+    const response = await post({
+      images: [{ name: "0-a.jpg", size: 10, type: "image/jpeg" }],
+    });
+
+    expect(response.status).toBe(500);
   });
 });

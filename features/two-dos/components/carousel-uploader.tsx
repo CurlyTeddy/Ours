@@ -1,6 +1,6 @@
 "use client";
 
-import { maxFileSize, Todo, TodoForm } from "@/features/two-dos/models/views";
+import { Todo, TodoForm } from "@/features/two-dos/models/views";
 import { ControllerRenderProps } from "react-hook-form";
 import {
   useEffect,
@@ -79,11 +79,6 @@ function CarouselUploader({
       return;
     }
 
-    if (!uploadedFiles.every((image) => image.size <= maxFileSize)) {
-      toast.info("Images size need to be smaller than 5 MB.");
-      return;
-    }
-
     setFilesToCrop(uploadedFiles);
   };
 
@@ -151,7 +146,7 @@ function CarouselUploader({
       <FormControl>
         <Input
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           className="hidden"
           ref={fileInput}
           onChange={onImageUpload}

@@ -5,17 +5,16 @@ import {
   Profile,
   ProfileUpdateResponse,
 } from "@/features/profile/models/responses";
-import z from "zod";
+import { z } from "zod/v4";
 import { prisma } from "@/lib/database-client";
 import { createId } from "@paralleldrive/cuid2";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import s3Client, {
-  bucket,
+import {
   deleteObjects,
   getCachedSignedUrl,
+  presignImagePut,
 } from "@/lib/s3-client";
+import { imageUploadSchema } from "@/lib/image-upload";
 import { cookies } from "next/headers";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export async function GET(
   request: NextRequest,
@@ -67,17 +66,14 @@ export async function PUT(
   }
 
   try {
-    const requestPayload = (await request.json()) as {
-      name: string;
-      email: string;
-      image?: string;
-    };
+    const requestPayload: unknown = await request.json();
 
     const validatedFields = z
       .object({
         name: z.string().min(1, "Name is required"),
-        email: z.string().email("Invalid email address"),
+        email: z.email("Invalid email address"),
         image: z.string().nullable(),
+        imageFile: imageUploadSchema.nullable().optional(),
       })
       .safeParse(requestPayload);
 
@@ -88,7 +84,7 @@ export async function PUT(
       );
     }
 
-    const { name, email, image } = validatedFields.data;
+    const { name, email, image, imageFile } = validatedFields.data;
 
     const currentImage =
       (
@@ -97,6 +93,13 @@ export async function PUT(
           select: { image: true },
         })
       )?.image ?? null;
+
+    if (image !== null && image !== currentImage && !imageFile) {
+      return NextResponse.json(
+        { message: "Missing image details" },
+        { status: 400 },
+      );
+    }
 
     if (image === currentImage) {
       const profile = await prisma.user.update({
@@ -131,14 +134,8 @@ export async function PUT(
       });
 
       const signedUrl =
-        imageKey !== null
-          ? await getSignedUrl(
-              s3Client,
-              new PutObjectCommand({
-                Bucket: bucket,
-                Key: `avatar/${imageKey}`,
-              }),
-            )
+        imageKey !== null && imageFile
+          ? await presignImagePut(`avatar/${imageKey}`, imageFile)
           : undefined;
 
       return {

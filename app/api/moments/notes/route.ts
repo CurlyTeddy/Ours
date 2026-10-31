@@ -9,11 +9,12 @@ import type {
   NoteSaveResponse,
 } from "@/features/moments/models/responses";
 import {
+  invalidNoteMessage,
   noteInclude,
-  photoUploadUrl,
   toNote,
   toNoteCreate,
 } from "@/features/moments/note-mapping";
+import { presignImagePut } from "@/lib/s3-client";
 
 async function GET(): Promise<
   NextResponse<NoteListResponse | HttpErrorPayload>
@@ -51,7 +52,10 @@ async function POST(
   const validatedFields = noteCreateSchema.safeParse(body);
 
   if (!validatedFields.success) {
-    return NextResponse.json({ message: "Invalid note" }, { status: 400 });
+    return NextResponse.json(
+      { message: invalidNoteMessage(validatedFields.error) },
+      { status: 400 },
+    );
   }
 
   try {
@@ -65,9 +69,13 @@ async function POST(
         ),
         include: noteInclude,
       });
+      // The browser PUTs the file here after the note row commits, as profile and Two-Dos do.
       // Signed inside the transaction, so a signing failure leaves no row without its upload URL.
+      const { photoFile } = validatedFields.data;
       const uploadUrl =
-        note.photoKey !== null ? await photoUploadUrl(note.photoKey) : null;
+        note.photoKey !== null && photoFile !== null
+          ? await presignImagePut(note.photoKey, photoFile)
+          : null;
       return { note, uploadUrl };
     });
 

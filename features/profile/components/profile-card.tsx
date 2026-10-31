@@ -35,6 +35,7 @@ import {
 import { useUser } from "@/features/profile/hooks/user";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
+import type { ImageUpload } from "@/lib/image-upload";
 
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -163,7 +164,7 @@ function AvatarManager({
         </Button>
 
         <p className="text-sm text-muted-foreground text-center max-w-xs">
-          Recommended: Square image, up to 10MB
+          Recommended: Square image, up to 5MB
         </p>
       </div>
 
@@ -173,7 +174,7 @@ function AvatarManager({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             onChange={(event) => {
               if (!event.target.files || event.target.files.length === 0) {
                 return;
@@ -235,6 +236,13 @@ function ProfileCard({ user }: { user: Profile }) {
                 formData.image === undefined
                   ? user.imageKey
                   : (formData.image?.name ?? null),
+              // The upload URL is signed for this exact size and type
+              imageFile: formData.image
+                ? {
+                    size: formData.image.size,
+                    type: formData.image.type as ImageUpload["type"],
+                  }
+                : null,
             },
           })
           .json();

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { DateTime } from "luxon";
-import { toTodo } from "@/features/two-dos/models/views";
+import * as views from "@/features/two-dos/models/views";
+import { todoFormSchema, toTodo } from "@/features/two-dos/models/views";
+import { maxImageBytes } from "@/lib/image-upload";
 import type { TodoDto } from "@/features/two-dos/models/responses";
 
 const taipei = {
@@ -48,5 +50,37 @@ describe("R1/R3: toTodo maps trip, priority and location", () => {
     const todo = toTodo(dto(null, { tripId: null, location: null }));
     expect(todo.tripId).toBeNull();
     expect(todo.location).toBeNull();
+  });
+});
+
+describe("R1: todoFormSchema uses the shared limit", () => {
+  const form = (images: File[]) =>
+    todoFormSchema.safeParse({
+      title: "Trip",
+      list: "inspiration",
+      location: null,
+      description: "",
+      images,
+    });
+  const sized = (size: number, type = "image/jpeg") =>
+    new File([new Uint8Array(size)], "a.jpg", { type });
+
+  test("an image of exactly maxImageBytes passes", () => {
+    expect(form([sized(maxImageBytes)]).success).toBe(true);
+  });
+
+  test("one byte over fails", () => {
+    expect(form([sized(maxImageBytes + 1)]).success).toBe(false);
+  });
+
+  test.each(["image/gif", "image/jpeg", "image/png", "image/webp"])(
+    "%s is allowed",
+    (type) => {
+      expect(form([sized(10, type)]).success).toBe(true);
+    },
+  );
+
+  test("maxFileSize is no longer exported", () => {
+    expect("maxFileSize" in views).toBe(false);
   });
 });

@@ -23,13 +23,15 @@ If the argument is an existing `docs/specs/*.md`, resume at **Build**.
    - UI: use the `pick-ui-library` or `shadcn` skill.
    - Anything else: use an installed dependency if one covers it. Otherwise pick the package with the most npm downloads over the last year (`https://api.npmjs.org/downloads/point/last-year/<pkg>`) that has had a release within 6 months.
    - Ask the user when the top two are within 2x of each other, or when the choice is architectural (ORM, auth, state management, data fetching).
+   - Give the reason behind every recommended answer, not only the facts. The user stopped a round to ask why a format change was recommended.
+   - Never recommend leaving server-side enforcement of a client-side limit (size, type, count) out of scope. The user put it back into scope, because a client-only check isn't a limit.
 
    Done when the frontier is empty and the user confirms.
 3. **Write `docs/specs/<slug>.md`** with these sections:
    - **Goal**
    - **Requirements**: numbered `R1…`, each one testable.
    - **Inputs & validation**: every field with its type, bounds and error message.
-   - **Interfaces**: file path and export name of every route (method, request, response, status codes), component, hook and Zod schema. Both agents code against these, in parallel. Interfaces are yours to decide; don't put them to the user. Give each route handler's exact signature, such as `GET()` or `DELETE(request, { params })`, because the test writer calls handlers directly and a guessed argument list fails `tsc`.
+   - **Interfaces**: file path and export name of every route (method, request, response, status codes), component, hook and Zod schema. Both agents code against these, in parallel. Interfaces are yours to decide; don't put them to the user. Give each route handler's exact signature, such as `GET()` or `DELETE(request, { params })`, because the test writer calls handlers directly and a guessed argument list fails `tsc`. Name the exact import specifier of every new library, checked in its `package.json` `exports` (for example `libheif-js/libheif-wasm/libheif-bundle.mjs`). Each agent guessed a different path for `libheif-js`, and the builder needed two tries to match the test writer's mock.
    - **Data model changes**: normalize to 3NF. Put details that depend on an outside ID (a Google place, a YouTube video) in their own table, and point at it with a foreign key. Reuse an existing table such as `location` (Two-Dos, unique `placeId`) through `connectOrCreate`. The user rejected flat `place_*`/`song_*` columns on a note, because then every feature that pins places needs its own query.
    - **User flows**: numbered e2e scenarios.
    - **Libraries**: each with the reason.
@@ -74,6 +76,7 @@ Every message between you and an agent goes through `SendMessage` to the agent I
    - Run `git add -N .` so new files show in `git diff`. This stages nothing.
    - Invoke `ponytail:ponytail-review` with `Uncommitted changes. Spec: <path>. Already rejected: <findings rejected in earlier rounds, each with its reason>`.
    - Send every **Must fix** and **Should fix**, verbatim, to the builder. Findings in test files go to the test writer. Leave Nice to have alone.
+   - The review skill ends by addressing the user, but that report is input to this loop, not a stopping point. Dispatch its findings in the same turn. Once, the turn ended after the report, and the user had to ask why the loop never ran.
    - An agent may answer `REJECT n: <reason>` when a finding contradicts the spec or `CLAUDE.md`. Accept the rejection if the reason holds; otherwise send the finding back with your counter-argument.
    - Rerun step 4, then review again.
 

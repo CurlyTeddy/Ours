@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { ImageIcon, MapPin, Music, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/error";
+import { isHeic } from "@/lib/decode-image";
+import type { ImageUpload } from "@/lib/image-upload";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import AlertDialogButton from "@/components/ui/alert-dialog-button";
 import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
@@ -136,6 +138,10 @@ function NoteEditor({
         color: draft.color,
         pattern: draft.pattern,
         photo: file ? "new" : draft.photoOn && draft.photo ? "keep" : "none",
+        // The upload URL is signed for this exact size and type; cropping only makes JPEG, PNG or WebP
+        photoFile: file
+          ? { size: file.size, type: file.type as ImageUpload["type"] }
+          : null,
         song: draft.song,
         place: draft.place,
         date: draft.date || null,
@@ -171,7 +177,7 @@ function NoteEditor({
           // The saved note points at an object that never arrived, so drop the photo as profile does.
           const fallback = await ky
             .put(`/api/moments/notes/${saved.noteId}`, {
-              json: { ...content, photo: "none" },
+              json: { ...content, photo: "none", photoFile: null },
               retry: 0,
             })
             .json<NoteSaveResponse>()
@@ -407,13 +413,14 @@ function NoteEditor({
             <span>{uploadLabel}</span>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               aria-label="Upload a background image"
               className="sr-only"
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
-                if (file?.type.startsWith("image/")) setCropFiles([file]);
+                if (file && (file.type.startsWith("image/") || isHeic(file)))
+                  setCropFiles([file]);
               }}
             />
           </label>

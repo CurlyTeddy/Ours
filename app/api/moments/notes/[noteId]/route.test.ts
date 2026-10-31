@@ -7,15 +7,22 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { deleteObjects } from "@/lib/s3-client";
 
 const db = vi.hoisted(() => ({ prisma: undefined as unknown }));
-vi.mock("@/lib/env", () => ({ env: { NEXT_PUBLIC_ENVIRONMENT: "dev" } }));
+vi.mock("@/lib/env", () => ({
+  env: {
+    NEXT_PUBLIC_ENVIRONMENT: "dev",
+    R2_ENDPOINT: "https://r2.test",
+    R2_ACCESS_KEY: "a",
+    R2_SECRET_ACCESS_KEY: "b",
+  },
+}));
 vi.mock("@/lib/database-client", async () => {
   const { mockDeep } = await import("vitest-mock-extended");
   db.prisma = mockDeep<PrismaClient>();
   return { prisma: db.prisma, redis: mockDeep() };
 });
-vi.mock("@/lib/s3-client", () => ({
-  default: { send: vi.fn() },
-  bucket: "images-dev",
+// Real module (presignImagePut may live here), with network-facing parts stubbed
+vi.mock("@/lib/s3-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/s3-client")>()),
   deleteObjects: vi.fn(() => Promise.resolve()),
   getCachedSignedUrl: vi.fn((key: string) =>
     Promise.resolve(`https://signed/${key}`),
@@ -117,6 +124,8 @@ const joined = (data: Record<string, unknown>) => {
   }
   return result;
 };
+// The cropped photo the client declares for photo "new"
+const photoFile = { size: 123_456, type: "image/jpeg" };
 const save = {
   text: "new text",
   color: "lilac",
@@ -313,7 +322,7 @@ describe("R34: PUT /api/moments/notes/[noteId]", () => {
   });
 
   test('photo "new" writes a fresh server key, answers an upload URL, then deletes the old object', async () => {
-    const response = await put({ ...save, photo: "new" });
+    const response = await put({ ...save, photo: "new", photoFile });
 
     expect(response.status).toBe(200);
     const photoKey = updateArgs().data.photoKey as string;
@@ -358,7 +367,11 @@ describe("R34: PUT /api/moments/notes/[noteId]", () => {
       prisma().momentNote.findUniqueOrThrow.mockResolvedValue(plain as never);
       prisma().momentNote.findFirst.mockResolvedValue(plain as never);
 
-      const response = await put({ ...save, photo });
+      const response = await put({
+        ...save,
+        photo,
+        photoFile: photo === "new" ? photoFile : null,
+      });
 
       expect(response.status).toBe(200);
       expect(deleteObjects).not.toHaveBeenCalled();
@@ -374,7 +387,7 @@ describe("R34: PUT /api/moments/notes/[noteId]", () => {
   test("a presign failure answers 500 and deletes nothing", async () => {
     vi.mocked(getSignedUrl).mockRejectedValueOnce(new Error("r2 down"));
 
-    const response = await put({ ...save, photo: "new" });
+    const response = await put({ ...save, photo: "new", photoFile });
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ message: "Failed to update note" });
@@ -384,7 +397,7 @@ describe("R34: PUT /api/moments/notes/[noteId]", () => {
   test("a failed update deletes nothing", async () => {
     prisma().momentNote.update.mockRejectedValue(new Error("down"));
 
-    const response = await put({ ...save, photo: "new" });
+    const response = await put({ ...save, photo: "new", photoFile });
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ message: "Failed to update note" });
@@ -459,7 +472,7 @@ describe("R34: PUT /api/moments/notes/[noteId]", () => {
       }),
     );
 
-    const response = await put({ ...save, photo: "new" });
+    const response = await put({ ...save, photo: "new", photoFile });
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ message: "Failed to update note" });
@@ -584,14 +597,14 @@ describe("R34/R35: edge cases (white-box)", () => {
   test("PUT where the old row read finds nothing but the update succeeds deletes nothing", async () => {
     prisma().momentNote.findUnique.mockResolvedValue(null);
 
-    const response = await put({ ...save, photo: "new" });
+    const response = await put({ ...save, photo: "new", photoFile });
 
     expect(response.status).toBe(200);
     expect(deleteObjects).not.toHaveBeenCalled();
   });
 
   test("PUT reads the old key and updates inside one transaction", async () => {
-    await put({ ...save, photo: "new" });
+    await put({ ...save, photo: "new", photoFile });
 
     expect(prisma().$transaction).toHaveBeenCalledTimes(1);
     expect(prisma().momentNote.findUnique.mock.calls[0][0]).toMatchObject({
@@ -624,5 +637,113 @@ describe("R34/R35: edge cases (white-box)", () => {
     const response = await remove();
 
     expect(response.status).toBe(500);
+  });
+});
+
+describe("R15/R16: PUT /api/moments/notes/[noteId] photoFile", () => {
+  test('photo "new" signs the declared Content-Type and Content-Length', async () => {
+    const response = await put({
+      ...save,
+      photo: "new",
+      photoFile: { size: 999, type: "image/webp" },
+    });
+
+    expect(response.status).toBe(200);
+    const [, command, options] = vi.mocked(getSignedUrl).mock.calls[0];
+    expect((command as PutObjectCommand).input).toEqual({
+      Bucket: "images-dev",
+      Key: updateArgs().data.photoKey,
+      ContentType: "image/webp",
+      ContentLength: 999,
+    });
+    // Request-only detail; Prisma would reject an unknown column
+    expect(updateArgs().data).not.toHaveProperty("photoFile");
+    expect(options).toMatchObject({
+      expiresIn: 300,
+      signableHeaders: new Set(["content-type", "content-length"]),
+    });
+  });
+
+  test.each([
+    ["left out", undefined],
+    ["null", null],
+  ])(
+    'photo "new" with photoFile %s: 400 Missing image details',
+    async (_, value) => {
+      const response = await put({ ...save, photo: "new", photoFile: value });
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        message: "Missing image details",
+      });
+      expect(prisma().momentNote.update).not.toHaveBeenCalled();
+      expect(deleteObjects).not.toHaveBeenCalled();
+    },
+  );
+
+  test("over 5 MB: 400 Images must be 5 MB or smaller", async () => {
+    const response = await put({
+      ...save,
+      photo: "new",
+      photoFile: { size: 6_000_000, type: "image/jpeg" },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "Images must be 5 MB or smaller",
+    });
+    expect(prisma().momentNote.update).not.toHaveBeenCalled();
+  });
+
+  test("a HEIC: 400 Only JPEG, PNG, WebP or GIF", async () => {
+    const response = await put({
+      ...save,
+      photo: "new",
+      photoFile: { size: 10, type: "image/heif" },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "Only JPEG, PNG, WebP or GIF images can be uploaded",
+    });
+    expect(prisma().momentNote.update).not.toHaveBeenCalled();
+  });
+
+  test('the fallback photo "none" PUT with photoFile null clears the photo', async () => {
+    const response = await put({ ...save, photo: "none", photoFile: null });
+
+    expect(response.status).toBe(200);
+    expect(updateArgs().data.photoKey).toBeNull();
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  test('photo "keep" ignores a stray photoFile', async () => {
+    const response = await put({ ...save, photo: "keep", photoFile });
+
+    expect(response.status).toBe(200);
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe("PUT /api/moments/notes/[noteId] photoFile (white-box)", () => {
+  test("a photoFile issue wins over another invalid field", async () => {
+    const response = await put({
+      ...save,
+      text: "a".repeat(201),
+      photo: "new",
+      photoFile: { size: 10, type: "image/bmp" },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "Only JPEG, PNG, WebP or GIF images can be uploaded",
+    });
+  });
+
+  test("a non-photo issue alone stays Invalid note", async () => {
+    const response = await put({ ...save, color: "blue", photoFile: null });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ message: "Invalid note" });
   });
 });

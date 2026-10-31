@@ -27,13 +27,16 @@ const save = {
   color: "butter",
   pattern: "grid",
   photo: "none",
+  photoFile: null,
   song: null,
   place: null,
   date: "2026-10-22",
 };
+const photoFile = { size: 2_000_000, type: "image/jpeg" };
 const full = {
   ...save,
   photo: "new",
+  photoFile,
   song,
   place,
 };
@@ -106,7 +109,12 @@ describe("R34/Inputs: noteSaveSchema", () => {
   });
 
   test.each(["keep", "new", "none"])("accepts photo %j", (photo) => {
-    expect(noteSaveSchema.parse({ ...save, photo }).photo).toBe(photo);
+    const body = {
+      ...save,
+      photo,
+      photoFile: photo === "new" ? photoFile : null,
+    };
+    expect(noteSaveSchema.parse(body).photo).toBe(photo);
   });
 
   test.each([
@@ -533,5 +541,111 @@ describe("R23/Inputs: specialDayFormSchema (client)", () => {
       "Name is required",
       "Pick a date",
     ]);
+  });
+});
+
+describe("R15/Inputs: photoFile", () => {
+  const sizeMessage = "Images must be 5 MB or smaller";
+  const typeMessage = "Only JPEG, PNG, WebP or GIF images can be uploaded";
+  const missing = "Missing image details";
+  const create = { x: 1, y: 2, rotation: 0 };
+  const messages = (value: unknown) =>
+    noteSaveSchema.safeParse(value).error?.issues.map((issue) => issue.message);
+  const withoutPhotoFile = Object.fromEntries(
+    Object.entries(save).filter(([key]) => key !== "photoFile"),
+  );
+
+  test("defaults to null when left out", () => {
+    expect(noteSaveSchema.parse(withoutPhotoFile).photoFile).toBeNull();
+  });
+
+  test("photo new with its file details passes them through", () => {
+    expect(
+      noteSaveSchema.parse({ ...save, photo: "new", photoFile }).photoFile,
+    ).toEqual(photoFile);
+  });
+
+  test.each(["image/jpeg", "image/png", "image/webp", "image/gif"])(
+    "accepts %s",
+    (type) => {
+      expect(ok({ ...save, photo: "new", photoFile: { size: 1, type } })).toBe(
+        true,
+      );
+    },
+  );
+
+  test("accepts exactly 5 MB", () => {
+    expect(
+      ok({
+        ...save,
+        photo: "new",
+        photoFile: { size: 5 * 1024 * 1024, type: "image/png" },
+      }),
+    ).toBe(true);
+  });
+
+  test.each([
+    ["photoFile null", null],
+    ["photoFile left out", undefined],
+  ])("photo new with %s: Missing image details", (_, value) => {
+    const body = { ...save, photo: "new", photoFile: value };
+
+    expect(ok(body)).toBe(false);
+    expect(messages(body)).toContain(missing);
+  });
+
+  test("over the limit: Images must be 5 MB or smaller", () => {
+    const body = {
+      ...save,
+      photo: "new",
+      photoFile: { size: 5 * 1024 * 1024 + 1, type: "image/jpeg" },
+    };
+
+    expect(ok(body)).toBe(false);
+    expect(messages(body)?.[0]).toBe(sizeMessage);
+  });
+
+  test("a HEIC type: Only JPEG, PNG, WebP or GIF", () => {
+    const body = {
+      ...save,
+      photo: "new",
+      photoFile: { size: 10, type: "image/heic" },
+    };
+
+    expect(ok(body)).toBe(false);
+    expect(messages(body)?.[0]).toBe(typeMessage);
+  });
+
+  test.each([
+    ["no size", { type: "image/jpeg" }],
+    ["no type", { size: 10 }],
+    ["size 0", { size: 0, type: "image/jpeg" }],
+    ["a string", "image/jpeg"],
+  ])("rejects a photoFile with %s", (_, value) => {
+    expect(ok({ ...save, photo: "new", photoFile: value })).toBe(false);
+  });
+
+  test.each(["keep", "none"])("photo %j needs no photoFile", (photo) => {
+    expect(ok({ ...save, photo, photoFile: null })).toBe(true);
+    expect(ok({ ...withoutPhotoFile, photo })).toBe(true);
+  });
+
+  test("noteCreateSchema applies the same rule", () => {
+    const body = { ...save, ...create, photo: "new", photoFile: null };
+    const result = noteCreateSchema.safeParse(body);
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toContain(
+      missing,
+    );
+    expect(
+      noteCreateSchema.safeParse({ ...body, photoFile }).data?.photoFile,
+    ).toEqual(photoFile);
+  });
+
+  test("noteCreateSchema defaults photoFile to null", () => {
+    expect(
+      noteCreateSchema.parse({ ...withoutPhotoFile, ...create }).photoFile,
+    ).toBeNull();
   });
 });

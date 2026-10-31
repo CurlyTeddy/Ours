@@ -1,12 +1,17 @@
 import { z } from "zod/v4";
 import { todoLocationSchema } from "@/features/two-dos/models/location";
+import { imageUploadSchema } from "@/lib/image-upload";
+
+const namedImageUploadSchema = imageUploadSchema.extend({
+  name: z.string().min(1),
+});
 
 const todoCreateSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   description: z.string().optional(),
   location: todoLocationSchema.nullable(),
   tripId: z.string().nullable(),
-  imageNames: z.array(z.string()),
+  images: z.array(namedImageUploadSchema),
 });
 
 const todoUpdateSchema = z.object({
@@ -15,6 +20,8 @@ const todoUpdateSchema = z.object({
   location: todoLocationSchema.nullable(),
   tripId: z.string().nullable(),
   imageNames: z.array(z.string().min(1, "Unexpected empty image key")),
+  // One entry per name in imageNames that is not already stored; the route checks the match
+  uploads: z.array(namedImageUploadSchema).default([]),
 });
 
 type TodoCreateRequest = z.input<typeof todoCreateSchema>;

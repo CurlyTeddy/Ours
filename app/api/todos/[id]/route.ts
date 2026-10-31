@@ -19,11 +19,9 @@ import {
 import { prisma } from "@/lib/database-client";
 import { HttpErrorPayload } from "@/lib/error";
 import { parseBody } from "@/lib/parse-body";
-import s3Client, { bucket, deleteObjects } from "@/lib/s3-client";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { deleteObjects, presignImagePut } from "@/lib/s3-client";
 import { createId } from "@paralleldrive/cuid2";
 import { NextRequest, NextResponse } from "next/server";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 async function GET(
   _request: NextRequest,
@@ -83,6 +81,7 @@ async function PUT(
 
       const {
         imageNames: newImageNames,
+        uploads,
         location,
         tripId,
         ...rest
@@ -102,6 +101,14 @@ async function PUT(
           // Keys are stored comma-joined, so a comma in a file name would split one key in two
           .map((name) => [name, `${name.replaceAll(",", "_")}-${createId()}`]),
       );
+      const newUploads = [];
+      for (const [name, key] of newImageKeys) {
+        const matches = uploads.filter((upload) => upload.name === name);
+        if (matches.length !== 1) {
+          return "details" as const;
+        }
+        newUploads.push({ name, key, upload: matches[0] });
+      }
 
       // Database update must be before R2 operations to avoid side effect on R2 when the database update fails
       const updatedTodo = await txn.todo.update({
@@ -137,16 +144,9 @@ async function PUT(
         updatedTodo,
         removedKeys: oldImageKeys.filter((key) => !imageIntersection.has(key)),
         imagesToUpload: await Promise.all(
-          Array.from(newImageKeys.entries()).map(async ([name, key]) => ({
+          newUploads.map(async ({ name, key, upload }) => ({
             name,
-            signedUrl: await getSignedUrl(
-              s3Client,
-              new PutObjectCommand({
-                Bucket: bucket,
-                Key: `two-do/${key}`,
-              }),
-              { expiresIn: 300 },
-            ),
+            signedUrl: await presignImagePut(`two-do/${key}`, upload),
           })),
         ),
       };
@@ -164,6 +164,12 @@ async function PUT(
     }
     if (payload === "trip") {
       return NextResponse.json({ message: "Trip not found." }, { status: 400 });
+    }
+    if (payload === "details") {
+      return NextResponse.json(
+        { message: "Missing image details" },
+        { status: 400 },
+      );
     }
 
     // R2 deletes cannot roll back, so they run only after the update commits

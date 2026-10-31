@@ -8,15 +8,22 @@ import { getCachedSignedUrl } from "@/lib/s3-client";
 import { validateSessionToken } from "@/features/auth/session";
 
 const db = vi.hoisted(() => ({ prisma: undefined as unknown }));
-vi.mock("@/lib/env", () => ({ env: { NEXT_PUBLIC_ENVIRONMENT: "dev" } }));
+vi.mock("@/lib/env", () => ({
+  env: {
+    NEXT_PUBLIC_ENVIRONMENT: "dev",
+    R2_ENDPOINT: "https://r2.test",
+    R2_ACCESS_KEY: "a",
+    R2_SECRET_ACCESS_KEY: "b",
+  },
+}));
 vi.mock("@/lib/database-client", async () => {
   const { mockDeep } = await import("vitest-mock-extended");
   db.prisma = mockDeep<PrismaClient>();
   return { prisma: db.prisma, redis: mockDeep() };
 });
-vi.mock("@/lib/s3-client", () => ({
-  default: { send: vi.fn() },
-  bucket: "images-dev",
+// Real module (presignImagePut may live here), with network-facing parts stubbed
+vi.mock("@/lib/s3-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/s3-client")>()),
   deleteObjects: vi.fn(),
   getCachedSignedUrl: vi.fn((key: string) =>
     Promise.resolve(`https://signed/${key}`),
@@ -103,6 +110,8 @@ const fullRow = row({
   location: locationRow(place),
 });
 
+// The cropped photo the client declares for photo "new"
+const photoFile = { size: 123_456, type: "image/jpeg" };
 const body = {
   text: "hello wall",
   color: "butter",
@@ -470,7 +479,7 @@ describe("R34: POST /api/moments/notes", () => {
   });
 
   test('photo "new" stores a fresh server key and answers a presigned upload URL', async () => {
-    const response = await post({ ...body, photo: "new" });
+    const response = await post({ ...body, photo: "new", photoFile });
 
     expect(response.status).toBe(200);
     const photoKey = createData().photoKey as string;
@@ -491,8 +500,8 @@ describe("R34: POST /api/moments/notes", () => {
   });
 
   test('each photo "new" gets a different key', async () => {
-    await post({ ...body, photo: "new" });
-    await post({ ...body, photo: "new" });
+    await post({ ...body, photo: "new", photoFile });
+    await post({ ...body, photo: "new", photoFile });
 
     const [first, second] = prisma().momentNote.create.mock.calls.map(
       ([args]) => (args.data as { photoKey: string }).photoKey,
@@ -528,7 +537,7 @@ describe("R34: POST /api/moments/notes", () => {
   test("a presign failure answers 500", async () => {
     vi.mocked(getSignedUrl).mockRejectedValueOnce(new Error("r2 down"));
 
-    const response = await post({ ...body, photo: "new" });
+    const response = await post({ ...body, photo: "new", photoFile });
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ message: "Failed to create note" });
@@ -621,7 +630,7 @@ describe("R34: POST /api/moments/notes", () => {
       }),
     );
 
-    const response = await post({ ...body, photo: "new" });
+    const response = await post({ ...body, photo: "new", photoFile });
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ message: "Failed to create note" });
@@ -699,5 +708,116 @@ describe("R32/R34: edge cases (white-box)", () => {
     const response = await post(body);
 
     expect(response.status).toBe(500);
+  });
+});
+
+describe("R15/R16: POST /api/moments/notes photoFile", () => {
+  test('photo "new" signs the declared Content-Type and Content-Length', async () => {
+    const response = await post({
+      ...body,
+      photo: "new",
+      photoFile: { size: 4_000_000, type: "image/png" },
+    });
+
+    expect(response.status).toBe(200);
+    const [, command, options] = vi.mocked(getSignedUrl).mock.calls[0];
+    expect((command as PutObjectCommand).input).toEqual({
+      Bucket: "images-dev",
+      Key: createData().photoKey,
+      ContentType: "image/png",
+      ContentLength: 4_000_000,
+    });
+    // Request-only detail; Prisma would reject an unknown column
+    expect(createData()).not.toHaveProperty("photoFile");
+    expect(options).toMatchObject({
+      expiresIn: 300,
+      signableHeaders: new Set(["content-type", "content-length"]),
+    });
+  });
+
+  test.each([
+    ["left out", undefined],
+    ["null", null],
+  ])(
+    'photo "new" with photoFile %s: 400 Missing image details',
+    async (_, value) => {
+      const response = await post({ ...body, photo: "new", photoFile: value });
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        message: "Missing image details",
+      });
+      expect(prisma().momentNote.create).not.toHaveBeenCalled();
+      expect(getSignedUrl).not.toHaveBeenCalled();
+    },
+  );
+
+  test("over 5 MB: 400 Images must be 5 MB or smaller", async () => {
+    const response = await post({
+      ...body,
+      photo: "new",
+      photoFile: { size: 5 * 1024 * 1024 + 1, type: "image/jpeg" },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "Images must be 5 MB or smaller",
+    });
+    expect(prisma().momentNote.create).not.toHaveBeenCalled();
+  });
+
+  test("a HEIC: 400 Only JPEG, PNG, WebP or GIF", async () => {
+    const response = await post({
+      ...body,
+      photo: "new",
+      photoFile: { size: 10, type: "image/heic" },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "Only JPEG, PNG, WebP or GIF images can be uploaded",
+    });
+    expect(prisma().momentNote.create).not.toHaveBeenCalled();
+  });
+
+  test("exactly 5 MB is accepted", async () => {
+    const response = await post({
+      ...body,
+      photo: "new",
+      photoFile: { size: 5 * 1024 * 1024, type: "image/gif" },
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  test('photo "none" with photoFile null creates a note with no upload', async () => {
+    const response = await post({ ...body, photo: "none", photoFile: null });
+
+    expect(response.status).toBe(200);
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/moments/notes photoFile (white-box)", () => {
+  test("a photoFile issue wins over another invalid field", async () => {
+    const response = await post({
+      ...body,
+      color: "blue",
+      photo: "new",
+      photoFile: { size: 6_000_000, type: "image/jpeg" },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "Images must be 5 MB or smaller",
+    });
+  });
+
+  test('photo "keep" on create stores no key and signs nothing, even with a photoFile', async () => {
+    const response = await post({ ...body, photo: "keep", photoFile });
+
+    expect(response.status).toBe(200);
+    expect(createData().photoKey ?? null).toBeNull();
+    expect(getSignedUrl).not.toHaveBeenCalled();
   });
 });

@@ -3,9 +3,11 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { redis } from "@/lib/database-client";
+import type { ImageUpload } from "@/lib/image-upload";
 
 const globalS3 = globalThis as unknown as {
   s3Client: S3Client | undefined;
@@ -58,6 +60,22 @@ async function getCachedSignedUrl(key: string): Promise<string> {
   return signedUrl;
 }
 
+// Signing both headers makes R2 answer 403 to a body of another size or type.
+const presignImagePut = (key: string, file: ImageUpload): Promise<string> =>
+  getSignedUrl(
+    s3Client,
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ContentType: file.type,
+      ContentLength: file.size,
+    }),
+    {
+      expiresIn: signedUrlSeconds,
+      signableHeaders: new Set(["content-type", "content-length"]),
+    },
+  );
+
 // Runs after the DB change has committed: a leftover object only costs storage, while
 // failing the request would tell the user that a saved change was lost.
 async function deleteObjects(keys: string[]): Promise<void> {
@@ -73,6 +91,6 @@ async function deleteObjects(keys: string[]): Promise<void> {
   });
 }
 
-export { bucket, deleteObjects, getCachedSignedUrl };
+export { bucket, deleteObjects, getCachedSignedUrl, presignImagePut };
 
 export default s3Client;

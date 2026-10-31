@@ -3,22 +3,31 @@ import { NextRequest } from "next/server";
 import { mockReset, type mockDeep } from "vitest-mock-extended";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { deleteObjects } from "@/lib/s3-client";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const db = vi.hoisted(() => ({ prisma: undefined as unknown }));
-vi.mock("@/lib/env", () => ({ env: { NEXT_PUBLIC_ENVIRONMENT: "dev" } }));
+vi.mock("@/lib/env", () => ({
+  env: {
+    NEXT_PUBLIC_ENVIRONMENT: "dev",
+    R2_ENDPOINT: "https://r2.test",
+    R2_ACCESS_KEY: "a",
+    R2_SECRET_ACCESS_KEY: "b",
+  },
+}));
 vi.mock("@/lib/database-client", async () => {
   const { mockDeep } = await import("vitest-mock-extended");
   db.prisma = mockDeep<PrismaClient>();
   return { prisma: db.prisma, redis: mockDeep() };
 });
-vi.mock("@/lib/s3-client", () => ({
-  default: { send: vi.fn() },
-  bucket: "images-test",
+// Real module (presignImagePut may live here), with network-facing parts stubbed
+vi.mock("@/lib/s3-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/s3-client")>()),
   deleteObjects: vi.fn(),
   getCachedSignedUrl: () => Promise.resolve("https://r2.test/get"),
 }));
 vi.mock("@aws-sdk/s3-request-presigner", () => ({
-  getSignedUrl: () => Promise.resolve("https://r2.test/put"),
+  getSignedUrl: vi.fn(() => Promise.resolve("https://r2.test/put")),
 }));
 vi.mock("next/headers", () => ({
   cookies: vi.fn(async () => ({ get: () => ({ value: "token" }) })),
@@ -70,6 +79,12 @@ const request = (method: string, body?: unknown) =>
     method,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+// Every new name (not an existing key) gets its upload details, as the client sends them
+const existingKeys = ["a.jpg-1", "b.jpg-2"];
+const uploadsFor = (names: unknown) =>
+  ((names as string[] | undefined) ?? [])
+    .filter((name) => name !== "" && !existingKeys.includes(name))
+    .map((name) => ({ name, size: 1000, type: "image/jpeg" }));
 const put = (body: Record<string, unknown> = {}) =>
   PUT(
     request("PUT", {
@@ -78,6 +93,7 @@ const put = (body: Record<string, unknown> = {}) =>
       location: kyoto,
       tripId: null,
       imageNames: ["a.jpg-1", "b.jpg-2"],
+      uploads: uploadsFor(body.imageNames),
       ...body,
     }),
     params,
@@ -135,6 +151,7 @@ const todoMissing = () => {
 beforeEach(() => {
   mockReset(prisma());
   vi.mocked(deleteObjects).mockReset();
+  vi.mocked(getSignedUrl).mockClear();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   prisma().$transaction.mockImplementation((async (arg: unknown) =>
     typeof arg === "function"
@@ -686,6 +703,200 @@ describe("DELETE /api/todos/[id] (white-box)", () => {
 
     prisma().todo.delete.mockRejectedValue(new Error("db down"));
     const response = await del();
+    expect(response.status).toBe(500);
+    expect(deleteObjects).not.toHaveBeenCalled();
+  });
+});
+
+const signedPut = (index: number) => {
+  const [, command, options] = vi.mocked(getSignedUrl).mock.calls[index];
+  expect(command).toBeInstanceOf(PutObjectCommand);
+  return { input: (command as PutObjectCommand).input, options };
+};
+
+describe("R15: PUT /api/todos/[id] uploads", () => {
+  test("a new name with its upload details: 200, signed with that size and type", async () => {
+    const response = await put({
+      imageNames: ["a.jpg-1", "0-new.png"],
+      uploads: [{ name: "0-new.png", size: 4321, type: "image/png" }],
+    });
+
+    expect(response.status).toBe(200);
+    // Request-only detail; Prisma would reject an unknown field
+    expect(updated()).not.toHaveProperty("uploads");
+    expect(getSignedUrl).toHaveBeenCalledTimes(1);
+    const { input, options } = signedPut(0);
+    expect(input).toEqual({
+      Bucket: "images-dev",
+      Key: `two-do/${String(updated().imageKeys).split(",")[1]}`,
+      ContentType: "image/png",
+      ContentLength: 4321,
+    });
+    expect(options).toMatchObject({
+      expiresIn: 300,
+      signableHeaders: new Set(["content-type", "content-length"]),
+    });
+  });
+
+  test("each new name is signed with its own details, in any uploads order", async () => {
+    await put({
+      imageNames: ["0-a.jpg", "1-b.gif"],
+      uploads: [
+        { name: "1-b.gif", size: 22, type: "image/gif" },
+        { name: "0-a.jpg", size: 11, type: "image/jpeg" },
+      ],
+    });
+
+    const byKey = new Map(
+      [0, 1].map((i) => {
+        const { input } = signedPut(i);
+        return [input.Key, input] as const;
+      }),
+    );
+    const [keyA, keyB] = String(updated().imageKeys).split(",");
+    expect(byKey.get(`two-do/${keyA}`)).toMatchObject({
+      ContentType: "image/jpeg",
+      ContentLength: 11,
+    });
+    expect(byKey.get(`two-do/${keyB}`)).toMatchObject({
+      ContentType: "image/gif",
+      ContentLength: 22,
+    });
+  });
+
+  test("existing keys only need no uploads", async () => {
+    const response = await put({ imageNames: ["a.jpg-1"], uploads: [] });
+
+    expect(response.status).toBe(200);
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["no uploads entry", []],
+    [
+      "an entry for another name",
+      [{ name: "0-other.jpg", size: 10, type: "image/jpeg" }],
+    ],
+    [
+      "two entries for the name",
+      [
+        { name: "0-new.jpg", size: 10, type: "image/jpeg" },
+        { name: "0-new.jpg", size: 20, type: "image/jpeg" },
+      ],
+    ],
+  ])(
+    "a new name with %s: 400 Missing image details, nothing written",
+    async (_, uploads) => {
+      const response = await put({
+        imageNames: ["a.jpg-1", "0-new.jpg"],
+        uploads,
+      });
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        message: "Missing image details",
+      });
+      expect(prisma().todo.update).not.toHaveBeenCalled();
+      expect(deleteObjects).not.toHaveBeenCalled();
+      expect(getSignedUrl).not.toHaveBeenCalled();
+    },
+  );
+
+  test("an upload over 5 MB: 400 Images must be 5 MB or smaller", async () => {
+    const response = await put({
+      imageNames: ["0-big.jpg"],
+      uploads: [{ name: "0-big.jpg", size: 6_000_000, type: "image/jpeg" }],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      message: "Images must be 5 MB or smaller",
+    });
+    expect(prisma().todo.update).not.toHaveBeenCalled();
+  });
+
+  test("a HEIC upload: 400 Only JPEG, PNG, WebP or GIF", async () => {
+    const response = await put({
+      imageNames: ["0-a.heic"],
+      uploads: [{ name: "0-a.heic", size: 10, type: "image/heic" }],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      message: "Only JPEG, PNG, WebP or GIF images can be uploaded",
+    });
+    expect(prisma().todo.update).not.toHaveBeenCalled();
+  });
+
+  test("an unknown to-do is still a 404", async () => {
+    todoMissing();
+
+    const response = await put({
+      imageNames: ["0-new.jpg"],
+      uploads: [{ name: "0-new.jpg", size: 10, type: "image/jpeg" }],
+    });
+
+    expect(response.status).toBe(404);
+  });
+});
+
+describe("PUT /api/todos/[id] uploads (white-box)", () => {
+  const putWithout = (body: Record<string, unknown>) =>
+    PUT(
+      request("PUT", {
+        title: "Trip",
+        description: null,
+        location: kyoto,
+        tripId: null,
+        ...body,
+      }),
+      params,
+    );
+
+  test("uploads left out defaults to none: existing keys still save", async () => {
+    const response = await putWithout({ imageNames: ["a.jpg-1"] });
+
+    expect(response.status).toBe(200);
+  });
+
+  test("uploads left out with a new name: 400 Missing image details", async () => {
+    const response = await putWithout({ imageNames: ["a.jpg-1", "0-new.jpg"] });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      message: "Missing image details",
+    });
+    expect(prisma().todo.update).not.toHaveBeenCalled();
+  });
+
+  test("an extra upload for a name not in imageNames is ignored", async () => {
+    const response = await put({
+      imageNames: ["a.jpg-1"],
+      uploads: [{ name: "0-stray.jpg", size: 10, type: "image/jpeg" }],
+    });
+
+    expect(response.status).toBe(200);
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  test("an upload for an existing key signs nothing", async () => {
+    const response = await put({
+      imageNames: ["a.jpg-1"],
+      uploads: [{ name: "a.jpg-1", size: 10, type: "image/jpeg" }],
+    });
+
+    expect(response.status).toBe(200);
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  test("a presign failure is a 500 and deletes nothing", async () => {
+    vi.mocked(getSignedUrl).mockRejectedValueOnce(new Error("r2 down"));
+
+    const response = await put({
+      imageNames: ["0-new.jpg"],
+      uploads: [{ name: "0-new.jpg", size: 10, type: "image/jpeg" }],
+    });
+
     expect(response.status).toBe(500);
     expect(deleteObjects).not.toHaveBeenCalled();
   });
