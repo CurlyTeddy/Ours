@@ -752,7 +752,7 @@ function MomentsWall() {
         setClosingNoteId(null);
         playingRef.current = note.noteId;
         setPlayingNoteId(note.noteId);
-        songPlayer.play(note.song.videoId);
+        songPlayer.play(note.song.videoId, note.songClip);
       } else {
         setBubbleNoteId(note.noteId);
         scheduleTimer("bubble", 1700, () => setBubbleNoteId(null));
@@ -822,6 +822,7 @@ function MomentsWall() {
     photoKey: null,
     photoUrl: null,
     song: null,
+    songClip: null,
     place: null,
     date: DateTime.now().toFormat("yyyy-MM-dd"),
     x,

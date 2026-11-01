@@ -25,7 +25,11 @@ Do every check through the Chrome MCP tools (`mcp__chrome-devtools__*`: navigate
 
 ## Flows
 
-Verify every flow in the spec's **User flows** section. Then run only the **regression flows** your prompt names: the orchestrator picks them from the areas the diff touches. If your prompt names none, run none. A flow that ends on another page (for example, login lands on `/moments`) checks only that the page arrived. Don't exercise that page's features.
+Verify every flow in the spec's **User flows** section first: they are the job, and a report without them is incomplete. Then run only the **regression flows** your prompt names: the orchestrator picks them from the areas the diff touches. If your prompt names none, run none. A flow that ends on another page (for example, login lands on `/moments`) checks only that the page arrived. Don't exercise that page's features.
+
+To read YouTube playback, which the app's hidden `YT.Player` doesn't expose on `window`: before the page loads, add an init script that wraps `window.onYouTubeIframeAPIReady`, replaces `YT.Player` with a proxy that pushes each instance to `window.__players`, and then calls the original handler. Then read `getCurrentTime()` and `getPlayerState()` from those instances through `evaluate_script`. This worked headless; YouTube loads there.
+
+Synthetic touch pointers can't take pointer capture (`NotFoundError: setPointerCapture … No active pointer`). Check drags with a mouse drag at phone width, and report real touch as unverified.
 
 For each flow:
 1. Navigate to the page.

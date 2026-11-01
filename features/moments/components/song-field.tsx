@@ -7,14 +7,26 @@ import { useDebounce } from "use-debounce";
 import { toast } from "sonner";
 import { Music, Pause, Play, Search, X } from "lucide-react";
 import { getErrorMessage } from "@/lib/error";
-import type { Note, NoteSong } from "@/features/moments/models/responses";
+import type {
+  Note,
+  NoteSong,
+  NoteSongClip,
+} from "@/features/moments/models/responses";
+import { songClipMinSeconds } from "@/features/moments/models/requests";
+import type { SongDuration } from "@/features/moments/hooks/use-song-duration";
 import { Vinyl } from "@/features/moments/components/vinyl";
 import { noteColorStyles } from "@/features/moments/components/note-colors";
+import {
+  ClipHeader,
+  ClipTrack,
+  SongClipPicker,
+  formatClipTime,
+} from "@/features/moments/components/song-clip-picker";
 
 const fieldLabel =
   "text-xs font-black tracking-[.12em] text-us-muted uppercase max-[900px]:text-[11px]";
 
-// Songs already stuck on notes, one per video, newest note first.
+// Songs already stuck on notes, one per video, with the clip of the newest note that has it.
 function sharedSongs(notes: Note[]) {
   const seen = new Set<string>();
   return notes
@@ -22,7 +34,13 @@ function sharedSongs(notes: Note[]) {
     .flatMap((note) => {
       if (!note.song || seen.has(note.song.videoId)) return [];
       seen.add(note.song.videoId);
-      return [{ song: note.song, hex: noteColorStyles[note.color].hex }];
+      return [
+        {
+          song: note.song,
+          songClip: note.songClip,
+          hex: noteColorStyles[note.color].hex,
+        },
+      ];
     });
 }
 
@@ -62,17 +80,25 @@ function SongRow({
 
 function SongField({
   song,
+  songClip,
+  duration,
   labelColor,
   notes,
   previewing,
   onChange,
+  onClipChange,
+  onClipCommit,
   onTogglePreview,
 }: {
   song: NoteSong | null;
+  songClip: NoteSongClip | null;
+  duration: SongDuration;
   labelColor: string;
   notes: Note[];
   previewing: boolean;
-  onChange: (song: NoteSong | null) => void;
+  onChange: (song: NoteSong | null, songClip: NoteSongClip | null) => void;
+  onClipChange: (clip: NoteSongClip) => void;
+  onClipCommit: (clip: NoteSongClip) => void;
   onTogglePreview: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -91,10 +117,18 @@ function SongField({
     },
   );
 
-  const pick = (picked: NoteSong) => {
-    onChange(picked);
+  const pick = (picked: NoteSong, pickedClip: NoteSongClip | null) => {
+    onChange(picked, pickedClip);
     setQuery("");
   };
+
+  const { status, durationSeconds } = duration;
+  const loadError =
+    status === "error"
+      ? "Couldn't load this song — pick another"
+      : status === "ready" && durationSeconds < songClipMinSeconds
+        ? `This song is shorter than ${songClipMinSeconds} seconds — pick another`
+        : null;
 
   const shared = query.trim() || song ? [] : sharedSongs(notes);
 
@@ -113,13 +147,17 @@ function SongField({
             </span>
             <span className="truncate text-xs font-bold text-us-muted">
               {song.channelTitle}
+              {songClip
+                ? ` · ${formatClipTime(songClip.startSeconds)}–${formatClipTime(songClip.endSeconds)}`
+                : null}
             </span>
           </div>
           <button
             type="button"
-            aria-label={previewing ? "Pause preview" : "Preview song"}
+            aria-label={previewing ? "Pause preview" : "Preview this part"}
+            disabled={!previewing && songClip === null}
             onClick={onTogglePreview}
-            className="flex size-11 flex-none cursor-pointer items-center justify-center rounded-full bg-[#4F70A8] text-white hover:bg-[#3F5F96] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#4F70A8]"
+            className="flex size-11 flex-none cursor-pointer items-center justify-center rounded-full bg-[#4F70A8] text-white hover:bg-[#3F5F96] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#4F70A8] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {previewing ? (
               <Pause size={16} strokeWidth={3.2} aria-hidden="true" />
@@ -135,12 +173,34 @@ function SongField({
           <button
             type="button"
             aria-label="Remove song"
-            onClick={() => onChange(null)}
+            onClick={() => onChange(null, null)}
             className="flex size-11 flex-none cursor-pointer items-center justify-center rounded-full text-us-muted hover:bg-us-hover focus-visible:outline-3 focus-visible:outline-[#4F70A8]"
           >
             <X size={16} strokeWidth={2.4} aria-hidden="true" />
           </button>
         </div>
+      ) : null}
+
+      {song && loadError ? (
+        <p role="alert" className="text-xs font-bold text-[#A8505F]">
+          {loadError}
+        </p>
+      ) : song && status === "ready" && songClip ? (
+        <SongClipPicker
+          durationSeconds={durationSeconds}
+          clip={songClip}
+          onChange={onClipChange}
+          onCommit={onClipCommit}
+        />
+      ) : song ? (
+        <>
+          <ClipHeader>
+            <span className="ml-auto text-[11px] font-black tracking-[.08em] text-us-muted uppercase">
+              Loading song…
+            </span>
+          </ClipHeader>
+          <ClipTrack className="opacity-50" />
+        </>
       ) : null}
 
       <label className="sr-only" htmlFor="note-song-search">
@@ -173,7 +233,7 @@ function SongField({
                 key={result.videoId}
                 song={result}
                 hex={labelColor}
-                onPick={() => pick(result)}
+                onPick={() => pick(result, null)}
               />
             ))}
           </div>
@@ -186,12 +246,12 @@ function SongField({
             From your shared list
           </span>
           <div className="-mt-1 flex flex-col gap-0.5">
-            {shared.map(({ song: sharedSong, hex }) => (
+            {shared.map(({ song: sharedSong, songClip: sharedClip, hex }) => (
               <SongRow
                 key={sharedSong.videoId}
                 song={sharedSong}
                 hex={hex}
-                onPick={() => pick(sharedSong)}
+                onPick={() => pick(sharedSong, sharedClip)}
               />
             ))}
           </div>

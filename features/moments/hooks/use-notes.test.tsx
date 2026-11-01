@@ -41,6 +41,7 @@ const note: Note = {
   photoKey: null,
   photoUrl: null,
   song: null,
+  songClip: null,
   place: {
     name: "Taipei",
     address: "Taipei City, Taiwan",

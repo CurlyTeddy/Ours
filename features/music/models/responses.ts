@@ -49,6 +49,22 @@ const youTubeSearchResponseSchema = z.object({
     .optional(),
 });
 
+const youTubeVideosResponseSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        contentDetails: z
+          .object({ duration: z.string().optional() })
+          .optional(),
+      }),
+    )
+    .optional(),
+});
+
 export type { MusicSearchResult, MusicSearchResponse };
 
-export { youTubeSearchItemSchema, youTubeSearchResponseSchema };
+export {
+  youTubeSearchItemSchema,
+  youTubeSearchResponseSchema,
+  youTubeVideosResponseSchema,
+};

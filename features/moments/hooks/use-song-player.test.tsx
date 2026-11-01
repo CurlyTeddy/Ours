@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useSongPlayer } from "@/features/moments/hooks/use-song-player";
+import { loadYouTubeApi } from "@/features/moments/youtube-player";
 
 const apiSrc = "https://www.youtube.com/iframe_api";
 const apiScripts = () =>
@@ -113,7 +114,7 @@ describe("R11/R12: useSongPlayer", () => {
     const { result } = renderHook(() => useSongPlayer());
 
     await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
-    act(() => result.current.play("vid1"));
+    act(() => result.current.play("vid1", null));
 
     await waitFor(() => expect(result.current.playingVideoId).toBe("vid1"));
     await waitFor(() => expect(loadedIds()).toContain("vid1"));
@@ -124,9 +125,9 @@ describe("R11/R12: useSongPlayer", () => {
     const { result } = renderHook(() => useSongPlayer());
 
     await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
-    act(() => result.current.play("vid1"));
+    act(() => result.current.play("vid1", null));
     await waitFor(() => expect(result.current.playingVideoId).toBe("vid1"));
-    act(() => result.current.play("vid2"));
+    act(() => result.current.play("vid2", null));
 
     await waitFor(() => expect(result.current.playingVideoId).toBe("vid2"));
     await waitFor(() => expect(loadedIds().at(-1)).toBe("vid2"));
@@ -138,7 +139,7 @@ describe("R11/R12: useSongPlayer", () => {
     const { result } = renderHook(() => useSongPlayer());
 
     await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
-    act(() => result.current.play("vid1"));
+    act(() => result.current.play("vid1", null));
     await waitFor(() => expect(result.current.playingVideoId).toBe("vid1"));
     act(() => result.current.stop());
 
@@ -163,7 +164,7 @@ describe("R11/R12: useSongPlayer", () => {
     installYouTube();
     const { result } = renderHook(() => useSongPlayer());
 
-    act(() => result.current.play("early"));
+    act(() => result.current.play("early", null));
 
     await waitFor(() => expect(loadedIds()).toContain("early"));
     await waitFor(() => expect(result.current.playingVideoId).toBe("early"));
@@ -175,7 +176,7 @@ describe("R12: player lifecycle (white-box)", () => {
     installYouTube();
     const { result } = renderHook(() => useSongPlayer());
     await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
-    act(() => result.current.play("vid1"));
+    act(() => result.current.play("vid1", null));
     await waitFor(() => expect(result.current.playingVideoId).toBe("vid1"));
 
     act(() =>
@@ -192,7 +193,7 @@ describe("R12: player lifecycle (white-box)", () => {
     installYouTube();
     const { result } = renderHook(() => useSongPlayer());
     await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
-    act(() => result.current.play("vid1"));
+    act(() => result.current.play("vid1", null));
 
     act(() =>
       FakePlayer.instances[0].options.events?.onStateChange?.({
@@ -229,7 +230,7 @@ describe("R12: player lifecycle (white-box)", () => {
     const earlier = vi.fn();
     win.onYouTubeIframeAPIReady = earlier;
     const { result } = renderHook(() => useSongPlayer());
-    act(() => result.current.play("late"));
+    act(() => result.current.play("late", null));
     expect(FakePlayer.instances).toHaveLength(0);
 
     win.YT = { Player: FakePlayer, PlayerState, loaded: 1 };
@@ -253,5 +254,203 @@ describe("R12: player lifecycle (white-box)", () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(FakePlayer.instances).toHaveLength(0);
+  });
+});
+
+// ---------- song clip ----------
+
+const loadCalls = () => allCalls().filter(([name]) => name === "loadVideoById");
+const endPlayback = () =>
+  act(() =>
+    FakePlayer.instances[0].options.events?.onStateChange?.({
+      data: PlayerState.ENDED,
+      target: FakePlayer.instances[0],
+    }),
+  );
+const clip = { startSeconds: 42, endSeconds: 72 };
+const clipArgs = { videoId: "vid1", startSeconds: 42, endSeconds: 72 };
+
+describe("R20: useSongPlayer with a clip", () => {
+  test("play with a clip loads the video with its start and end", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+    await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
+
+    act(() => result.current.play("vid1", clip));
+
+    await waitFor(() => expect(loadCalls()).toHaveLength(1));
+    expect(loadCalls()[0][1]).toEqual([clipArgs]);
+    expect(result.current.playingVideoId).toBe("vid1");
+  });
+
+  test("reaching the clip's end loads the same clip again and keeps playing", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+    await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
+    act(() => result.current.play("vid1", clip));
+    await waitFor(() => expect(loadCalls()).toHaveLength(1));
+
+    endPlayback();
+
+    await waitFor(() => expect(loadCalls()).toHaveLength(2));
+    expect(loadCalls()[1][1]).toEqual([clipArgs]);
+    expect(result.current.playingVideoId).toBe("vid1");
+
+    endPlayback();
+
+    await waitFor(() => expect(loadCalls()).toHaveLength(3));
+    expect(loadCalls()[2][1]).toEqual([clipArgs]);
+  });
+
+  test("a clip from 0:00 still passes its start and end", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+    await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
+
+    act(() => result.current.play("vid1", { startSeconds: 0, endSeconds: 30 }));
+
+    await waitFor(() => expect(loadCalls()).toHaveLength(1));
+    expect(loadCalls()[0][1]).toEqual([
+      { videoId: "vid1", startSeconds: 0, endSeconds: 30 },
+    ]);
+  });
+
+  test("after stop, an ENDED does not loop the clip", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+    await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
+    act(() => result.current.play("vid1", clip));
+    await waitFor(() => expect(loadCalls()).toHaveLength(1));
+    act(() => result.current.stop());
+
+    endPlayback();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(loadCalls()).toHaveLength(1);
+    expect(result.current.playingVideoId).toBeNull();
+  });
+
+  test("after switching songs, the loop uses the new song's clip", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+    await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
+    act(() => result.current.play("vid1", clip));
+    act(() =>
+      result.current.play("vid2", { startSeconds: 10, endSeconds: 20 }),
+    );
+    await waitFor(() => expect(result.current.playingVideoId).toBe("vid2"));
+    const before = loadCalls().length;
+
+    endPlayback();
+
+    await waitFor(() => expect(loadCalls().length).toBe(before + 1));
+    expect(loadCalls().at(-1)?.[1]).toEqual([
+      { videoId: "vid2", startSeconds: 10, endSeconds: 20 },
+    ]);
+  });
+
+  test("a clip played before the player is ready starts with its clip", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+
+    act(() => result.current.play("vid1", clip));
+
+    await waitFor(() => expect(loadCalls()).toHaveLength(1));
+    expect(loadCalls()[0][1]).toEqual([clipArgs]);
+  });
+
+  test("starting a song stops the previous one: one player only", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+    await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
+    act(() => result.current.play("vid1", clip));
+    act(() => result.current.play("vid2", null));
+
+    await waitFor(() => expect(loadedIds().at(-1)).toBe("vid2"));
+    expect(FakePlayer.instances).toHaveLength(1);
+  });
+});
+
+describe("R20: useSongPlayer without a clip", () => {
+  test("play with a null clip loads from 0:00, with no start or end", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+    await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
+
+    act(() => result.current.play("vid1", null));
+
+    await waitFor(() => expect(loadCalls()).toHaveLength(1));
+    const [arg] = loadCalls()[0][1] as [unknown];
+    if (typeof arg === "string") {
+      expect(arg).toBe("vid1");
+    } else {
+      expect(arg).toMatchObject({ videoId: "vid1" });
+      const { startSeconds, endSeconds } = arg as {
+        startSeconds?: number;
+        endSeconds?: number;
+      };
+      expect(startSeconds ?? 0).toBe(0);
+      expect(endSeconds).toBeUndefined();
+    }
+  });
+
+  test("the song's end stops it and does not loop", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+    await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
+    act(() => result.current.play("vid1", null));
+    await waitFor(() => expect(loadCalls()).toHaveLength(1));
+
+    endPlayback();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(result.current.playingVideoId).toBeNull();
+    expect(loadCalls()).toHaveLength(1);
+  });
+});
+
+describe("R13: loadYouTubeApi is shared", () => {
+  test("is a named export that resolves to YT.Player", async () => {
+    installYouTube();
+
+    await expect(loadYouTubeApi()).resolves.toBe(FakePlayer);
+  });
+});
+
+describe("R20: clip loop (white-box)", () => {
+  test("states other than ENDED do not reload the clip", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+    await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
+    act(() => result.current.play("vid1", clip));
+    await waitFor(() => expect(loadCalls()).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    for (const data of [PlayerState.PAUSED, PlayerState.BUFFERING]) {
+      act(() =>
+        FakePlayer.instances[0].options.events?.onStateChange?.({
+          data,
+          target: FakePlayer.instances[0],
+        }),
+      );
+    }
+
+    expect(loadCalls()).toHaveLength(1);
+    expect(result.current.playingVideoId).toBe("vid1");
+  });
+
+  test("a clip replaced by a song without one stops looping", async () => {
+    installYouTube();
+    const { result } = renderHook(() => useSongPlayer());
+    await waitFor(() => expect(FakePlayer.instances.length).toBeGreaterThan(0));
+    act(() => result.current.play("vid1", clip));
+    act(() => result.current.play("vid2", null));
+    await waitFor(() => expect(loadCalls()).toHaveLength(2));
+
+    endPlayback();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(loadCalls()).toHaveLength(2);
+    expect(result.current.playingVideoId).toBeNull();
   });
 });

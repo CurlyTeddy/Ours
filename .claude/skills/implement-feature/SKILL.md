@@ -41,6 +41,8 @@ If the argument is an existing `docs/specs/*.md`, resume at **Build**.
 
    When the feature deletes a route, trace it through `proxy.ts` in both auth states before you write what users get there. A removed public path becomes a protected one, so logged out it redirects rather than 404s, and a spec that promised a 404 contradicted itself.
 
+   A claude.ai design link (`/code/artifact/<slug>`) is made from an artifact type, so `read_artifact` refuses it and `read_file` refuses `paths`. Call `list_files`, then `read_file` with one `path` at a time. The screens are `project/<Screen>.dc.html` (for example `Editor.dc.html`, `MobileEditor.dc.html`). Put the slug and those paths in the spec, so agents can open the same files.
+
    When the feature ports a reference build (a design handoff), write requirements against what the reference actually does, not what its notes or checklist claim. Open it at phone and desktop width first; a checklist line like "the book fits on phones" was false for the reference and cost an escalation.
 
    Done when every grilled decision appears in the spec. Go straight on to Build, in the same turn.
@@ -87,7 +89,7 @@ Every message between you and an agent goes through `SendMessage` to the agent I
    - Read lint and type errors through `mcp__ide__getDiagnostics` with each file's URI, not by parsing ESLint output; it's one call per file and needs no script. If a gate fails on something this change didn't cause, such as generated output, fix the root cause in its config through the file's owner rather than working around it.
    - Send failures to the file's owner. Done when all pass in one sweep.
 7. **E2E loop** (cap 5 rounds).
-   - First round: spawn `subagent_type: general-purpose` with `model: sonnet` and the prompt `Read .claude/skills/implement-feature/E2E-AGENT.md and follow it. Spec: <path>. Regression flows: <list or none>.` Pick regression flows only for areas the diff changes (from `git diff --name-only HEAD`), never the whole list. A landing-page-only change needs none of the post-login areas. The user stopped a full-list run as wasted time.
+   - First round: spawn `subagent_type: general-purpose` with `model: sonnet` and the prompt `Read .claude/skills/implement-feature/E2E-AGENT.md and follow it. Spec: <path>. Regression flows: <list or none>.` Pick regression flows only for areas the diff changes (from `git diff --name-only HEAD`), never the whole list. A landing-page-only change needs none of the post-login areas. The user stopped a full-list run as wasted time. Name regression flows by area only (`Moments`), never by spelling out their bullets. Once, the bullets in the prompt drew a Sonnet agent into running only the regression flows, and it skipped every spec flow.
    - On any failure, send the failing rows to the builder. If the cause isn't obvious, add `Diagnose with mattpocock-skills:diagnosing-bugs first.`
    - Then rerun step 4 and invoke `mattpocock-skills:code-review` with `Fixed point: HEAD. The change is the uncommitted working tree: diff it with "git diff HEAD" (new files are intent-to-add). Spec: <path>. There is no issue tracker; skip that lookup.` Send its Spec findings, its hard Standards violations, and any smell with a clear fix to the builder.
    - Then message the e2e agent to re-verify the failed flows plus any flow the fix touched.

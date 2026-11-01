@@ -3,6 +3,7 @@ import type {
   NotePattern,
   NotePlace,
   NoteSong,
+  NoteSongClip,
 } from "@/features/moments/models/requests";
 
 interface Note {
@@ -13,6 +14,7 @@ interface Note {
   photoKey: string | null;
   photoUrl: string | null;
   song: NoteSong | null;
+  songClip: NoteSongClip | null;
   place: NotePlace | null;
   date: string | null;
   x: number;
@@ -49,6 +51,7 @@ interface SpecialDayResponse {
 export type {
   Note,
   NoteSong,
+  NoteSongClip,
   NotePlace,
   NoteListResponse,
   NoteSaveResponse,

@@ -17,6 +17,7 @@ import {
   toNote,
   toNoteUpdate,
 } from "@/features/moments/note-mapping";
+import { songClipError } from "@/features/moments/song-clip-check";
 
 interface DeleteResponse {
   success: boolean;
@@ -44,6 +45,11 @@ async function PUT(
       { message: invalidNoteMessage(validatedFields.error) },
       { status: 400 },
     );
+  }
+
+  const clipError = await songClipError(validatedFields.data);
+  if (clipError) {
+    return clipError;
   }
 
   try {

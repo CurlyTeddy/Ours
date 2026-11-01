@@ -5,6 +5,9 @@ import {
   notePatterns,
   notePositionSchema,
   noteSaveSchema,
+  noteSongClipSchema,
+  songClipMaxSeconds,
+  songClipMinSeconds,
   specialDayCreateSchema,
   specialDayFormSchema,
 } from "@/features/moments/models/requests";
@@ -29,6 +32,7 @@ const save = {
   photo: "none",
   photoFile: null,
   song: null,
+  songClip: null,
   place: null,
   date: "2026-10-22",
 };
@@ -647,5 +651,141 @@ describe("R15/Inputs: photoFile", () => {
     expect(
       noteCreateSchema.parse({ ...withoutPhotoFile, ...create }).photoFile,
     ).toBeNull();
+  });
+});
+
+describe("R2/Inputs: noteSongClipSchema", () => {
+  const clipOk = (value: unknown) =>
+    noteSongClipSchema.safeParse(value).success;
+
+  test("the clip bounds are 5 and 30 seconds", () => {
+    expect(songClipMinSeconds).toBe(5);
+    expect(songClipMaxSeconds).toBe(30);
+  });
+
+  test("accepts a clip and returns both fields", () => {
+    expect(
+      noteSongClipSchema.parse({ startSeconds: 42, endSeconds: 72 }),
+    ).toEqual({ startSeconds: 42, endSeconds: 72 });
+  });
+
+  test.each([
+    ["5 s from 0:00", 0, 5],
+    ["30 s from 0:00", 0, 30],
+    ["5 s late in the song", 3595, 3600],
+    ["30 s late in the song", 3570, 3600],
+    ["12 s", 10, 22],
+  ])("accepts a clip of %s", (_, startSeconds, endSeconds) => {
+    expect(clipOk({ startSeconds, endSeconds })).toBe(true);
+  });
+
+  test.each([
+    ["4 s (min − 1)", 0, 4],
+    ["31 s (max + 1)", 0, 31],
+    ["0 s", 10, 10],
+    ["a negative length", 30, 10],
+    ["a negative start", -1, 10],
+    ["a fractional start", 1.5, 10],
+    ["a fractional end", 0, 10.5],
+    ["a NaN start", NaN, 10],
+    ["an Infinity end", 0, Infinity],
+  ])("rejects a clip of %s", (_, startSeconds, endSeconds) => {
+    expect(clipOk({ startSeconds, endSeconds })).toBe(false);
+  });
+
+  test.each([
+    ["string start", { startSeconds: "0", endSeconds: 30 }],
+    ["string end", { startSeconds: 0, endSeconds: "30" }],
+    ["missing start", { endSeconds: 30 }],
+    ["missing end", { startSeconds: 0 }],
+    ["null end", { startSeconds: 0, endSeconds: null }],
+    ["an array", [0, 30]],
+    ["a string", "0-30"],
+  ])("rejects a %s", (_, value) => {
+    expect(clipOk(value)).toBe(false);
+  });
+
+  test("strips unknown fields", () => {
+    expect(
+      noteSongClipSchema.parse({
+        startSeconds: 0,
+        endSeconds: 30,
+        durationSeconds: 999,
+      }),
+    ).toEqual({ startSeconds: 0, endSeconds: 30 });
+  });
+});
+
+describe("R2/Inputs: songClip on noteSaveSchema and noteCreateSchema", () => {
+  const clip = { startSeconds: 42, endSeconds: 72 };
+  const create = { ...save, x: 100, y: -50.5, rotation: 3 };
+
+  test.each([
+    ["noteSaveSchema", noteSaveSchema, save],
+    ["noteCreateSchema", noteCreateSchema, create],
+  ] as const)("%s: a missing songClip parses as null", (_, schema, value) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { songClip, ...withoutClip } = value;
+    expect(schema.parse({ ...withoutClip, song }).songClip).toBeNull();
+  });
+
+  test.each([
+    ["noteSaveSchema", noteSaveSchema, save],
+    ["noteCreateSchema", noteCreateSchema, create],
+  ] as const)("%s: accepts a clip with a song", (_, schema, value) => {
+    expect(schema.parse({ ...value, song, songClip: clip }).songClip).toEqual(
+      clip,
+    );
+  });
+
+  test.each([
+    ["noteSaveSchema", noteSaveSchema, save],
+    ["noteCreateSchema", noteCreateSchema, create],
+  ] as const)(
+    "%s: accepts a null clip with or without a song",
+    (_, schema, value) => {
+      expect(schema.safeParse({ ...value, song, songClip: null }).success).toBe(
+        true,
+      );
+      expect(
+        schema.safeParse({ ...value, song: null, songClip: null }).success,
+      ).toBe(true);
+    },
+  );
+
+  test.each([
+    ["noteSaveSchema", noteSaveSchema, save],
+    ["noteCreateSchema", noteCreateSchema, create],
+  ] as const)("%s: rejects a clip without a song", (_, schema, value) => {
+    expect(
+      schema.safeParse({ ...value, song: null, songClip: clip }).success,
+    ).toBe(false);
+  });
+
+  test.each([
+    ["noteSaveSchema", noteSaveSchema, save],
+    ["noteCreateSchema", noteCreateSchema, create],
+  ] as const)("%s: rejects an invalid clip", (_, schema, value) => {
+    for (const songClip of [
+      { startSeconds: 0, endSeconds: 40 },
+      { startSeconds: -1, endSeconds: 10 },
+      { startSeconds: 0, endSeconds: 4 },
+      "0-30",
+    ]) {
+      expect(schema.safeParse({ ...value, song, songClip }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  test("a clip error is not reported as a photo problem", () => {
+    const result = noteSaveSchema.safeParse({
+      ...save,
+      song: null,
+      songClip: clip,
+    });
+    expect(
+      result.error?.issues.some((issue) => issue.path[0] === "photoFile"),
+    ).toBe(false);
   });
 });

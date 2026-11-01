@@ -51,7 +51,7 @@ const invalidNoteMessage = (error: z.ZodError) =>
 function toNoteCreate(
   // photoFile only signs the upload URL; it is not a column
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  { song, place, photo, photoFile, ...content }: NoteCreateRequest,
+  { song, songClip, place, photo, photoFile, ...content }: NoteCreateRequest,
   authorId: string,
   z: number,
 ): Prisma.MomentNoteCreateInput {
@@ -62,12 +62,19 @@ function toNoteCreate(
     author: { connect: { userId: authorId } },
     ...(place ? { location: placeWrite(place) } : {}),
     ...(song ? { song: songWrite(song) } : {}),
+    ...(songClip
+      ? {
+          songStartSeconds: songClip.startSeconds,
+          songEndSeconds: songClip.endSeconds,
+        }
+      : {}),
   };
 }
 
 // On update a missing place or song disconnects the old one.
 function toNoteUpdate({
   song,
+  songClip,
   place,
   photo,
   // photoFile only signs the upload URL; it is not a column
@@ -82,6 +89,9 @@ function toNoteUpdate({
       : { photoKey: photo === "new" ? newPhotoKey() : null }),
     location: place ? placeWrite(place) : { disconnect: true },
     song: song ? songWrite(song) : { disconnect: true },
+    // The schema only lets a clip through with a song, so a removed song clears it too.
+    songStartSeconds: songClip?.startSeconds ?? null,
+    songEndSeconds: songClip?.endSeconds ?? null,
   };
 }
 
@@ -116,6 +126,10 @@ async function toNote(row: NoteRow): Promise<Note> {
       channelTitle: row.song.channelTitle,
       thumbnailUrl: row.song.thumbnailUrl,
     },
+    songClip:
+      row.songStartSeconds !== null && row.songEndSeconds !== null
+        ? { startSeconds: row.songStartSeconds, endSeconds: row.songEndSeconds }
+        : null,
     // Notes only ever link a location by its Google placeId, never Two-Dos' default row.
     place:
       location?.placeId != null

@@ -1,114 +1,67 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { NoteSongClip } from "@/features/moments/models/requests";
+import { mountHiddenPlayer } from "@/features/moments/youtube-player";
 
-// @types/youtube types the API's `YT` global but not its window properties.
-declare global {
-  interface Window {
-    YT?: typeof YT;
-    onYouTubeIframeAPIReady?: () => void;
-  }
+interface PlayRequest {
+  videoId: string;
+  clip: NoteSongClip | null;
 }
 
-const apiScriptId = "youtube-iframe-api";
-
-// Resolves once window.YT.Player exists; the script tag is added at most once per page.
-function loadYouTubeApi() {
-  return new Promise<typeof YT.Player>((resolve) => {
-    const Player = window.YT?.Player;
-    if (typeof Player === "function") {
-      resolve(Player);
-      return;
-    }
-
-    const previousReadyHandler = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      previousReadyHandler?.();
-      if (window.YT?.Player) resolve(window.YT.Player);
-    };
-
-    if (!document.getElementById(apiScriptId)) {
-      const script = document.createElement("script");
-      script.id = apiScriptId;
-      script.src = "https://www.youtube.com/iframe_api";
-      script.async = true;
-      document.head.append(script);
-    }
-  });
+// A clip plays only its part; without one loadVideoById starts from 0:00 and runs to the end.
+function load(player: YT.Player, { videoId, clip }: PlayRequest) {
+  if (clip) {
+    player.loadVideoById({
+      videoId,
+      startSeconds: clip.startSeconds,
+      endSeconds: clip.endSeconds,
+    });
+  } else {
+    player.loadVideoById(videoId);
+  }
 }
 
 // One hidden, audio-only player for the whole wall: starting a song stops the previous one.
 function useSongPlayer() {
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const playerRef = useRef<YT.Player | null>(null);
-  // A play() before the player is ready starts once it is.
-  const pendingVideoId = useRef<string | null>(null);
+  // The song that should be playing; a play() before the player is ready starts once it is.
+  const requested = useRef<PlayRequest | null>(null);
 
   useEffect(() => {
-    let disposed = false;
-    let player: YT.Player | null = null;
-    const host = document.createElement("div");
-    const frame = document.createElement("div");
-    host.setAttribute("aria-hidden", "true");
-    Object.assign(host.style, {
-      position: "fixed",
-      left: "0",
-      top: "0",
-      width: "1px",
-      height: "1px",
-      opacity: "0",
-      pointerEvents: "none",
-      overflow: "hidden",
+    const unmount = mountHiddenPlayer({
+      onReady: (event) => {
+        playerRef.current = event.target;
+        if (requested.current !== null) {
+          load(event.target, requested.current);
+        }
+      },
+      onStateChange: (event) => {
+        if (event.data !== window.YT?.PlayerState.ENDED) return;
+        // A clip loops until stop() or another play() replaces it.
+        if (requested.current?.clip) {
+          load(event.target, requested.current);
+          return;
+        }
+        requested.current = null;
+        setPlayingVideoId(null);
+      },
     });
-    host.append(frame);
-    document.body.append(host);
-
-    void loadYouTubeApi().then((Player) => {
-      if (disposed) return;
-      player = new Player(frame, {
-        height: 1,
-        width: 1,
-        playerVars: {
-          controls: 0,
-          disablekb: 1,
-          origin: window.location.origin,
-          playsinline: 1,
-          rel: 0,
-        },
-        events: {
-          onReady: (event) => {
-            playerRef.current = event.target;
-            if (pendingVideoId.current !== null) {
-              event.target.loadVideoById(pendingVideoId.current);
-            }
-          },
-          onStateChange: (event) => {
-            if (event.data === window.YT?.PlayerState.ENDED) {
-              pendingVideoId.current = null;
-              setPlayingVideoId(null);
-            }
-          },
-        },
-      });
-    });
-
     return () => {
-      disposed = true;
       playerRef.current = null;
-      player?.destroy();
-      host.remove();
+      unmount();
     };
   }, []);
 
-  const play = useCallback((videoId: string) => {
-    pendingVideoId.current = videoId;
+  const play = useCallback((videoId: string, clip: NoteSongClip | null) => {
+    requested.current = { videoId, clip };
     setPlayingVideoId(videoId);
-    // loadVideoById always starts from 0:00
-    playerRef.current?.loadVideoById(videoId);
+    if (playerRef.current) load(playerRef.current, requested.current);
   }, []);
 
   const stop = useCallback(() => {
-    pendingVideoId.current = null;
+    requested.current = null;
     setPlayingVideoId(null);
     playerRef.current?.stopVideo();
   }, []);

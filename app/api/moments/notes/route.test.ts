@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { mockReset, type DeepMockProxy } from "vitest-mock-extended";
@@ -14,6 +14,7 @@ vi.mock("@/lib/env", () => ({
     R2_ENDPOINT: "https://r2.test",
     R2_ACCESS_KEY: "a",
     R2_SECRET_ACCESS_KEY: "b",
+    YOUTUBE_DATA_API_KEY: "yt-key",
   },
 }));
 vi.mock("@/lib/database-client", async () => {
@@ -85,6 +86,8 @@ const row = (overrides: Record<string, unknown> = {}) => ({
   photoKey: null,
   songVideoId: null,
   song: null,
+  songStartSeconds: null,
+  songEndSeconds: null,
   locationId: null,
   location: null,
   date: null,
@@ -239,6 +242,7 @@ describe("R32: GET /api/moments/notes", () => {
           photoKey: null,
           photoUrl: null,
           song: null,
+          songClip: null,
           place: null,
           date: null,
           x: 10,
@@ -260,6 +264,7 @@ describe("R32: GET /api/moments/notes", () => {
           photoKey: "notes/abcdefghij0123456789abcd",
           photoUrl: "https://signed/notes/abcdefghij0123456789abcd",
           song,
+          songClip: null,
           place,
           date: "2026-10-12",
           x: 10,
@@ -371,6 +376,7 @@ describe("R34: POST /api/moments/notes", () => {
         photoKey: null,
         photoUrl: null,
         song: null,
+        songClip: null,
         place: null,
         date: "2026-10-22",
         x: 120,
@@ -819,5 +825,302 @@ describe("POST /api/moments/notes photoFile (white-box)", () => {
     expect(response.status).toBe(200);
     expect(createData().photoKey ?? null).toBeNull();
     expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+});
+
+// ---------- song clip ----------
+
+const youTube = { fetch: undefined as unknown as ReturnType<typeof vi.spyOn> };
+const youTubeResponse = (body: unknown, status = 200) =>
+  new Response(typeof body === "string" ? body : JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+const youTubeLength = (duration: string) =>
+  youTube.fetch.mockResolvedValue(
+    youTubeResponse({ items: [{ contentDetails: { duration } }] }),
+  );
+const urlOf = (input: unknown) =>
+  new URL(input instanceof Request ? input.url : String(input));
+const youTubeCalls = () =>
+  youTube.fetch.mock.calls.filter(([input]: unknown[]) =>
+    urlOf(input).href.includes("googleapis.com/youtube/v3/videos"),
+  );
+const clip = { startSeconds: 42, endSeconds: 72 };
+const songBody = { ...body, song, songClip: clip };
+const nothingWritten = () => {
+  expect(prisma().$transaction).not.toHaveBeenCalled();
+  expect(prisma().momentNote.create).not.toHaveBeenCalled();
+};
+
+describe("R2–R4: POST /api/moments/notes song clip", () => {
+  beforeEach(() => {
+    youTube.fetch = vi.spyOn(globalThis, "fetch");
+    youTubeLength("PT3M32S"); // 212 s
+  });
+  afterEach(() => {
+    youTube.fetch.mockRestore();
+  });
+
+  test("saves a clip after checking the video's length, and answers it", async () => {
+    const response = await post(songBody);
+
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as {
+      note: { songClip: unknown; song: unknown };
+    };
+    expect(json.note.songClip).toEqual(clip);
+    expect(json.note.song).toEqual(song);
+    expect(createData()).toMatchObject({
+      songStartSeconds: 42,
+      songEndSeconds: 72,
+    });
+    expect(createData()).not.toHaveProperty("songClip");
+    expect(youTubeCalls()).toHaveLength(1);
+    const url = urlOf(youTubeCalls()[0][0]);
+    expect(url.searchParams.get("id")).toBe("vid1");
+    expect(url.searchParams.get("part")).toBe("contentDetails");
+    expect(url.searchParams.get("key")).toBe("yt-key");
+  });
+
+  test("checks YouTube before it writes anything", async () => {
+    const order: string[] = [];
+    youTube.fetch.mockImplementation(async () => {
+      order.push("youtube");
+      return youTubeResponse({
+        items: [{ contentDetails: { duration: "PT3M" } }],
+      });
+    });
+    const transaction = prisma().$transaction.getMockImplementation();
+    prisma().$transaction.mockImplementation(((...args: unknown[]) => {
+      order.push("transaction");
+      return (transaction as (...a: unknown[]) => unknown)(...args);
+    }) as never);
+
+    await post(songBody);
+
+    expect(order).toEqual(["youtube", "transaction"]);
+  });
+
+  test.each([
+    ["ends exactly at the song's end", 182, 212],
+    ["is 5 s at the very end", 207, 212],
+    ["starts at 0:00", 0, 30],
+  ])("a clip that %s is saved", async (_, startSeconds, endSeconds) => {
+    const response = await post({
+      ...songBody,
+      songClip: { startSeconds, endSeconds },
+    });
+
+    expect(response.status).toBe(200);
+    expect(createData()).toMatchObject({
+      songStartSeconds: startSeconds,
+      songEndSeconds: endSeconds,
+    });
+  });
+
+  test("a fractional length is floored before comparing", async () => {
+    youTubeLength("PT3M32.9S");
+
+    const response = await post({
+      ...songBody,
+      songClip: { startSeconds: 190, endSeconds: 213 },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "The clip runs past the end of the song.",
+    });
+  });
+
+  test("a clip one second past the end answers 400 and writes nothing", async () => {
+    const response = await post({
+      ...songBody,
+      songClip: { startSeconds: 183, endSeconds: 213 },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "The clip runs past the end of the song.",
+    });
+    nothingWritten();
+  });
+
+  test("a client-sent length is never trusted", async () => {
+    youTubeLength("PT20S");
+
+    const response = await post({
+      ...songBody,
+      durationSeconds: 999,
+      songClip: { ...clip, durationSeconds: 999 },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "The clip runs past the end of the song.",
+    });
+  });
+
+  test("a video YouTube no longer has answers 400 and writes nothing", async () => {
+    youTube.fetch.mockResolvedValue(youTubeResponse({ items: [] }));
+
+    const response = await post(songBody);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "That song is no longer on YouTube.",
+    });
+    nothingWritten();
+  });
+
+  test.each([
+    ["a network error", () => Promise.reject(new TypeError("fetch failed"))],
+    [
+      "a timeout",
+      () =>
+        Promise.reject(
+          new DOMException("The operation timed out.", "TimeoutError"),
+        ),
+    ],
+    [
+      "a 500",
+      () => Promise.resolve(youTubeResponse({ error: { message: "x" } }, 500)),
+    ],
+    [
+      "a 403 with a valid body",
+      () =>
+        Promise.resolve(
+          youTubeResponse(
+            { items: [{ contentDetails: { duration: "PT3M" } }] },
+            403,
+          ),
+        ),
+    ],
+    [
+      "a body that is not JSON",
+      () => Promise.resolve(youTubeResponse("<html>")),
+    ],
+    [
+      "an item without a duration",
+      () => Promise.resolve(youTubeResponse({ items: [{}] })),
+    ],
+  ])(
+    "%s from YouTube answers 502, logs, and writes nothing",
+    async (_, fail) => {
+      youTube.fetch.mockImplementation(fail);
+
+      const response = await post(songBody);
+
+      expect(response.status).toBe(502);
+      expect(await response.json()).toEqual({
+        message: "Couldn't check the song length. Try again.",
+      });
+      expect(consoleError).toHaveBeenCalled();
+      nothingWritten();
+    },
+  );
+
+  test.each([
+    ["null", { ...body, song, songClip: null }],
+    ["missing", { ...body, song }],
+    ["null, with no song", { ...body, song: null, songClip: null }],
+  ])("a %s clip does not call YouTube and stores no clip", async (_, value) => {
+    const response = await post(value);
+
+    expect(response.status).toBe(200);
+    expect(youTubeCalls()).toHaveLength(0);
+    expect(createData().songStartSeconds ?? null).toBeNull();
+    expect(createData().songEndSeconds ?? null).toBeNull();
+    expect(
+      ((await response.json()) as { note: { songClip: unknown } }).note
+        .songClip,
+    ).toBeNull();
+  });
+
+  test.each([
+    ["40 s long", { startSeconds: 0, endSeconds: 40 }],
+    ["31 s long", { startSeconds: 0, endSeconds: 31 }],
+    ["4 s long", { startSeconds: 10, endSeconds: 14 }],
+    ["backwards", { startSeconds: 40, endSeconds: 20 }],
+    ["a negative start", { startSeconds: -1, endSeconds: 20 }],
+    ["a fractional start", { startSeconds: 1.5, endSeconds: 20 }],
+    ["a fractional end", { startSeconds: 0, endSeconds: 20.5 }],
+    ["a string end", { startSeconds: 0, endSeconds: "20" }],
+    ["missing its end", { startSeconds: 0 }],
+    ["not an object", "0-30"],
+  ])("a clip that is %s answers 400 Invalid note", async (_, songClip) => {
+    const response = await post({ ...body, song, songClip });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ message: "Invalid note" });
+    expect(youTubeCalls()).toHaveLength(0);
+    nothingWritten();
+  });
+
+  test("a clip without a song answers 400 Invalid note", async () => {
+    const response = await post({ ...body, song: null, songClip: clip });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ message: "Invalid note" });
+    expect(youTubeCalls()).toHaveLength(0);
+    nothingWritten();
+  });
+
+  test("logged out answers 401 without calling YouTube", async () => {
+    vi.mocked(validateSessionToken).mockResolvedValue({
+      session: null,
+      user: null,
+    } as never);
+
+    const response = await post(songBody);
+
+    expect(response.status).toBe(401);
+    expect(youTubeCalls()).toHaveLength(0);
+  });
+
+  test("a Prisma failure after the check still answers 500", async () => {
+    prisma().momentNote.create.mockRejectedValue(new Error("down"));
+
+    const response = await post(songBody);
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ message: "Failed to create note" });
+  });
+});
+
+describe("R4: GET /api/moments/notes song clip", () => {
+  test.each([
+    ["both columns", 42, 72, { startSeconds: 42, endSeconds: 72 }],
+    ["a clip from 0:00", 0, 5, { startSeconds: 0, endSeconds: 5 }],
+    ["neither column (an older note)", null, null, null],
+    ["only the start", 42, null, null],
+    ["only the end", null, 72, null],
+  ])("%s answers songClip %j", async (_, start, end, expected) => {
+    prisma().momentNote.findMany.mockResolvedValue([
+      row({
+        songVideoId: song.videoId,
+        song,
+        songStartSeconds: start,
+        songEndSeconds: end,
+      }),
+    ] as never);
+
+    const { notes } = (await (await GET()).json()) as {
+      notes: { songClip: unknown }[];
+    };
+
+    expect(notes[0].songClip).toEqual(expected);
+  });
+
+  test("GET never calls YouTube", async () => {
+    const spy = vi.spyOn(globalThis, "fetch");
+    prisma().momentNote.findMany.mockResolvedValue([
+      row({ song, songStartSeconds: 0, songEndSeconds: 30 }),
+    ] as never);
+
+    await GET();
+
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

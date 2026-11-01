@@ -23,6 +23,20 @@ const noteSongSchema = z.object({
   thumbnailUrl: z.url(),
 });
 
+const songClipMinSeconds = 5;
+const songClipMaxSeconds = 30;
+
+const noteSongClipSchema = z
+  .object({
+    startSeconds: z.number().int().min(0),
+    endSeconds: z.number().int(),
+  })
+  .refine(
+    ({ startSeconds, endSeconds }) =>
+      endSeconds - startSeconds >= songClipMinSeconds &&
+      endSeconds - startSeconds <= songClipMaxSeconds,
+  );
+
 const notePlaceSchema = z.object({
   name: z.string().trim().min(1).max(100),
   address: z.string().trim().min(1).max(300),
@@ -39,6 +53,7 @@ const noteContentSchema = z.object({
   photo: z.enum(["keep", "new", "none"]),
   photoFile: imageUploadSchema.nullable().default(null),
   song: noteSongSchema.nullable(),
+  songClip: noteSongClipSchema.nullable().default(null),
   place: notePlaceSchema.nullable(),
   date: z.string().refine(isIsoDate).nullable(),
 });
@@ -56,7 +71,18 @@ const missingPhotoFile = {
   path: ["photoFile"],
 };
 
-const noteSaveSchema = noteContentSchema.refine(hasPhotoFile, missingPhotoFile);
+// A clip only means something as a part of a song.
+const hasSongForClip = ({
+  song,
+  songClip,
+}: {
+  song: unknown;
+  songClip: unknown;
+}) => songClip === null || song !== null;
+
+const noteSaveSchema = noteContentSchema
+  .refine(hasPhotoFile, missingPhotoFile)
+  .refine(hasSongForClip);
 
 const noteCreateSchema = noteContentSchema
   .extend({
@@ -64,7 +90,8 @@ const noteCreateSchema = noteContentSchema
     y: z.number(),
     rotation: z.number().min(-8).max(8),
   })
-  .refine(hasPhotoFile, missingPhotoFile);
+  .refine(hasPhotoFile, missingPhotoFile)
+  .refine(hasSongForClip);
 
 const notePositionSchema = z.object({
   x: z.number(),
@@ -75,6 +102,7 @@ const notePositionSchema = z.object({
 type NoteColor = (typeof noteColors)[number];
 type NotePattern = (typeof notePatterns)[number];
 type NoteSong = z.infer<typeof noteSongSchema>;
+type NoteSongClip = z.infer<typeof noteSongClipSchema>;
 type NotePlace = z.infer<typeof notePlaceSchema>;
 type NoteSaveRequest = z.infer<typeof noteSaveSchema>;
 type NoteCreateRequest = z.infer<typeof noteCreateSchema>;
@@ -107,6 +135,9 @@ const specialDayFormSchema = z.object({
 export {
   noteColors,
   notePatterns,
+  noteSongClipSchema,
+  songClipMinSeconds,
+  songClipMaxSeconds,
   noteSaveSchema,
   noteCreateSchema,
   notePositionSchema,
@@ -117,6 +148,7 @@ export type {
   NoteColor,
   NotePattern,
   NoteSong,
+  NoteSongClip,
   NotePlace,
   NoteSaveRequest,
   NoteCreateRequest,

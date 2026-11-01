@@ -138,25 +138,27 @@ model SpecialDay {
 }
 
 model MomentNote {
-  noteId      String    @id @default(cuid()) @map("note_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  authorId    String    @map("author_id")
-  author      User      @relation(fields: [authorId], references: [userId], onUpdate: Cascade, onDelete: Cascade)
-  text        String
-  color       String
-  pattern     String
-  photoKey    String?   @unique @map("photo_key")
-  songVideoId String?   @map("song_video_id")
-  song        Song?     @relation(fields: [songVideoId], references: [videoId], onUpdate: Cascade, onDelete: SetNull)
-  locationId  String?   @map("location_id")
-  location    Location? @relation(fields: [locationId], references: [locationId], onUpdate: Cascade, onDelete: SetNull)
+  noteId           String    @id @default(cuid()) @map("note_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  authorId         String    @map("author_id")
+  author           User      @relation(fields: [authorId], references: [userId], onUpdate: Cascade, onDelete: Cascade)
+  text             String
+  color            String
+  pattern          String
+  photoKey         String?   @unique @map("photo_key")
+  songVideoId      String?   @map("song_video_id")
+  song             Song?     @relation(fields: [songVideoId], references: [videoId], onUpdate: Cascade, onDelete: SetNull)
+  songStartSeconds Int?      @map("song_start_seconds")
+  songEndSeconds   Int?      @map("song_end_seconds")
+  locationId       String?   @map("location_id")
+  location         Location? @relation(fields: [locationId], references: [locationId], onUpdate: Cascade, onDelete: SetNull)
   // Local calendar date "yyyy-MM-dd", not an instant
-  date        String?
-  x           Float
-  y           Float
-  rotation    Float
-  z           Int
+  date             String?
+  x                Float
+  y                Float
+  rotation         Float
+  z                Int
 
   @@index([songVideoId])
   @@index([locationId])

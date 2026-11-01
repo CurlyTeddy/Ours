@@ -19,6 +19,7 @@ import {
   type NoteCreateRequest,
   type NotePattern,
   type NoteSaveRequest,
+  type NoteSongClip,
 } from "@/features/moments/models/requests";
 import type {
   Note,
@@ -35,7 +36,9 @@ import {
   SongField,
   fieldLabel,
 } from "@/features/moments/components/song-field";
+import { effectiveSongClip } from "@/features/moments/components/song-clip-picker";
 import { PlaceField } from "@/features/moments/components/place-field";
+import { useSongDuration } from "@/features/moments/hooks/use-song-duration";
 
 const patternNames: Record<NotePattern, string> = {
   plain: "Plain",
@@ -49,7 +52,10 @@ interface DraftPhoto {
   file: File | null;
 }
 
-type Draft = Pick<Note, "text" | "color" | "pattern" | "song" | "place"> & {
+type Draft = Pick<
+  Note,
+  "text" | "color" | "pattern" | "song" | "songClip" | "place"
+> & {
   date: string;
   photo: DraftPhoto | null;
   photoOn: boolean;
@@ -61,6 +67,7 @@ function draftOf(note: Note): Draft {
     color: note.color,
     pattern: note.pattern,
     song: note.song,
+    songClip: note.songClip,
     place: note.place,
     date: note.date ?? "",
     photo:
@@ -98,7 +105,7 @@ function NoteEditor({
   notes: Note[];
   viewerId: string | undefined;
   playingVideoId: string | null;
-  onPlay: (videoId: string) => void;
+  onPlay: (videoId: string, clip: NoteSongClip | null) => void;
   onStop: () => void;
   onClose: () => void;
   onSaved: (note: Note) => void;
@@ -116,6 +123,10 @@ function NoteEditor({
 
   const previewing =
     draft.song !== null && playingVideoId === draft.song.videoId;
+  const duration = useSongDuration(draft.song?.videoId ?? null);
+  const songClip = effectiveSongClip(draft.song, draft.songClip, duration);
+  // Until then a song can't be stuck: its length isn't known or it has no clip.
+  const songUnready = draft.song !== null && songClip === null;
   const hex = noteColorStyles[draft.color].hex;
   const showPhoto = draft.photoOn && draft.photo !== null;
 
@@ -143,6 +154,7 @@ function NoteEditor({
           ? { size: file.size, type: file.type as ImageUpload["type"] }
           : null,
         song: draft.song,
+        songClip,
         place: draft.place,
         date: draft.date || null,
       };
@@ -429,17 +441,23 @@ function NoteEditor({
 
       <SongField
         song={draft.song}
+        songClip={songClip}
+        duration={duration}
         labelColor={hex}
         notes={notes}
         previewing={previewing}
-        onChange={(song) => {
+        onChange={(song, songClip) => {
           if (previewing) onStop();
-          update({ song });
+          update({ song, songClip });
+        }}
+        onClipChange={(songClip) => update({ songClip })}
+        onClipCommit={(songClip) => {
+          if (previewing && draft.song) onPlay(draft.song.videoId, songClip);
         }}
         onTogglePreview={() => {
           if (!draft.song) return;
           if (previewing) onStop();
-          else onPlay(draft.song.videoId);
+          else if (songClip) onPlay(draft.song.videoId, songClip);
         }}
       />
 
@@ -505,7 +523,7 @@ function NoteEditor({
                 {title}
                 <button
                   type="button"
-                  disabled={saving}
+                  disabled={saving || songUnready}
                   onClick={() => void save()}
                   className={cn(
                     primaryButton,
@@ -519,7 +537,8 @@ function NoteEditor({
                 {preview}
               </div>
             </div>
-            <div className="flex flex-1 flex-col gap-3.5 rounded-t-[28px] bg-us-panel px-4 pt-5 pb-3 shadow-[0_-18px_40px_-28px_rgba(31,43,66,.45)]">
+            {/* The clip's outward edge hit areas reach 4 px past the 16 px padding; clip them, not scroll. */}
+            <div className="flex flex-1 flex-col gap-3.5 overflow-x-clip rounded-t-[28px] bg-us-panel px-4 pt-5 pb-3 shadow-[0_-18px_40px_-28px_rgba(31,43,66,.45)]">
               {fields}
               {isNew
                 ? null
@@ -554,7 +573,7 @@ function NoteEditor({
                 </DialogPrimitive.Close>
                 <button
                   type="button"
-                  disabled={saving}
+                  disabled={saving || songUnready}
                   onClick={() => void save()}
                   className={cn(primaryButton, "rounded-xl")}
                 >

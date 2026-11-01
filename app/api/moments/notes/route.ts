@@ -14,6 +14,7 @@ import {
   toNote,
   toNoteCreate,
 } from "@/features/moments/note-mapping";
+import { songClipError } from "@/features/moments/song-clip-check";
 import { presignImagePut } from "@/lib/s3-client";
 
 async function GET(): Promise<
@@ -56,6 +57,11 @@ async function POST(
       { message: invalidNoteMessage(validatedFields.error) },
       { status: 400 },
     );
+  }
+
+  const clipError = await songClipError(validatedFields.data);
+  if (clipError) {
+    return clipError;
   }
 
   try {
