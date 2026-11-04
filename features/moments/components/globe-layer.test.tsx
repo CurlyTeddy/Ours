@@ -168,22 +168,6 @@ describe("R25: globe layer", () => {
     expect(limaPin.style.visibility).toBe("hidden");
   });
 
-  test("below 60 m/px a pill points to the live map", () => {
-    layer({ camera: { ...camera, radius: 6371000 / 59 } });
-
-    expect(
-      screen.getByText("Streets & buildings appear here from the live map"),
-    ).toBeDefined();
-  });
-
-  test("at 60 m/px and above there is no pill", () => {
-    layer({ camera: { ...camera, radius: 6371000 / 61 } });
-
-    expect(
-      screen.queryByText("Streets & buildings appear here from the live map"),
-    ).toBeNull();
-  });
-
   test("inactive: hidden from assistive tech, no pins, no drawing", () => {
     const { container } = layer({ active: false, pins: [pin("Taipei")] });
 
@@ -264,5 +248,33 @@ describe("R27: to-do pins (white-box)", () => {
     const wrapper = document.querySelector(".pin-dot")
       ?.parentElement as HTMLElement;
     expect(wrapper.style.visibility).toBe("hidden");
+  });
+});
+
+describe("remove-hints R5: no live-map pill at any zoom", () => {
+  test.each([
+    ["far out (300)", 300],
+    ["just above 60 m/px", 6371000 / 61],
+    ["exactly 60 m/px", 6371000 / 60],
+    ["just below 60 m/px", 6371000 / 59],
+    ["street level (1 m/px)", 6371000],
+    ["very deep (0.01 m/px)", 6371000 * 100],
+  ])("%s: no Streets & buildings pill, no map icon", (_, radius) => {
+    const { container } = layer({
+      camera: { ...camera, radius },
+      pins: [pin("Taipei")],
+    });
+
+    expect(screen.queryByText(/Streets & buildings/)).toBeNull();
+    expect(screen.queryByText(/live map/)).toBeNull();
+    expect(container.querySelector(".lucide-map")).toBeNull();
+    // the pins still draw
+    expect(screen.getByText("Taipei")).toBeDefined();
+  });
+
+  test("an inactive deep-zoomed layer shows no pill either", () => {
+    layer({ active: false, camera: { ...camera, radius: 6371000 } });
+
+    expect(screen.queryByText(/Streets & buildings/)).toBeNull();
   });
 });

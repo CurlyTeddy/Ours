@@ -443,7 +443,6 @@ function TwoDoBoard() {
     ? {
         eyebrow: `Trip · ${stops(rows.length)} · ${tripDates(selectedTrip)}`,
         title: selectedTrip.name,
-        sub: "The order is the itinerary — drag stops to plan the route. Ticked stops stay in place.",
         add: "Add to this trip",
         map: `/map?layer=${encodeURIComponent(selectedTrip.id)}`,
         label: `${selectedTrip.name} itinerary`,
@@ -452,7 +451,6 @@ function TwoDoBoard() {
       ? {
           eyebrow: `Ideas · ${rows.length}`,
           title: "Inspiration",
-          sub: "Things we want to do someday. Only undone items live here — tick one and pick the trip you did it on.",
           add: "Add idea",
           map: "/map?layer=inspiration",
           label: "Inspiration ideas",
@@ -460,7 +458,6 @@ function TwoDoBoard() {
       : {
           eyebrow: `Done · ${rows.length}`,
           title: "Unsorted",
-          sub: "Done before trips existed. Drag each one onto a trip on the left, or use “Move to…”. This list disappears once it is empty.",
           add: "Add to Inspiration",
           map: null,
           label: "Unsorted items",
@@ -498,12 +495,9 @@ function TwoDoBoard() {
                   <span className="text-xs font-black tracking-[.12em] text-us-muted uppercase max-[900px]:text-[11.5px]">
                     {head.eyebrow}
                   </span>
-                  <h2 className="font-hand text-[44px] leading-[1.1] font-bold break-words max-[900px]:text-[36px] max-[900px]:leading-[1.15]">
+                  <h2 className="font-hand text-[44px] leading-[1.1] font-bold wrap-break-word max-[900px]:text-[36px] max-[900px]:leading-[1.15]">
                     {head.title}
                   </h2>
-                  <span className="max-w-140 text-sm leading-normal font-bold text-us-muted max-[900px]:text-[13px]">
-                    {head.sub}
-                  </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 max-[900px]:w-full max-[900px]:flex-nowrap">
                   {head.map ? (

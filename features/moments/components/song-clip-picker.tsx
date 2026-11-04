@@ -318,7 +318,6 @@ function SongClipPicker({
         className="-mt-1 flex justify-between gap-2 text-[11.5px] font-bold whitespace-nowrap text-us-muted tabular-nums"
       >
         <span>{formatClipTime(0)}</span>
-        <span>Drag to move · pull the edges, up to {songClipMaxSeconds}s</span>
         <span>{formatClipTime(durationSeconds)}</span>
       </div>
     </>

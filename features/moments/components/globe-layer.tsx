@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Map as MapIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  earthRadiusMeters,
   greatCircle,
   isLand,
   orthoForward,
@@ -228,8 +226,8 @@ function TodoPin({
       className={cn(
         "absolute flex animate-pin-dot items-center gap-1.5",
         pin.labelLeft
-          ? "flex-row-reverse [transform:translate(calc(-100%+15px),-15px)]"
-          : "[transform:translate(-15px,-15px)]",
+          ? "flex-row-reverse transform-[translate(calc(-100%+15px),-15px)]"
+          : "transform-[translate(-15px,-15px)]",
       )}
       style={{
         left: `${pin.x.toFixed(1)}px`,
@@ -293,7 +291,7 @@ function GlobeLayer({
             ) : (
               <div
                 key={pin.placeId}
-                className="absolute flex animate-pin-drop flex-col items-center gap-1 [transform:translate(-50%,-26px)]"
+                className="absolute flex animate-pin-drop flex-col items-center gap-1 transform-[translate(-50%,-26px)]"
                 style={{
                   left: `${pin.x.toFixed(1)}px`,
                   top: `${pin.y.toFixed(1)}px`,
@@ -316,12 +314,6 @@ function GlobeLayer({
               </div>
             ),
           )}
-          {earthRadiusMeters / drawing.camera.radius < 60 ? (
-            <div className="absolute top-5 left-1/2 flex -translate-x-1/2 animate-fade items-center gap-2 rounded-full border border-us-line bg-us-surface px-3.5 py-2.25 text-[12.5px] font-extrabold whitespace-nowrap text-us-muted shadow-[0_10px_24px_-14px_rgba(31,43,66,.55)]">
-              <MapIcon size={15} strokeWidth={2.2} aria-hidden="true" />
-              Streets &amp; buildings appear here from the live map
-            </div>
-          ) : null}
         </>
       ) : null}
     </div>

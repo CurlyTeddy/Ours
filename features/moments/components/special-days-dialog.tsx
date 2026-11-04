@@ -115,14 +115,9 @@ function SpecialDaysDialog({
         </div>
 
         <div className="flex w-full max-w-105 animate-rise flex-col gap-5 rounded-[28px] border border-us-line bg-us-panel p-6.5 shadow-[0_34px_60px_-34px_rgba(31,43,66,.5)] min-[901px]:w-100">
-          <div className="flex flex-col gap-1">
-            <DialogPrimitive.Title className="text-[22px] leading-[1.2] font-black text-us-ink">
-              Special days
-            </DialogPrimitive.Title>
-            <span className="text-[13px] font-bold text-us-muted">
-              The calendar on the wall counts down to the next one.
-            </span>
-          </div>
+          <DialogPrimitive.Title className="text-[22px] leading-[1.2] font-black text-us-ink">
+            Special days
+          </DialogPrimitive.Title>
 
           <ul className="flex flex-col gap-1">
             {upcoming.map((day, index) => {

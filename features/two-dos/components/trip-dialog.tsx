@@ -126,9 +126,6 @@ function TripDialog({
             <FieldError error={error} field="endDate" />
           </div>
         </div>
-        <span className="-mt-2 text-[12.5px] font-bold text-us-muted">
-          Dates are optional — leave them empty while it is still a plan.
-        </span>
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className={ghostButton}>
             Cancel

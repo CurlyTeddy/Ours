@@ -52,9 +52,6 @@ function NotePad({
         <span className="font-hand text-[32px] leading-none font-bold text-us-ink max-[900px]:hidden">
           New note
         </span>
-        <span className="text-xs font-extrabold text-us-muted max-[900px]:hidden">
-          Drag onto the wall
-        </span>
         <span className="font-hand text-xl leading-none font-bold text-us-ink min-[901px]:hidden">
           New
         </span>

@@ -567,7 +567,6 @@ describe("R5: sidebar", () => {
     expect(unsorted.textContent).toMatch(/1/);
     // The "Trips" label (the heading also has a "Trips" span)
     expect(within(sidebar()).getAllByText("Trips").length).toBeGreaterThan(1);
-    expect(within(sidebar()).getByText(/Drag to reorder/)).toBeDefined();
     const order = [inspiration, unsorted, japanRow, taipeiRow];
     for (let i = 1; i < order.length; i++) {
       expect(
@@ -696,11 +695,6 @@ describe("R7/R30: main card header", () => {
       within(card).getByRole("heading", { level: 2, name: "Japan" }),
     ).toBeDefined();
     expect(
-      within(card).getByText(
-        "The order is the itinerary — drag stops to plan the route. Ticked stops stay in place.",
-      ),
-    ).toBeDefined();
-    expect(
       within(card)
         .getByRole("link", { name: /Show on map/ })
         .getAttribute("href"),
@@ -744,11 +738,6 @@ describe("R7/R30: main card header", () => {
 
     expect(within(card).getByText("Ideas · 2")).toBeDefined();
     expect(
-      within(card).getByText(
-        "Things we want to do someday. Only undone items live here — tick one and pick the trip you did it on.",
-      ),
-    ).toBeDefined();
-    expect(
       within(card)
         .getByRole("link", { name: /Show on map/ })
         .getAttribute("href"),
@@ -766,11 +755,6 @@ describe("R7/R30: main card header", () => {
     const card = main("Unsorted");
 
     expect(within(card).getByText("Done · 1")).toBeDefined();
-    expect(
-      within(card).getByText(
-        "Done before trips existed. Drag each one onto a trip on the left, or use “Move to…”. This list disappears once it is empty.",
-      ),
-    ).toBeDefined();
     expect(
       within(card).queryByRole("link", { name: /Show on map/ }),
     ).toBeNull();
@@ -1265,7 +1249,7 @@ describe("R11/R13: Move to…", () => {
 // ---------- R14/R15: trip dialog ----------
 
 describe("R14: New trip", () => {
-  test("the dialog has Name, From, To, the hint, Cancel and Create trip", async () => {
+  test("the dialog has Name, From, To, Cancel and Create trip", async () => {
     const { user } = await renderBoard();
 
     await user.click(
@@ -1276,11 +1260,6 @@ describe("R14: New trip", () => {
     expect(within(dialog).getByLabelText("Name")).toBeDefined();
     expect(within(dialog).getByLabelText("From")).toBeDefined();
     expect(within(dialog).getByLabelText("To")).toBeDefined();
-    expect(
-      within(dialog).getByText(
-        "Dates are optional — leave them empty while it is still a plan.",
-      ),
-    ).toBeDefined();
     expect(
       within(dialog).getByRole("button", { name: "Cancel" }),
     ).toBeDefined();
@@ -3215,5 +3194,225 @@ describe("R21: touch targets", () => {
       name: "Move to…",
     });
     expect(move.className).toMatch(/(^|\s)(h-11|min-h-11)(\s|$)/);
+  });
+});
+
+// ---------- remove-hints spec ----------
+
+// Visible (not aria-hidden) leaf spans/divs inside `root` that render nothing
+const emptyVisible = (root: Element) =>
+  Array.from(root.querySelectorAll("span, div")).filter(
+    (el) =>
+      !el.closest("[aria-hidden='true']") &&
+      el.children.length === 0 &&
+      !el.textContent?.trim(),
+  );
+
+describe("remove-hints R7: sidebar Trips heading without the reorder label", () => {
+  test("the Drag to reorder label is gone; the Trips label stays", async () => {
+    await renderBoard();
+
+    expect(within(sidebar()).queryByText(/^Drag to reorder$/)).toBeNull();
+    const labels = within(sidebar()).getAllByText("Trips");
+    expect(labels.length).toBeGreaterThan(1);
+    for (const label of labels) {
+      expect(emptyVisible(label.parentElement as HTMLElement)).toEqual([]);
+    }
+  });
+
+  test("each trip handle keeps its accessible name", async () => {
+    await renderBoard();
+
+    expect(
+      within(sidebar()).getByRole("button", { name: "Drag to reorder Japan" }),
+    ).toBeDefined();
+    expect(
+      within(sidebar()).getByRole("button", {
+        name: "Drag to reorder Taipei weekend",
+      }),
+    ).toBeDefined();
+  });
+
+  test("with no trips there is still no reorder label", async () => {
+    db.trips = [];
+    db.todos = db.todos.filter((t) => !t.tripId);
+    render(<TwoDoBoard />, { wrapper });
+
+    await screen.findAllByText("Inspiration");
+    expect(screen.queryByText(/^Drag to reorder$/)).toBeNull();
+  });
+});
+
+describe("remove-hints R8: list headers without a subtitle", () => {
+  test.each([
+    ["trip1", "Japan", "Trip · 3 stops · 2025.12.20 – 2026.01.05"],
+    ["inspiration", "Inspiration", "Ideas · 2"],
+    ["unsorted", "Unsorted", "Done · 1"],
+  ])("%s: eyebrow and title only", async (list, title, eyebrow) => {
+    await renderBoard(list);
+    const card = main(title);
+
+    const heading = within(card).getByRole("heading", {
+      level: 2,
+      name: title,
+    });
+    const column = heading.parentElement as HTMLElement;
+    expect(
+      Array.from(column.children).map((child) => child.textContent),
+    ).toEqual([eyebrow, title]);
+    expect(emptyVisible(column)).toEqual([]);
+    expect(within(card).queryByText(/drag stops to plan the route/)).toBeNull();
+    expect(within(card).queryByText(/Things we want to do someday/)).toBeNull();
+    expect(within(card).queryByText(/Done before trips existed/)).toBeNull();
+  });
+
+  test("the action buttons stay", async () => {
+    await renderBoard("trip1");
+    const card = main("Japan");
+
+    expect(
+      within(card).getByRole("link", { name: /Show on map/ }),
+    ).toBeDefined();
+    expect(
+      within(card).getByRole("button", { name: /Add to this trip/ }),
+    ).toBeDefined();
+    expect(
+      within(card).getByRole("button", { name: "Trip options" }),
+    ).toBeDefined();
+  });
+
+  test("an empty trip keeps its empty subtitle but has no header subtitle", async () => {
+    await renderBoard("trip2");
+    const card = main("Taipei weekend");
+
+    expect(
+      within(card).getByText(
+        "Drag ideas from Inspiration onto this trip in the list on the left, or add a to-do here.",
+      ),
+    ).toBeDefined();
+    expect(within(card).queryByText(/drag stops to plan the route/)).toBeNull();
+    const heading = within(card).getByRole("heading", { level: 2 });
+    expect(heading.parentElement?.children).toHaveLength(2);
+  });
+
+  test("phone: the header shows eyebrow and title only", async () => {
+    setViewport(375);
+    await renderBoard("inspiration");
+    const card = main("Inspiration");
+
+    const heading = within(card).getByRole("heading", { level: 2 });
+    expect(
+      Array.from(heading.parentElement?.children ?? []).map(
+        (child) => child.textContent,
+      ),
+    ).toEqual(["Ideas · 2", "Inspiration"]);
+  });
+});
+
+describe("remove-hints R9: trip dialog without the dates hint", () => {
+  test("New trip: Name, From, To, Cancel, Create trip and no hint", async () => {
+    const { user } = await renderBoard();
+
+    await user.click(
+      within(sidebar()).getAllByRole("button", { name: "New trip" })[0],
+    );
+    const dialog = await screen.findByRole("dialog", { name: "New trip" });
+
+    expect(within(dialog).queryByText(/Dates are optional/)).toBeNull();
+    expect(within(dialog).queryByText(/still a plan/)).toBeNull();
+    expect(within(dialog).getByLabelText("Name")).toBeDefined();
+    expect(within(dialog).getByLabelText("From")).toBeDefined();
+    expect(within(dialog).getByLabelText("To")).toBeDefined();
+    expect(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    ).toBeDefined();
+    expect(
+      within(dialog).getByRole("button", { name: "Create trip" }),
+    ).toBeDefined();
+  });
+
+  test("Edit trip has no dates hint either", async () => {
+    const { user } = await renderBoard("trip1");
+
+    const menu = await openTripMenu(user);
+    await user.click(within(menu).getByRole("menuitem", { name: "Edit trip" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit trip" });
+
+    expect(within(dialog).queryByText(/Dates are optional/)).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDefined();
+  });
+
+  test("a trip without dates still creates with null dates", async () => {
+    const { user } = await renderBoard();
+
+    await user.click(
+      within(sidebar()).getAllByRole("button", { name: "New trip" })[0],
+    );
+    const dialog = await screen.findByRole("dialog", { name: "New trip" });
+    await user.type(within(dialog).getByLabelText("Name"), "旅行 ✈️");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create trip" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "New trip" })).toBeNull(),
+    );
+    expect(bodies("POST", "/api/trips")[0]).toEqual({
+      name: "旅行 ✈️",
+      startDate: null,
+      endDate: null,
+    });
+  });
+});
+
+describe("remove-hints R13: kept on purpose", () => {
+  test("the image uploader's empty state still shows in New to-do", async () => {
+    const { user } = await renderBoard();
+
+    await user.click(screen.getByRole("button", { name: /Add idea/ }));
+    const dialog = await screen.findByRole("dialog", { name: "New to-do" });
+
+    expect(
+      within(dialog).getByText("No images yet. Upload at most five images!"),
+    ).toBeDefined();
+  });
+
+  test("an empty trip keeps its empty-state copy", async () => {
+    await renderBoard("trip2");
+
+    expect(screen.getByText("No stops yet")).toBeDefined();
+    expect(
+      screen.getByText(
+        "Drag ideas from Inspiration onto this trip in the list on the left, or add a to-do here.",
+      ),
+    ).toBeDefined();
+  });
+});
+
+describe("remove-hints R7/R9: no leftover wrappers (white-box)", () => {
+  test("the Trips label row holds only the label", async () => {
+    await renderBoard();
+
+    const label = within(sidebar())
+      .getAllByText("Trips")
+      .find((el) => el.className.includes("uppercase")) as HTMLElement;
+    expect(label.parentElement?.children).toHaveLength(1);
+  });
+
+  test("trip dialog: the buttons row follows the dates row directly", async () => {
+    const { user } = await renderBoard();
+
+    await user.click(
+      within(sidebar()).getAllByRole("button", { name: "New trip" })[0],
+    );
+    const dialog = await screen.findByRole("dialog", { name: "New trip" });
+    const buttons = within(dialog).getByRole("button", { name: "Cancel" })
+      .parentElement as HTMLElement;
+
+    expect(
+      buttons.previousElementSibling?.contains(
+        within(dialog).getByLabelText("To"),
+      ),
+    ).toBe(true);
   });
 });

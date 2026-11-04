@@ -220,28 +220,24 @@ describe("R7: header row", () => {
 });
 
 describe("R11: footer row", () => {
-  test("shows 0:00, the hint and the song length", () => {
+  test("shows 0:00 and the song length, with no hint between", () => {
     renderPicker(92, 42, 72);
 
     const start = screen.getByText(exactText("0:00"));
-    const hint = screen.getByText(
-      exactText("Drag to move · pull the edges, up to 30s"),
-    );
     const end = screen.getByText(exactText("1:32"));
-    const row = hint.parentElement as HTMLElement;
+    const row = start.parentElement as HTMLElement;
 
-    expect(row.contains(start)).toBe(true);
     expect(row.contains(end)).toBe(true);
+    expect(Array.from(row.children)).toEqual([start, end]);
+    expect(screen.queryByText(/Drag to move/)).toBeNull();
+    expect(screen.queryByText(/pull the edges/)).toBeNull();
     expect(row.getAttribute("aria-hidden")).toBe("true");
     expect(hasClass(row, "justify-between")).toBe(true);
     expect(hasClass(row, "text-us-muted")).toBe(true);
     expect(hasClass(row, "tabular-nums")).toBe(true);
     expect(hasClass(row, "whitespace-nowrap")).toBe(true);
     expect(
-      start.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      hint.compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING,
+      start.compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -255,9 +251,7 @@ describe("R11: footer row", () => {
     renderPicker(92, 42, 72);
 
     const header = screen.getByText(exactText("Part that plays"));
-    const footer = screen.getByText(
-      exactText("Drag to move · pull the edges, up to 30s"),
-    );
+    const footer = screen.getByText(exactText("0:00"));
     expect(
       header.compareDocumentPosition(windowSlider()) &
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -926,5 +920,37 @@ describe("R16: effectiveSongClip", () => {
         ready(length),
       ),
     ).toBeNull();
+  });
+});
+
+describe("remove-hints R10: footer without the drag hint", () => {
+  test.each([
+    [5, 0, 5, "0:05"],
+    [30, 0, 30, "0:30"],
+    [92, 42, 72, "1:32"],
+    [3725, 0, 30, "1:02:05"],
+  ])(
+    "a %d s song: footer is just 0:00 and %s",
+    (duration, start, end, length) => {
+      renderPicker(duration, start, end);
+
+      const first = screen.getByText(exactText("0:00"));
+      const row = first.parentElement as HTMLElement;
+      expect(
+        Array.from(row.children).map((child) => child.textContent),
+      ).toEqual(["0:00", length]);
+      expect(row.getAttribute("aria-hidden")).toBe("true");
+      expect(hasClass(row, "justify-between")).toBe(true);
+      expect(screen.queryByText(/Drag to move/)).toBeNull();
+      expect(screen.queryByText(/up to 30s/)).toBeNull();
+    },
+  );
+
+  test("the 30 s cap is still enforced on the end handle", () => {
+    renderPicker(400, 100, 110);
+
+    // a 10 s clip can grow to 30 s at most, either way
+    expect(sliderState(endHandle()).max).toBe(130);
+    expect(sliderState(startHandle()).min).toBe(80);
   });
 });

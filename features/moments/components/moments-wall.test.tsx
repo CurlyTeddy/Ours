@@ -652,7 +652,7 @@ const zoomLabel = () =>
 // ---------- tests ----------
 
 describe("R4/R6: wall content", () => {
-  test("shows the chips, title, subtitle, legend and controls", async () => {
+  test("shows the chips, title, subtitle and controls", async () => {
     await renderWall();
 
     expect(screen.getByText("Since 2022")).toBeDefined();
@@ -663,9 +663,6 @@ describe("R4/R6: wall content", () => {
         "A shared home for our photos, notes, plans, and the small moments that keep adding up.",
       ),
     ).toBeDefined();
-    expect(screen.getByText("Tap to open")).toBeDefined();
-    expect(screen.getByText("Hold to hear its song")).toBeDefined();
-    expect(screen.getByText("Drag the wall to look around")).toBeDefined();
     expect(pad()).toBeDefined();
     expect(calendarButton()).toBeDefined();
     expect(
@@ -1937,11 +1934,6 @@ describe("R22/R23: special days dialog", () => {
     expect(
       within(dialog).getByRole("heading", { name: "Special days" }),
     ).toBeDefined();
-    expect(
-      within(dialog).getByText(
-        "The calendar on the wall counts down to the next one.",
-      ),
-    ).toBeDefined();
     const text = dialog.textContent ?? "";
     const order = ["Now", "Trip", "Halloween", "4th Anniversary"].map((n) =>
       text.indexOf(n),
@@ -2266,9 +2258,6 @@ describe("R25/R26/R27: map mode", () => {
       screen.getAllByText(exactText("2 places · 2 notes")),
     ).not.toHaveLength(0);
     expect(
-      screen.getByText("Drag to spin · scroll or pinch to zoom"),
-    ).toBeDefined();
-    expect(
       screen.getAllByText(exactText("2 places · 2 notes on the map")),
     ).not.toHaveLength(0);
     // R28: only to-do layers link to Two Do
@@ -2378,12 +2367,9 @@ describe("R25/R26/R27: map mode", () => {
 describe("R28: phone layout", () => {
   beforeEach(() => setViewport(390, 844));
 
-  test("shows the phone hint and New pad, and no mode toggle", async () => {
+  test("shows the New pad, and no mode toggle", async () => {
     await renderWall();
 
-    expect(
-      screen.getByText("Hold a note to hear its song · pinch to zoom"),
-    ).toBeDefined();
     expect(screen.queryByRole("button", { name: "Wall" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Map" })).toBeNull();
     expect(within(pad()).getByText("New")).toBeDefined();
@@ -2428,15 +2414,12 @@ describe("R28: phone layout", () => {
     ).toBeDefined();
   });
 
-  test("map mode shows the layer chips, the phone hint and a Globe fit", async () => {
+  test("map mode shows the layer chips and a Globe fit", async () => {
     await renderWall();
 
     await goTo("/map");
 
-    expect(
-      await screen.findByText("Drag to spin · pinch to zoom"),
-    ).toBeDefined();
-    const chips = screen.getByRole("group", { name: "Show on map" });
+    const chips = await screen.findByRole("group", { name: "Show on map" });
     expect(
       within(chips)
         .getByRole("button", { name: /Notes/ })
@@ -3144,10 +3127,11 @@ describe("R25/R26: map details (white-box)", () => {
     setViewport(390, 844);
     await renderWall();
     await goTo("/map");
-    await screen.findByText("Drag to spin · pinch to zoom");
 
     fireEvent.click(
-      screen.getByRole("button", { name: /^Zoom level: .+\. Fit our places$/ }),
+      await screen.findByRole("button", {
+        name: /^Zoom level: .+\. Fit our places$/,
+      }),
     );
 
     await waitFor(
@@ -4436,13 +4420,10 @@ describe("R28/R30: map chips and the fit button", () => {
       "Fit this trip",
       "/twodo?list=trip1",
     ],
-  ])("%s: info, hint, fit and Two Do link", async (url, info, fit, href) => {
+  ])("%s: info, fit and Two Do link", async (url, info, fit, href) => {
     await renderMapAt(url);
 
     expect(screen.getAllByText(exactText(info))).not.toHaveLength(0);
-    expect(
-      screen.getByText("Drag to spin · scroll or pinch to zoom"),
-    ).toBeDefined();
     expect(screen.getByRole("button", { name: fit })).toBeDefined();
     const link = screen.queryByRole("link", { name: /Open in Two Do/ });
     expect(link?.getAttribute("href") ?? null).toBe(href);
@@ -4479,7 +4460,6 @@ describe("R29: phone map chips", () => {
     ).toBeDefined();
     expect(screen.queryByRole("list", { name: "Japan stops" })).toBeNull();
     expect(screen.queryByText("Japan · 3 stops in itinerary order")).toBeNull();
-    expect(screen.getByText("Drag to spin · pinch to zoom")).toBeDefined();
   });
 
   test("tapping a chip switches the layer", async () => {
@@ -5423,5 +5403,228 @@ describe("R16: no effective clip until the length is ready", () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(false);
+  });
+});
+
+// ---------- remove-hints spec ----------
+
+// Every visible (not aria-hidden) span or div inside `root` has text or children.
+const emptyVisible = (root: Element) =>
+  Array.from(root.querySelectorAll("span, div")).filter(
+    (el) =>
+      !el.closest("[aria-hidden='true']") &&
+      el.children.length === 0 &&
+      !el.textContent?.trim(),
+  );
+
+describe("remove-hints R1: no desktop wall hint chips", () => {
+  test("the three chips, their icons and their row are gone", async () => {
+    const { container } = await renderWall();
+
+    expect(screen.queryByText(/Tap to open/)).toBeNull();
+    expect(screen.queryByText(/Hold to hear its song/)).toBeNull();
+    expect(screen.queryByText(/Drag the wall to look around/)).toBeNull();
+    expect(
+      container.querySelector(
+        ".lucide-mouse-pointer-click, .lucide-disc-3, .lucide-hand",
+      ),
+    ).toBeNull();
+  });
+
+  test("the rest of the wall still renders", async () => {
+    await renderWall();
+
+    expect(screen.getByRole("heading", { name: "Our Moments" })).toBeDefined();
+    expect(pad()).toBeDefined();
+    expect(calendarButton()).toBeDefined();
+    expect(allNotes()).toHaveLength(4);
+  });
+
+  test("an empty wall shows no hint chips either", async () => {
+    db.notes = [];
+    render(<MomentsWall />, { wrapper });
+
+    expect(
+      await screen.findByRole("button", { name: "Open Love Map: 0 places" }),
+    ).toBeDefined();
+    expect(screen.queryByText(/Tap to open/)).toBeNull();
+    expect(screen.queryByText(/Hold to hear its song/)).toBeNull();
+  });
+});
+
+describe("remove-hints R2: no phone wall hint", () => {
+  beforeEach(() => setViewport(390, 844));
+
+  test("the hold/pinch chip is gone; the New pad stays", async () => {
+    await renderWall();
+
+    expect(screen.queryByText(/Hold a note to hear its song/)).toBeNull();
+    expect(screen.queryByText(/pinch to zoom/)).toBeNull();
+    expect(within(pad()).getByText("New")).toBeDefined();
+    expect(allNotes()).toHaveLength(4);
+  });
+
+  test("at the 900px boundary the phone hint is gone too", async () => {
+    setViewport(900, 844);
+    await renderWall();
+
+    expect(screen.queryByText(/Hold a note to hear its song/)).toBeNull();
+    expect(screen.queryByText(/Tap to open/)).toBeNull();
+  });
+
+  test("at 901px (desktop) the desktop chips are gone too", async () => {
+    setViewport(901, 844);
+    await renderWall();
+
+    expect(screen.queryByText(/Tap to open/)).toBeNull();
+    expect(screen.queryByText(/Hold a note to hear its song/)).toBeNull();
+  });
+});
+
+describe("remove-hints R3: no desktop map hint", () => {
+  beforeEach(() => seedTodos());
+
+  test.each([
+    ["/map", "2 places · 2 notes on the map"],
+    ["/map?layer=inspiration", "Inspiration · 2 ideas not on a trip yet"],
+    ["/map?layer=unsorted", "Unsorted · 1 done, waiting for a trip"],
+    ["/map?layer=trip1", "Japan · 3 stops in itinerary order"],
+  ])("%s: no Drag to spin chip; the info chip stays", async (url, info) => {
+    await renderMapAt(url);
+
+    expect(screen.queryByText(/Drag to spin/)).toBeNull();
+    expect(screen.queryByText(/scroll or pinch to zoom/)).toBeNull();
+    expect(screen.getAllByText(exactText(info))).not.toHaveLength(0);
+  });
+
+  test("a to-do layer's row holds just the info chip and Open in Two Do", async () => {
+    await renderMapAt("/map?layer=trip1");
+
+    const link = screen.getByRole("link", { name: /Open in Two Do/ });
+    expect(link.getAttribute("href")).toBe("/twodo?list=trip1");
+    const row = link.parentElement as HTMLElement;
+    expect(
+      Array.from(row.children).map((child) => child.textContent?.trim()),
+    ).toEqual(["Japan · 3 stops in itinerary order", "Open in Two Do"]);
+    expect(emptyVisible(row)).toEqual([]);
+  });
+
+  test("the notes layer still has no Two Do link", async () => {
+    await renderMapAt("/map");
+
+    expect(screen.queryByRole("link", { name: /Open in Two Do/ })).toBeNull();
+    expect(screen.queryByText(/Drag to spin/)).toBeNull();
+  });
+});
+
+describe("remove-hints R4: no phone map hint", () => {
+  beforeEach(() => {
+    seedTodos();
+    setViewport(390, 844);
+  });
+
+  test("the Drag to spin chip is gone; the fit button stays in place", async () => {
+    await renderMapAt("/map");
+
+    expect(screen.queryByText(/Drag to spin/)).toBeNull();
+    expect(screen.queryByText(/pinch to zoom/)).toBeNull();
+    const fit = screen.getByRole("button", {
+      name: /^Zoom level: .+\. Fit our places$/,
+    });
+    for (const name of ["absolute", "right-3", "bottom-20.5"]) {
+      expect(fit.className.split(/\s+/)).toContain(name);
+    }
+  });
+
+  test("on a trip layer the hint is gone and the fit button names the trip", async () => {
+    await renderMapAt("/map?layer=trip1");
+
+    expect(screen.queryByText(/Drag to spin/)).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /^Zoom level: .+\. Fit this trip$/ }),
+    ).toBeDefined();
+  });
+});
+
+describe("remove-hints R6: note pad without its hint", () => {
+  test("desktop: New note and the plus stay; Drag onto the wall is gone", async () => {
+    await renderWall();
+
+    expect(within(pad()).queryByText(/Drag onto the wall/)).toBeNull();
+    expect(within(pad()).getByText("New note")).toBeDefined();
+    expect(within(pad()).getByText("New")).toBeDefined();
+    expect(pad().querySelector(".lucide-plus")).not.toBeNull();
+    expect(emptyVisible(pad())).toEqual([]);
+  });
+
+  test("phone: the pad still shows New and no hint", async () => {
+    setViewport(390, 844);
+    await renderWall();
+
+    expect(within(pad()).getByText("New")).toBeDefined();
+    expect(within(pad()).queryByText(/Drag onto the wall/)).toBeNull();
+  });
+
+  test("the pad keeps its accessible name", async () => {
+    await renderWall();
+
+    expect(
+      screen.getByRole("button", {
+        name: "New note. Drag a sheet onto the wall, or press to add one",
+      }),
+    ).toBeDefined();
+  });
+});
+
+describe("remove-hints R11: special days dialog without its subtitle", () => {
+  test("the title, list and add form stay; the counts-down line is gone", async () => {
+    const { user } = await renderWall();
+
+    await user.click(calendarButton());
+    const dialog = await screen.findByRole("dialog", { name: "Special days" });
+
+    expect(
+      within(dialog).getByRole("heading", { name: "Special days" }),
+    ).toBeDefined();
+    expect(within(dialog).queryByText(/counts down/)).toBeNull();
+    expect(within(dialog).getAllByText(/Halloween/)).not.toHaveLength(0);
+    expect(within(dialog).getAllByText(/Add a special day/)).not.toHaveLength(
+      0,
+    );
+    const title = within(dialog).getByRole("heading", { name: "Special days" });
+    expect(emptyVisible(title.parentElement as HTMLElement)).toEqual([]);
+  });
+
+  test("with no special days the subtitle is still gone", async () => {
+    db.specialDays = [];
+    const { user } = await renderWall();
+
+    await user.click(calendarButton());
+    const dialog = await screen.findByRole("dialog", { name: "Special days" });
+
+    expect(within(dialog).queryByText(/counts down/)).toBeNull();
+  });
+});
+
+describe("remove-hints R4/R11: no leftover wrappers (white-box)", () => {
+  test("phone map: the fit button is the only child of its wrapper", async () => {
+    seedTodos();
+    setViewport(390, 844);
+    await renderMapAt("/map");
+
+    const fit = screen.getByRole("button", {
+      name: /^Zoom level: .+\. Fit our places$/,
+    });
+    expect(fit.parentElement?.children).toHaveLength(1);
+  });
+
+  test("special days: the title sits right before the list", async () => {
+    const { user } = await renderWall();
+
+    await user.click(calendarButton());
+    const dialog = await screen.findByRole("dialog", { name: "Special days" });
+    const title = within(dialog).getByRole("heading", { name: "Special days" });
+
+    expect(title.nextElementSibling?.tagName).toBe("UL");
   });
 });

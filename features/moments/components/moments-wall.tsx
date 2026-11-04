@@ -15,17 +15,7 @@ import ky from "ky";
 import { DateTime } from "luxon";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
-import {
-  ArrowRight,
-  Disc3,
-  Globe,
-  Hand,
-  MapPin,
-  Maximize,
-  Minus,
-  MousePointerClick,
-  Plus,
-} from "lucide-react";
+import { ArrowRight, Globe, MapPin, Maximize, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useUser } from "@/features/profile/hooks/user";
@@ -1334,34 +1324,6 @@ function MomentsWall() {
         </div>
       ) : null}
 
-      {isMap ? null : (
-        <>
-          <div className="pointer-events-none absolute bottom-7 left-10 z-1000 flex flex-wrap gap-2 max-[900px]:hidden">
-            {[
-              { icon: MousePointerClick, label: "Tap to open" },
-              { icon: Disc3, label: "Hold to hear its song" },
-              { icon: Hand, label: "Drag the wall to look around" },
-            ].map(({ icon: Icon, label }) => (
-              <span
-                key={label}
-                className={cn(chip, "gap-1.75 px-3.25 py-2 text-[12.5px]")}
-              >
-                <Icon size={15} strokeWidth={2.2} aria-hidden="true" />
-                {label}
-              </span>
-            ))}
-          </div>
-          <span
-            className={cn(
-              chip,
-              "pointer-events-none absolute bottom-31 left-3 z-1000 px-2.75 py-1.5 text-[11.5px] min-[901px]:hidden",
-            )}
-          >
-            Hold a note to hear its song · pinch to zoom
-          </span>
-        </>
-      )}
-
       {isMap ? (
         <MapLayers
           layer={layer}
@@ -1395,9 +1357,6 @@ function MomentsWall() {
             />
             {mapInfo}
           </span>
-          <span className={cn(chip, "px-3.5 py-2 text-[12.5px]")}>
-            Drag to spin · scroll or pinch to zoom
-          </span>
           {layer === "notes" ? null : (
             <Link
               href={`/twodo?list=${encodeURIComponent(layer)}`}
@@ -1412,14 +1371,6 @@ function MomentsWall() {
 
       {isMap && isPhone ? (
         <div data-nopan="">
-          <span
-            className={cn(
-              chip,
-              "absolute bottom-21.5 left-3 z-5 h-8.5 gap-1.5 px-2.75 text-[11.5px]",
-            )}
-          >
-            Drag to spin · pinch to zoom
-          </span>
           <button
             type="button"
             aria-label={`Zoom level: ${levelName}. ${fitLabel}`}

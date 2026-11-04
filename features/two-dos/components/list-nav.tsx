@@ -286,11 +286,10 @@ function TripSidebar({
         </ListButton>
       ) : null}
 
-      <div className="flex items-baseline justify-between gap-2 px-1.5 pt-3.5 pb-1.5">
+      <div className="flex px-1.5 pt-3.5 pb-1.5">
         <span className="text-xs font-black tracking-[.12em] text-us-muted uppercase">
           Trips
         </span>
-        <span className="text-xs font-bold text-us-muted">Drag to reorder</span>
       </div>
 
       <div

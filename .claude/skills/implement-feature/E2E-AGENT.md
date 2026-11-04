@@ -31,6 +31,8 @@ To read YouTube playback, which the app's hidden `YT.Player` doesn't expose on `
 
 Synthetic touch pointers can't take pointer capture (`NotFoundError: setPointerCapture … No active pointer`). Check drags with a mouse drag at phone width, and report real touch as unverified.
 
+Two-Dos trips and stops reorder with native HTML5 drag and drop (`features/two-dos/hooks/use-drag.ts`), and the MCP `drag` tool starts no native drag (no PATCH goes out). Instead, in `evaluate_script`, dispatch `dragstart` on the handle, then `dragenter`/`dragover` and `drop` on the target slot, then `dragend`, all sharing one `new DataTransfer()`. Judge the result after a reload, because the list may not repaint after synthetic events.
+
 For each flow:
 1. Navigate to the page.
 2. Screenshot it once loaded.
@@ -38,7 +40,7 @@ For each flow:
 4. Screenshot the outcome.
 5. Judge it against the spec.
 
-Run every flow at two widths: phone (`emulate` to 375x812) and desktop (1280x800). Most users are on phones. Avoid `resize_page`: after it, the page stops receiving clicks and keys even after a reload; switching widths needs a fresh `new_page` plus `emulate`.
+Run every flow at two widths: phone (`emulate` to 375x812) and desktop (1280x800). Most users are on phones. Avoid `resize_page`: after it, the page stops receiving clicks and keys even after a reload; switching widths needs a fresh `new_page`, then `emulate`, then reload. `emulate` applied to an already-loaded page has the same dead-input effect, so always reload after it.
 
 The first `next dev` compile of a route or API takes 2–3s. Poll for the expected state with an `evaluate_script` loop before you screenshot.
 

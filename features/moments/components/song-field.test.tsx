@@ -132,9 +132,7 @@ describe("R5: Song field order", () => {
     const track = screen.getByRole("slider", {
       name: "Move the part that plays",
     });
-    const footer = screen.getByText(
-      exactText("Drag to move · pull the edges, up to 30s"),
-    );
+    const footer = screen.getByText(exactText("0:00"));
 
     expect(follows(card, header)).toBe(true);
     expect(follows(header, track)).toBe(true);
