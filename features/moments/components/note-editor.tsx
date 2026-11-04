@@ -444,7 +444,6 @@ function NoteEditor({
         songClip={songClip}
         duration={duration}
         labelColor={hex}
-        notes={notes}
         previewing={previewing}
         onChange={(song, songClip) => {
           if (previewing) onStop();

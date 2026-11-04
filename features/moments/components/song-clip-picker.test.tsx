@@ -343,14 +343,14 @@ describe("R10: slider roles and values", () => {
       text: "0:42 to 1:12, 30 seconds",
     });
     expect(sliderState(startHandle())).toEqual({
-      min: 42,
+      min: 0,
       max: 67,
       now: 42,
       text: "Starts at 0:42, 30 seconds long",
     });
     expect(sliderState(endHandle())).toEqual({
       min: 47,
-      max: 72,
+      max: 92,
       now: 72,
       text: "Ends at 1:12, 30 seconds long",
     });
@@ -360,7 +360,7 @@ describe("R10: slider roles and values", () => {
     renderPicker(92, 0, 12);
 
     expect(sliderState(startHandle())).toMatchObject({ min: 0, max: 7 });
-    expect(sliderState(endHandle())).toMatchObject({ min: 5, max: 30 });
+    expect(sliderState(endHandle())).toMatchObject({ min: 5, max: 92 });
     expect(sliderState(windowSlider())).toMatchObject({
       min: 0,
       max: 80,
@@ -462,10 +462,10 @@ describe("R10: keyboard on the start handle", () => {
     ["ArrowDown", 41],
     ["PageUp", 47],
     ["PageDown", 37],
-    ["Home", 30],
+    ["Home", 0],
     ["End", 55],
   ])("%s sets the start to %d", (key, start) => {
-    // 42–60: the start ranges over [max(0, 60 − 30), 60 − 5] = [30, 55]
+    // 42–60: the start ranges over [0, 60 − 5] = [0, 55]
     renderPicker(92, 42, 60);
 
     const notPrevented = fireEvent.keyDown(startHandle(), { key });
@@ -491,7 +491,7 @@ describe("R10: keyboard on the start handle", () => {
     expect(lastChange()).toEqual({ startSeconds: 0, endSeconds: 30 });
   });
 
-  test("cannot make the clip shorter than 5 s or longer than 30 s", async () => {
+  test("cannot make the clip shorter than 5 s, but can make it longer than 30 s", async () => {
     const { user } = renderPicker(200, 40, 50);
     startHandle().focus();
 
@@ -502,7 +502,8 @@ describe("R10: keyboard on the start handle", () => {
     await user.keyboard(
       "{PageDown}{PageDown}{PageDown}{PageDown}{PageDown}{PageDown}{ArrowLeft}",
     );
-    expect(lastChange()).toEqual({ startSeconds: 20, endSeconds: 50 });
+    expect(lastChange()).toEqual({ startSeconds: 14, endSeconds: 50 });
+    expect(screen.getByText(exactText("36s"))).toBeDefined();
   });
 
   test("never goes below 0:00", async () => {
@@ -524,7 +525,7 @@ describe("R10: keyboard on the end handle", () => {
     ["PageUp", 65],
     ["PageDown", 55],
     ["Home", 47],
-    ["End", 72],
+    ["End", 92],
   ])("%s sets the end to %d", (key, end) => {
     renderPicker(92, 42, 60);
 
@@ -544,7 +545,7 @@ describe("R10: keyboard on the end handle", () => {
     expect(lastChange()).toEqual({ startSeconds: 80, endSeconds: 92 });
   });
 
-  test("cannot make the clip shorter than 5 s or longer than 30 s", async () => {
+  test("cannot make the clip shorter than 5 s, but can make it longer than 30 s", async () => {
     const { user } = renderPicker(200, 40, 50);
     endHandle().focus();
 
@@ -554,8 +555,8 @@ describe("R10: keyboard on the end handle", () => {
     await user.keyboard(
       "{PageUp}{PageUp}{PageUp}{PageUp}{PageUp}{PageUp}{ArrowRight}",
     );
-    expect(lastChange()).toEqual({ startSeconds: 40, endSeconds: 70 });
-    expect(screen.getByText(exactText("30s"))).toBeDefined();
+    expect(lastChange()).toEqual({ startSeconds: 40, endSeconds: 76 });
+    expect(screen.getByText(exactText("36s"))).toBeDefined();
   });
 });
 
@@ -637,12 +638,12 @@ describe("R9: dragging the handles", () => {
     expect(lastCommit()).toEqual({ startSeconds: 95, endSeconds: 120 });
   });
 
-  test("the start handle stops at 30 s long", async () => {
+  test("the start handle goes past 30 s long", async () => {
     const { user } = renderPicker(400, 100, 120);
 
     await drag(user, startHandle(), 100, 40);
 
-    expect(lastCommit()).toEqual({ startSeconds: 90, endSeconds: 120 });
+    expect(lastCommit()).toEqual({ startSeconds: 40, endSeconds: 120 });
   });
 
   test("the start handle stops at 5 s long", async () => {
@@ -669,12 +670,12 @@ describe("R9: dragging the handles", () => {
     expect(lastCommit()).toEqual({ startSeconds: 100, endSeconds: 125 });
   });
 
-  test("the end handle stops at 30 s long", async () => {
+  test("the end handle goes past 30 s long", async () => {
     const { user } = renderPicker(400, 100, 120);
 
     await drag(user, endHandle(), 120, 200);
 
-    expect(lastCommit()).toEqual({ startSeconds: 100, endSeconds: 130 });
+    expect(lastCommit()).toEqual({ startSeconds: 100, endSeconds: 200 });
   });
 
   test("the end handle stops at 5 s long", async () => {
@@ -888,11 +889,13 @@ describe("R16: effectiveSongClip", () => {
   });
 
   test.each([
-    [200, 30],
-    [31, 30],
+    [200, 200],
+    [31, 31],
     [30, 30],
     [12, 12],
+    [6, 6],
     [5, 5],
+    [3725, 3725],
   ])("no clip on a %d s song defaults to 0–%d", (length, end) => {
     expect(effectiveSongClip(song, null, ready(length))).toEqual({
       startSeconds: 0,
@@ -901,8 +904,8 @@ describe("R16: effectiveSongClip", () => {
   });
 
   test.each([
-    [71, 30],
-    [50, 30],
+    [71, 71],
+    [50, 50],
     [20, 20],
   ])("a clip past the end of a %d s song defaults to 0–%d", (length, end) => {
     expect(effectiveSongClip(song, stored, ready(length))).toEqual({
@@ -946,11 +949,188 @@ describe("remove-hints R10: footer without the drag hint", () => {
     },
   );
 
-  test("the 30 s cap is still enforced on the end handle", () => {
+  test("there is no 30 s cap on either handle", () => {
     renderPicker(400, 100, 110);
 
-    // a 10 s clip can grow to 30 s at most, either way
-    expect(sliderState(endHandle()).max).toBe(130);
-    expect(sliderState(startHandle()).min).toBe(80);
+    // a 10 s clip can grow to the song end or back to 0:00
+    expect(sliderState(endHandle()).max).toBe(400);
+    expect(sliderState(startHandle()).min).toBe(0);
+  });
+});
+
+describe("no-clip-cap R3: effectiveSongClip defaults to the whole song", () => {
+  const song = {
+    videoId: "vid1",
+    title: "Playing God",
+    channelTitle: "Polyphia",
+    thumbnailUrl: "https://i.ytimg.com/vi/vid1/hq.jpg",
+  };
+  const ready = (durationSeconds: number) =>
+    ({ status: "ready", durationSeconds }) as const;
+
+  test("a picked 3-minute song with no clip gives 0–180", () => {
+    expect(effectiveSongClip(song, null, ready(180))).toEqual({
+      startSeconds: 0,
+      endSeconds: 180,
+    });
+  });
+
+  test("a stored 30 s clip on a longer song is kept unchanged (flow 5)", () => {
+    const clip = { startSeconds: 0, endSeconds: 30 };
+    expect(effectiveSongClip(song, clip, ready(180))).toBe(clip);
+  });
+
+  test("a stored clip longer than 30 s that fits is kept", () => {
+    const clip = { startSeconds: 0, endSeconds: 90 };
+    expect(effectiveSongClip(song, clip, ready(180))).toBe(clip);
+  });
+
+  test("a stored whole-song clip ending at the song's end is kept", () => {
+    const clip = { startSeconds: 0, endSeconds: 180 };
+    expect(effectiveSongClip(song, clip, ready(180))).toBe(clip);
+  });
+
+  test("a stored clip one second past the end resets to the whole song", () => {
+    expect(
+      effectiveSongClip(song, { startSeconds: 0, endSeconds: 181 }, ready(180)),
+    ).toEqual({ startSeconds: 0, endSeconds: 180 });
+  });
+
+  test("R6: a song under 5 s still gives no clip", () => {
+    expect(effectiveSongClip(song, null, ready(4))).toBeNull();
+  });
+});
+
+describe("no-clip-cap R4: handle ranges without a maximum length", () => {
+  test("flow 3: a whole 3-minute song shows 0:00 – 3:00 and 180s", () => {
+    renderPicker(180, 0, 180);
+
+    expect(screen.getByText(exactText("0:00 – 3:00"))).toBeDefined();
+    expect(screen.getByText(exactText("180s"))).toBeDefined();
+    expect(sliderState(startHandle())).toMatchObject({ min: 0, max: 175 });
+    expect(sliderState(endHandle())).toMatchObject({ min: 5, max: 180 });
+    expect(sliderState(windowSlider())).toMatchObject({ min: 0, max: 0 });
+  });
+
+  test("flow 3: drag the end handle in to 1:30", async () => {
+    // 180 s on a 400 px track; 1:30 sits at 200 px
+    const { user } = renderPicker(180, 0, 180);
+
+    await drag(user, endHandle(), 400, 200);
+
+    expect(lastCommit()).toEqual({ startSeconds: 0, endSeconds: 90 });
+    expect(screen.getByText(exactText("0:00 – 1:30"))).toBeDefined();
+    expect(screen.getByText(exactText("90s"))).toBeDefined();
+  });
+
+  test("flow 4: the end handle drags past 0:30 up to the song end", async () => {
+    const { user } = renderPicker(400, 0, 10);
+
+    await press(user, endHandle(), 10);
+    await moveTo(user, endHandle(), 31);
+    expect(lastChange()).toEqual({ startSeconds: 0, endSeconds: 31 });
+    await moveTo(user, endHandle(), 1000);
+    await release(user, endHandle(), 1000);
+
+    expect(lastCommit()).toEqual({ startSeconds: 0, endSeconds: 400 });
+  });
+
+  test("flow 5: a stored 30 s clip can be stretched longer by keyboard", async () => {
+    const { user } = renderPicker(180, 0, 30);
+    endHandle().focus();
+
+    await user.keyboard("{ArrowRight}");
+    expect(lastChange()).toEqual({ startSeconds: 0, endSeconds: 31 });
+    await user.keyboard("{End}");
+    expect(lastCommit()).toEqual({ startSeconds: 0, endSeconds: 180 });
+    expect(screen.getByText(exactText("180s"))).toBeDefined();
+  });
+
+  test("Home on the start handle goes to 0:00 however long the clip gets", () => {
+    renderPicker(400, 300, 310);
+
+    fireEvent.keyDown(startHandle(), { key: "Home" });
+
+    expect(lastCommit()).toEqual({ startSeconds: 0, endSeconds: 310 });
+  });
+
+  test("End on the start handle stops 5 s before the end", () => {
+    renderPicker(400, 0, 310);
+
+    fireEvent.keyDown(startHandle(), { key: "End" });
+
+    expect(lastCommit()).toEqual({ startSeconds: 305, endSeconds: 310 });
+  });
+
+  test("Home on the end handle stops 5 s after the start", () => {
+    renderPicker(400, 100, 400);
+
+    fireEvent.keyDown(endHandle(), { key: "Home" });
+
+    expect(lastCommit()).toEqual({ startSeconds: 100, endSeconds: 105 });
+  });
+
+  test("the start handle drags from the song end back to 0:00", async () => {
+    const { user } = renderPicker(400, 390, 400);
+
+    await drag(user, startHandle(), 390, -100);
+
+    expect(lastCommit()).toEqual({ startSeconds: 0, endSeconds: 400 });
+  });
+
+  test("the window keeps its range for a long clip and moves it whole", async () => {
+    const { user } = renderPicker(400, 50, 250);
+    expect(sliderState(windowSlider())).toMatchObject({ min: 0, max: 200 });
+
+    windowSlider().focus();
+    await user.keyboard("{End}");
+    expect(lastCommit()).toEqual({ startSeconds: 200, endSeconds: 400 });
+    await user.keyboard("{Home}");
+    expect(lastCommit()).toEqual({ startSeconds: 0, endSeconds: 200 });
+  });
+
+  test("an hour-long song lets the end reach the last second", () => {
+    renderPicker(3725, 0, 30);
+
+    expect(sliderState(endHandle()).max).toBe(3725);
+    fireEvent.keyDown(endHandle(), { key: "End" });
+    expect(lastCommit()).toEqual({ startSeconds: 0, endSeconds: 3725 });
+  });
+});
+
+describe("no-clip-cap R4: long-clip edge cases (white-box)", () => {
+  test("a long window dragged far right clamps at the song end", async () => {
+    const { user } = renderPicker(400, 0, 200);
+
+    await drag(user, windowSlider(), 100, 900);
+
+    expect(lastCommit()).toEqual({ startSeconds: 200, endSeconds: 400 });
+  });
+
+  test("a whole-song clip's window cannot move but both handles can", () => {
+    renderPicker(400, 0, 400);
+
+    fireEvent.keyDown(windowSlider(), { key: "ArrowRight" });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(lastCommit()).toEqual({ startSeconds: 0, endSeconds: 400 });
+
+    fireEvent.keyDown(startHandle(), { key: "PageUp" });
+    expect(lastChange()).toEqual({ startSeconds: 5, endSeconds: 400 });
+  });
+
+  test("a 5 s clip at the song end: the end is pinned, the start reaches 0:00", () => {
+    renderPicker(400, 395, 400);
+
+    expect(sliderState(endHandle())).toMatchObject({ min: 400, max: 400 });
+    expect(sliderState(startHandle())).toMatchObject({ min: 0, max: 395 });
+  });
+
+  test("End on the end handle of a clip already at the song end commits without a change", () => {
+    renderPicker(400, 100, 400);
+
+    fireEvent.keyDown(endHandle(), { key: "End" });
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(lastCommit()).toEqual({ startSeconds: 100, endSeconds: 400 });
   });
 });

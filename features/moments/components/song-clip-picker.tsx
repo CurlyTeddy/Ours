@@ -11,7 +11,6 @@ import {
 import { Duration } from "luxon";
 import { cn } from "@/lib/utils";
 import {
-  songClipMaxSeconds,
   songClipMinSeconds,
   type NoteSong,
   type NoteSongClip,
@@ -38,7 +37,7 @@ const sameClip = (a: NoteSongClip, b: NoteSongClip) =>
   a.startSeconds === b.startSeconds && a.endSeconds === b.endSeconds;
 
 // The clip the editor shows, previews and saves: none until the song's length is known; then the
-// draft's clip if it fits the song, else the first 30 s (R16). A song under 5 s gets none.
+// draft's clip if it fits the song, else the whole song. A song under 5 s gets none.
 function effectiveSongClip(
   song: NoteSong | null,
   clip: NoteSongClip | null,
@@ -48,31 +47,24 @@ function effectiveSongClip(
   const { durationSeconds } = duration;
   if (clip !== null && clip.endSeconds <= durationSeconds) return clip;
   return durationSeconds >= songClipMinSeconds
-    ? {
-        startSeconds: 0,
-        endSeconds: Math.min(songClipMaxSeconds, durationSeconds),
-      }
+    ? { startSeconds: 0, endSeconds: durationSeconds }
     : null;
 }
 
 type Part = "window" | "start" | "end";
 
-// Each slider's range keeps the clip inside the song and 5–30 s long.
+// Each slider's range keeps the clip inside the song and at least 5 s long.
 function partRange(part: Part, clip: NoteSongClip, durationSeconds: number) {
   const { startSeconds: start, endSeconds: end } = clip;
   switch (part) {
     case "window":
       return { min: 0, max: durationSeconds - (end - start), now: start };
     case "start":
-      return {
-        min: Math.max(0, end - songClipMaxSeconds),
-        max: end - songClipMinSeconds,
-        now: start,
-      };
+      return { min: 0, max: end - songClipMinSeconds, now: start };
     case "end":
       return {
         min: start + songClipMinSeconds,
-        max: Math.min(durationSeconds, start + songClipMaxSeconds),
+        max: durationSeconds,
         now: end,
       };
   }

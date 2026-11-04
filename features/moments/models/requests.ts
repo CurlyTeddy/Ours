@@ -24,7 +24,6 @@ const noteSongSchema = z.object({
 });
 
 const songClipMinSeconds = 5;
-const songClipMaxSeconds = 30;
 
 const noteSongClipSchema = z
   .object({
@@ -33,8 +32,7 @@ const noteSongClipSchema = z
   })
   .refine(
     ({ startSeconds, endSeconds }) =>
-      endSeconds - startSeconds >= songClipMinSeconds &&
-      endSeconds - startSeconds <= songClipMaxSeconds,
+      endSeconds - startSeconds >= songClipMinSeconds,
   );
 
 const notePlaceSchema = z.object({
@@ -137,7 +135,6 @@ export {
   notePatterns,
   noteSongClipSchema,
   songClipMinSeconds,
-  songClipMaxSeconds,
   noteSaveSchema,
   noteCreateSchema,
   notePositionSchema,

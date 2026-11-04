@@ -941,7 +941,6 @@ describe("R2–R4: PUT /api/moments/notes/[noteId] song clip", () => {
   });
 
   test.each([
-    ["40 s long", { startSeconds: 0, endSeconds: 40 }],
     ["4 s long", { startSeconds: 10, endSeconds: 14 }],
     ["a negative start", { startSeconds: -1, endSeconds: 20 }],
     ["a fractional end", { startSeconds: 0, endSeconds: 20.5 }],
@@ -988,5 +987,73 @@ describe("R2–R4: PUT /api/moments/notes/[noteId] song clip", () => {
 
     expect(updateArgs().data).toEqual({ x: 1, y: 2, z: 0 });
     expect(youTubeCalls()).toHaveLength(0);
+  });
+});
+
+describe("no-clip-cap R5: PUT accepts long clips that fit the song", () => {
+  beforeEach(() => {
+    youTube.fetch = vi.spyOn(globalThis, "fetch");
+    youTubeLength("PT3M32S"); // 212 s
+  });
+  afterEach(() => {
+    youTube.fetch.mockRestore();
+  });
+
+  test.each([
+    ["31 s (the old max + 1)", 0, 31],
+    ["40 s", 0, 40],
+    ["the whole song", 0, 212],
+    ["most of the song, ending at its end", 12, 212],
+  ])("a %s clip is saved", async (_, startSeconds, endSeconds) => {
+    const response = await put({
+      ...songSave,
+      songClip: { startSeconds, endSeconds },
+    });
+
+    expect(response.status).toBe(200);
+    expect(updateArgs().data).toMatchObject({
+      songStartSeconds: startSeconds,
+      songEndSeconds: endSeconds,
+    });
+    expect(
+      ((await response.json()) as { note: { songClip: unknown } }).note
+        .songClip,
+    ).toEqual({ startSeconds, endSeconds });
+  });
+
+  test("a whole-song clip one second past the end answers 400 and writes nothing", async () => {
+    const response = await put({
+      ...songSave,
+      songClip: { startSeconds: 0, endSeconds: 213 },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: "The clip runs past the end of the song.",
+    });
+    nothingWritten();
+  });
+
+  test("an hour-long video takes a full-hour clip", async () => {
+    youTubeLength("PT1H");
+
+    const response = await put({
+      ...songSave,
+      songClip: { startSeconds: 0, endSeconds: 3600 },
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  test("a clip shorter than 5 s still answers 400 Invalid note", async () => {
+    const response = await put({
+      ...songSave,
+      songClip: { startSeconds: 100, endSeconds: 104 },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ message: "Invalid note" });
+    expect(youTubeCalls()).toHaveLength(0);
+    nothingWritten();
   });
 });

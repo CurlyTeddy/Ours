@@ -16,7 +16,6 @@ import { SWRConfig } from "swr";
 import type { ReactNode } from "react";
 import { SongField } from "@/features/moments/components/song-field";
 import type {
-  Note,
   NoteSong,
   NoteSongClip,
 } from "@/features/moments/models/responses";
@@ -48,24 +47,6 @@ const inferno: NoteSong = {
   channelTitle: "Mrs. GREEN APPLE",
   thumbnailUrl: "https://i.ytimg.com/vi/inferno/hq.jpg",
 };
-const base: Note = {
-  noteId: "",
-  text: "",
-  color: "mist",
-  pattern: "plain",
-  photoKey: null,
-  photoUrl: null,
-  song: null,
-  songClip: null,
-  place: null,
-  date: null,
-  x: 0,
-  y: 0,
-  rotation: 0,
-  z: 0,
-  author: { id: "u1", name: "Teddy", imageUrl: null },
-  createdAt: "2026-10-01T00:00:00.000Z",
-};
 const clip = { startSeconds: 42, endSeconds: 72 };
 const ready = (durationSeconds: number) => ({
   status: "ready" as const,
@@ -89,7 +70,6 @@ const renderField = ({
   song = playingGod as NoteSong | null,
   songClip = clip as NoteSongClip | null,
   duration = ready(92) as Duration,
-  notes = [] as Note[],
   previewing = false,
 } = {}) => {
   const user = userEvent.setup();
@@ -98,7 +78,6 @@ const renderField = ({
     songClip,
     duration,
     labelColor: "#F4E4A1",
-    notes,
     previewing,
     onChange,
     onClipChange,
@@ -348,82 +327,11 @@ describe("R19: Preview needs a clip", () => {
 });
 
 describe("R17/R18: picking and removing", () => {
-  const notes: Note[] = [
-    {
-      ...base,
-      noteId: "old",
-      song: playingGod,
-      songClip: { startSeconds: 10, endSeconds: 20 },
-      createdAt: "2026-10-01T00:00:00.000Z",
-    },
-    {
-      ...base,
-      noteId: "newest",
-      song: playingGod,
-      songClip: { startSeconds: 60, endSeconds: 85 },
-      createdAt: "2026-10-09T00:00:00.000Z",
-    },
-    {
-      ...base,
-      noteId: "middle",
-      song: playingGod,
-      songClip: { startSeconds: 30, endSeconds: 40 },
-      createdAt: "2026-10-05T00:00:00.000Z",
-    },
-    {
-      ...base,
-      noteId: "other",
-      song: inferno,
-      songClip: null,
-      createdAt: "2026-10-03T00:00:00.000Z",
-    },
-  ];
   const empty = {
     song: null,
     songClip: null,
     duration: { status: "idle" as const, durationSeconds: null },
   };
-
-  test("a shared song copies the clip of the newest note with that song", async () => {
-    const { user } = renderField({ ...empty, notes });
-
-    expect(screen.getByText("From your shared list")).toBeDefined();
-    await user.click(screen.getByRole("button", { name: /^Playing God/ }));
-
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenCalledWith(playingGod, {
-      startSeconds: 60,
-      endSeconds: 85,
-    });
-  });
-
-  test("a shared song whose newest note has no clip passes null", async () => {
-    const { user } = renderField({
-      ...empty,
-      notes: [
-        ...notes,
-        {
-          ...base,
-          noteId: "newer",
-          song: playingGod,
-          songClip: null,
-          createdAt: "2026-10-20T00:00:00.000Z",
-        },
-      ],
-    });
-
-    await user.click(screen.getByRole("button", { name: /^Playing God/ }));
-
-    expect(onChange).toHaveBeenCalledWith(playingGod, null);
-  });
-
-  test("a shared song with no clip on any note passes null", async () => {
-    const { user } = renderField({ ...empty, notes });
-
-    await user.click(screen.getByRole("button", { name: /^Inferno/ }));
-
-    expect(onChange).toHaveBeenCalledWith(inferno, null);
-  });
 
   test("a search result passes no clip", async () => {
     server.use(
@@ -431,8 +339,7 @@ describe("R17/R18: picking and removing", () => {
         HttpResponse.json({ results: [playingGod] }),
       ),
     );
-    // Even when a note already clips this song: only the shared list copies clips
-    const { user } = renderField({ ...empty, notes });
+    const { user } = renderField(empty);
 
     await user.type(search(), "Playing");
     const results = await screen.findByText("Results");
@@ -450,7 +357,7 @@ describe("R17/R18: picking and removing", () => {
         HttpResponse.json({ results: [inferno] }),
       ),
     );
-    const { user } = renderField({ notes });
+    const { user } = renderField();
 
     await user.type(search(), "Inferno");
     await user.click(await screen.findByRole("button", { name: /^Inferno/ }));
@@ -528,5 +435,94 @@ describe("R13/R14/R19: Song field states (white-box)", () => {
 
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByText(/Loading song/)).toBeNull();
+  });
+});
+
+describe("no-shared-list R1: no shared list, only YouTube search", () => {
+  const noSong = {
+    song: null,
+    songClip: null,
+    duration: { status: "idle" as const, durationSeconds: null },
+  };
+
+  test("a new note with no song shows the search box only", () => {
+    renderField(noSong);
+
+    expect(search()).toBeDefined();
+    expect(screen.queryByText("From your shared list")).toBeNull();
+    expect(screen.queryByText(/shared list/i)).toBeNull();
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  test("a note with a song shows no shared list", () => {
+    renderField();
+
+    expect(screen.queryByText(/shared list/i)).toBeNull();
+  });
+
+  test("typing a query, then clearing it, never shows a shared list", async () => {
+    let searched = 0;
+    server.use(
+      http.get("/api/music/search", () => {
+        searched += 1;
+        return HttpResponse.json({ results: [inferno] });
+      }),
+    );
+    const { user } = renderField(noSong);
+
+    await user.type(search(), "Inferno");
+    expect(
+      await screen.findByRole("button", { name: /^Inferno/ }),
+    ).toBeDefined();
+    expect(screen.queryByText(/shared list/i)).toBeNull();
+    expect(searched).toBeGreaterThan(0);
+
+    await user.clear(search());
+    expect(screen.queryByText(/shared list/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Inferno/ })).toBeNull();
+  });
+
+  test("a whitespace-only query shows no shared list", async () => {
+    const { user } = renderField(noSong);
+
+    await user.type(search(), "   ");
+
+    expect(screen.queryByText(/shared list/i)).toBeNull();
+  });
+
+  test("a song picked from search passes a null clip and clears the query", async () => {
+    server.use(
+      http.get("/api/music/search", () =>
+        HttpResponse.json({ results: [inferno] }),
+      ),
+    );
+    const { user } = renderField(noSong);
+
+    await user.type(search(), "Inferno");
+    await user.click(await screen.findByRole("button", { name: /^Inferno/ }));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(inferno, null);
+    expect((search() as HTMLInputElement).value).toBe("");
+  });
+});
+
+describe("no-clip-cap R4/R6: the field with long clips", () => {
+  test("shows a clip longer than 30 s with its length pill", () => {
+    renderField({
+      duration: ready(180),
+      songClip: { startSeconds: 0, endSeconds: 180 },
+    });
+
+    expect(screen.getByText(exactText("0:00 – 3:00"))).toBeDefined();
+    expect(screen.getByText(exactText("180s"))).toBeDefined();
+    const end = screen.getByRole("slider", { name: "End of the part" });
+    expect(end.getAttribute("aria-valuemax")).toBe("180");
+  });
+
+  test("R6: a 4 s song still says it is shorter than 5 seconds", () => {
+    renderField({ duration: ready(4), songClip: null });
+
+    expect(screen.getByRole("alert").textContent).toBe(shortError);
   });
 });

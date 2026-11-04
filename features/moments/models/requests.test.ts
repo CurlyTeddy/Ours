@@ -6,11 +6,11 @@ import {
   notePositionSchema,
   noteSaveSchema,
   noteSongClipSchema,
-  songClipMaxSeconds,
   songClipMinSeconds,
   specialDayCreateSchema,
   specialDayFormSchema,
 } from "@/features/moments/models/requests";
+import * as requests from "@/features/moments/models/requests";
 
 const song = {
   videoId: "dQw4w9WgXcQ",
@@ -658,9 +658,9 @@ describe("R2/Inputs: noteSongClipSchema", () => {
   const clipOk = (value: unknown) =>
     noteSongClipSchema.safeParse(value).success;
 
-  test("the clip bounds are 5 and 30 seconds", () => {
+  test("the minimum is 5 seconds and there is no maximum export", () => {
     expect(songClipMinSeconds).toBe(5);
-    expect(songClipMaxSeconds).toBe(30);
+    expect("songClipMaxSeconds" in requests).toBe(false);
   });
 
   test("accepts a clip and returns both fields", () => {
@@ -675,15 +675,26 @@ describe("R2/Inputs: noteSongClipSchema", () => {
     ["5 s late in the song", 3595, 3600],
     ["30 s late in the song", 3570, 3600],
     ["12 s", 10, 22],
+    ["31 s (the old max + 1)", 0, 31],
+    ["60 s", 0, 60],
+    ["a 3-minute whole song", 0, 180],
+    ["a whole hour", 0, 3600],
+    ["a 10-hour mix", 0, 36000],
+    ["a long clip late in the song", 1000, 5000],
+    [
+      "a huge integer end (white-box: no upper bound)",
+      0,
+      Number.MAX_SAFE_INTEGER,
+    ],
   ])("accepts a clip of %s", (_, startSeconds, endSeconds) => {
     expect(clipOk({ startSeconds, endSeconds })).toBe(true);
   });
 
   test.each([
     ["4 s (min − 1)", 0, 4],
-    ["31 s (max + 1)", 0, 31],
     ["0 s", 10, 10],
     ["a negative length", 30, 10],
+    ["4 s late in a long clip range", 1000, 1004],
     ["a negative start", -1, 10],
     ["a fractional start", 1.5, 10],
     ["a fractional end", 0, 10.5],
@@ -703,6 +714,12 @@ describe("R2/Inputs: noteSongClipSchema", () => {
     ["a string", "0-30"],
   ])("rejects a %s", (_, value) => {
     expect(clipOk(value)).toBe(false);
+  });
+
+  test("accepts a long clip and returns both fields", () => {
+    expect(
+      noteSongClipSchema.parse({ startSeconds: 0, endSeconds: 240 }),
+    ).toEqual({ startSeconds: 0, endSeconds: 240 });
   });
 
   test("strips unknown fields", () => {
@@ -767,7 +784,6 @@ describe("R2/Inputs: songClip on noteSaveSchema and noteCreateSchema", () => {
     ["noteCreateSchema", noteCreateSchema, create],
   ] as const)("%s: rejects an invalid clip", (_, schema, value) => {
     for (const songClip of [
-      { startSeconds: 0, endSeconds: 40 },
       { startSeconds: -1, endSeconds: 10 },
       { startSeconds: 0, endSeconds: 4 },
       "0-30",
@@ -776,6 +792,16 @@ describe("R2/Inputs: songClip on noteSaveSchema and noteCreateSchema", () => {
         false,
       );
     }
+  });
+
+  test.each([
+    ["noteSaveSchema", noteSaveSchema, save],
+    ["noteCreateSchema", noteCreateSchema, create],
+  ] as const)("%s: accepts a clip longer than 30 s", (_, schema, value) => {
+    const songClip = { startSeconds: 0, endSeconds: 180 };
+    expect(schema.parse({ ...value, song, songClip }).songClip).toEqual(
+      songClip,
+    );
   });
 
   test("a clip error is not reported as a photo problem", () => {

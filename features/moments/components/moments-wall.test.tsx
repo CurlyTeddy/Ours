@@ -1131,7 +1131,7 @@ describe("R14/R18/R19/R30: the editor", () => {
       photo: "none",
       photoFile: null,
       song: inferno,
-      songClip: { startSeconds: 0, endSeconds: 30 },
+      songClip: { startSeconds: 0, endSeconds: 200 },
       place: taipei,
       date: null,
     });
@@ -1405,21 +1405,20 @@ describe("R15/R36: background and photo", () => {
 });
 
 describe("R16: song", () => {
-  test("with no song and no query, lists the shared songs, distinct, newest note first", async () => {
+  test("with no song and no query, shows the search box and no shared list", async () => {
     const { user } = await renderWall();
     const dialog = await openEditorFor(user, /^Empty note/);
 
-    expect(within(dialog).getByText("From your shared list")).toBeDefined();
     const search = within(dialog).getByLabelText(
       "Search YouTube Music",
     ) as HTMLInputElement;
     expect(search.placeholder).toBe("Search YouTube Music…");
-    const titles = within(dialog)
-      .getAllByRole("button", { name: /Inferno|Lavie en rose forever/ })
-      .map((b) => b.textContent);
-    expect(titles).toHaveLength(2);
-    expect(titles[0]).toContain("Lavie en rose forever");
-    expect(titles[1]).toContain("Inferno");
+    expect(within(dialog).queryByText("From your shared list")).toBeNull();
+    expect(
+      within(dialog).queryAllByRole("button", {
+        name: /Inferno|Lavie en rose forever/,
+      }),
+    ).toHaveLength(0);
   });
 
   test("searching shows results; picking one sets the song and clears the query", async () => {
@@ -1444,7 +1443,7 @@ describe("R16: song", () => {
       ).value,
     ).toBe("");
     expect(within(dialog).getByText("Inferno (Live)")).toBeDefined();
-    expect(within(dialog).getByText("Live · 0:00–0:30")).toBeDefined();
+    expect(within(dialog).getByText("Live · 0:00–3:20")).toBeDefined();
     expect(
       within(dialog).getByRole("button", { name: "Preview this part" }),
     ).toBeDefined();
@@ -1521,7 +1520,7 @@ describe("R16: song", () => {
 
     expect(songPlayer.play).toHaveBeenCalledWith("vid-inferno", {
       startSeconds: 0,
-      endSeconds: 30,
+      endSeconds: 200,
     });
     await user.click(
       await within(dialog).findByRole("button", { name: "Pause preview" }),
@@ -3542,7 +3541,7 @@ describe("R16: song field edge cases (white-box)", () => {
     expect(within(dialog).queryByText("From your shared list")).toBeNull();
   });
 
-  test("a whitespace query searches nothing and keeps the shared list", async () => {
+  test("a whitespace query searches nothing and shows no shared list", async () => {
     const { user } = await renderWall();
     const dialog = await openEditorFor(user, /^Empty note/);
 
@@ -3553,33 +3552,16 @@ describe("R16: song field edge cases (white-box)", () => {
     await pause(400);
 
     expect(sent("GET", "/api/music/search")).toHaveLength(0);
-    expect(within(dialog).getByText("From your shared list")).toBeDefined();
+    expect(within(dialog).queryByText("From your shared list")).toBeNull();
   });
 
-  test("typing hides the shared list", async () => {
+  test("typing shows no shared list", async () => {
     const { user } = await renderWall();
     const dialog = await openEditorFor(user, /^Empty note/);
 
     await user.type(within(dialog).getByLabelText("Search YouTube Music"), "x");
 
     expect(within(dialog).queryByText("From your shared list")).toBeNull();
-  });
-
-  test("picking a shared song sets it", async () => {
-    const { user } = await renderWall();
-    const dialog = await openEditorFor(user, /^Empty note/);
-
-    await user.click(
-      within(dialog).getByRole("button", { name: /^Lavie en rose forever/ }),
-    );
-    await user.click(within(dialog).getByRole("button", { name: "Stick it" }));
-
-    await waitFor(() =>
-      expect(sent("PUT", "/api/moments/notes/n2")).toHaveLength(1),
-    );
-    expect((sent("PUT", "/api/moments/notes/n2")[0].body as Note).song).toEqual(
-      lavie,
-    );
   });
 
   test("the query is trimmed and URL-encoded", async () => {
@@ -4750,8 +4732,8 @@ describe("R15: Stick it waits for the clip", () => {
     );
 
     await waitFor(() => expect(stickIt(dialog).disabled).toBe(false));
-    expect(clipRange(dialog)).toContain("0:00 – 0:30");
-    expect(within(dialog).getByText(exactText("3:32"))).toBeDefined();
+    expect(clipRange(dialog)).toContain("0:00 – 3:32");
+    expect(clipRange(dialog)).toContain("212s");
   });
 
   test("disabled when the song cannot load; removing it enables Stick it again", async () => {
@@ -4827,14 +4809,14 @@ describe("R15: Stick it waits for the clip", () => {
 });
 
 describe("R16: the default clip", () => {
-  test("a song picked from search gets 0:00–0:30 and saves it", async () => {
+  test("a song picked from search gets the whole song and saves it", async () => {
     const { user } = await renderWall();
     const dialog = await newNoteEditor(user);
 
     await pickSearchResult(user, dialog, /^Inferno(?! \(Live\))/);
 
-    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
-    expect(clipRange(dialog)).toContain("30s");
+    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 3:20"));
+    expect(clipRange(dialog)).toContain("200s");
     await user.click(stickIt(dialog));
     await waitFor(() =>
       expect(sent("POST", "/api/moments/notes")).toHaveLength(1),
@@ -4844,7 +4826,7 @@ describe("R16: the default clip", () => {
     );
     expect(savedBody("POST", "/api/moments/notes")).toMatchObject({
       song: inferno,
-      songClip: { startSeconds: 0, endSeconds: 30 },
+      songClip: { startSeconds: 0, endSeconds: 200 },
     });
   });
 
@@ -4869,11 +4851,11 @@ describe("R16: the default clip", () => {
     });
   });
 
-  test("an older note with a song but no clip opens at 0:00–0:30 and saves it", async () => {
+  test("an older note with a song but no clip opens at the whole song and saves it", async () => {
     const { user } = await renderWall();
     const dialog = await openEditorFor(user, /^hello wall/);
 
-    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
+    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 3:20"));
     await user.click(stickIt(dialog));
 
     await waitFor(() =>
@@ -4884,7 +4866,7 @@ describe("R16: the default clip", () => {
     );
     expect(savedBody("PUT", "/api/moments/notes/n1").songClip).toEqual({
       startSeconds: 0,
-      endSeconds: 30,
+      endSeconds: 200,
     });
   });
 
@@ -4916,6 +4898,10 @@ describe("R16: the default clip", () => {
   });
 
   test("a moved clip is what gets saved", async () => {
+    db.notes[0] = {
+      ...db.notes[0],
+      songClip: { startSeconds: 0, endSeconds: 30 },
+    };
     const { user } = await renderWall();
     const dialog = await openEditorFor(user, /^hello wall/);
     await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
@@ -4941,6 +4927,10 @@ describe("R16: the default clip", () => {
   });
 
   test("the keys do not scroll the editor", async () => {
+    db.notes[0] = {
+      ...db.notes[0],
+      songClip: { startSeconds: 0, endSeconds: 30 },
+    };
     const { user } = await renderWall();
     const dialog = await openEditorFor(user, /^hello wall/);
     await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
@@ -4955,65 +4945,6 @@ describe("R16: the default clip", () => {
     ]) {
       expect(fireEvent.keyDown(windowIn(dialog), { key })).toBe(false);
     }
-  });
-});
-
-describe("R17: picking from the shared list copies a clip", () => {
-  test("copies the clip of the newest note with that song", async () => {
-    // n4 (Oct 7) is newer than n3 (Oct 5); both have Lavie
-    db.notes[2] = {
-      ...db.notes[2],
-      songClip: { startSeconds: 10, endSeconds: 20 },
-    };
-    db.notes[3] = {
-      ...db.notes[3],
-      songClip: { startSeconds: 40, endSeconds: 60 },
-    };
-    const { user } = await renderWall();
-    const dialog = await openEditorFor(user, /^Empty note/);
-
-    await user.click(
-      within(dialog).getByRole("button", { name: /^Lavie en rose forever/ }),
-    );
-
-    await waitFor(() => expect(clipRange(dialog)).toContain("0:40 – 1:00"));
-    await user.click(stickIt(dialog));
-    await waitFor(() =>
-      expect(sent("PUT", "/api/moments/notes/n2")).toHaveLength(1),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole("dialog", { name: "Edit note" })).toBeNull(),
-    );
-    expect(savedBody("PUT", "/api/moments/notes/n2")).toMatchObject({
-      song: lavie,
-      songClip: { startSeconds: 40, endSeconds: 60 },
-    });
-  });
-
-  test("when that note has no clip, the default applies", async () => {
-    db.notes[2] = {
-      ...db.notes[2],
-      songClip: { startSeconds: 10, endSeconds: 20 },
-    };
-    const { user } = await renderWall();
-    const dialog = await openEditorFor(user, /^Empty note/);
-
-    await user.click(
-      within(dialog).getByRole("button", { name: /^Lavie en rose forever/ }),
-    );
-
-    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
-    await user.click(stickIt(dialog));
-    await waitFor(() =>
-      expect(sent("PUT", "/api/moments/notes/n2")).toHaveLength(1),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole("dialog", { name: "Edit note" })).toBeNull(),
-    );
-    expect(savedBody("PUT", "/api/moments/notes/n2").songClip).toEqual({
-      startSeconds: 0,
-      endSeconds: 30,
-    });
   });
 });
 
@@ -5056,7 +4987,7 @@ describe("R18: removing and swapping", () => {
 
     await pickSearchResult(user, dialog, /^Inferno \(Live\)/);
 
-    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
+    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 3:20"));
     await user.click(stickIt(dialog));
     await waitFor(() =>
       expect(sent("PUT", "/api/moments/notes/n1")).toHaveLength(1),
@@ -5066,7 +4997,7 @@ describe("R18: removing and swapping", () => {
     );
     expect(savedBody("PUT", "/api/moments/notes/n1")).toMatchObject({
       song: { videoId: "vid-other" },
-      songClip: { startSeconds: 0, endSeconds: 30 },
+      songClip: { startSeconds: 0, endSeconds: 200 },
     });
   });
 
@@ -5083,7 +5014,7 @@ describe("R18: removing and swapping", () => {
     );
     await pickSearchResult(user, dialog, /^Inferno(?! \(Live\))/);
 
-    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
+    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 3:20"));
   });
 });
 
@@ -5110,6 +5041,10 @@ describe("R19: preview plays the clip", () => {
   });
 
   test("each key press while previewing restarts from the new start", async () => {
+    db.notes[0] = {
+      ...db.notes[0],
+      songClip: { startSeconds: 0, endSeconds: 30 },
+    };
     const { user } = await renderWall();
     const dialog = await openEditorFor(user, /^hello wall/);
     await user.click(
@@ -5133,6 +5068,10 @@ describe("R19: preview plays the clip", () => {
   });
 
   test("moving the clip while not previewing plays nothing", async () => {
+    db.notes[0] = {
+      ...db.notes[0],
+      songClip: { startSeconds: 0, endSeconds: 30 },
+    };
     const { user } = await renderWall();
     const dialog = await openEditorFor(user, /^hello wall/);
     await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
@@ -5144,6 +5083,10 @@ describe("R19: preview plays the clip", () => {
   });
 
   test("a drag while previewing restarts only on release", async () => {
+    db.notes[0] = {
+      ...db.notes[0],
+      songClip: { startSeconds: 0, endSeconds: 30 },
+    };
     const { user } = await renderWall();
     const dialog = await openEditorFor(user, /^hello wall/);
     await user.click(
@@ -5248,7 +5191,7 @@ describe("R15–R17: the editor's effective clip (white-box)", () => {
     const { user } = await renderWall();
     const dialog = await openEditorFor(user, /^hello wall/);
 
-    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
+    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 3:20"));
     await user.click(stickIt(dialog));
 
     await waitFor(() =>
@@ -5259,7 +5202,7 @@ describe("R15–R17: the editor's effective clip (white-box)", () => {
     );
     expect(savedBody("PUT", "/api/moments/notes/n1").songClip).toEqual({
       startSeconds: 0,
-      endSeconds: 30,
+      endSeconds: 200,
     });
   });
 
@@ -5272,22 +5215,6 @@ describe("R15–R17: the editor's effective clip (white-box)", () => {
     const dialog = await openEditorFor(user, /^hello wall/);
 
     await waitFor(() => expect(clipRange(dialog)).toContain("3:00 – 3:20"));
-  });
-
-  test("a copied clip past the measured length falls back to the default", async () => {
-    db.notes[3] = {
-      ...db.notes[3],
-      songClip: { startSeconds: 40, endSeconds: 60 },
-    };
-    songDuration.set("vid-lavie", { status: "ready", durationSeconds: 50 });
-    const { user } = await renderWall();
-    const dialog = await openEditorFor(user, /^Empty note/);
-
-    await user.click(
-      within(dialog).getByRole("button", { name: /^Lavie en rose forever/ }),
-    );
-
-    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
   });
 
   test("a 5 s song gets the whole song as its clip", async () => {
@@ -5626,5 +5553,173 @@ describe("remove-hints R4/R11: no leftover wrappers (white-box)", () => {
     const title = within(dialog).getByRole("heading", { name: "Special days" });
 
     expect(title.nextElementSibling?.tagName).toBe("UL");
+  });
+});
+
+describe("no-shared-list R1: the song field only searches YouTube", () => {
+  const sharedRows = (dialog: HTMLElement) =>
+    within(dialog).queryAllByRole("button", {
+      name: /^(Inferno|Lavie en rose forever)/,
+    });
+
+  test("flow 1: a new note shows the search box only, though other notes have songs", async () => {
+    const { user } = await renderWall();
+    const dialog = await newNoteEditor(user);
+
+    expect(within(dialog).getByLabelText("Search YouTube Music")).toBeDefined();
+    expect(within(dialog).queryByText("From your shared list")).toBeNull();
+    expect(sharedRows(dialog)).toHaveLength(0);
+  });
+
+  test("flow 2: an existing note with no song shows the search box only", async () => {
+    const { user } = await renderWall();
+    const dialog = await openEditorFor(user, /^Empty note/);
+
+    expect(within(dialog).queryByText("From your shared list")).toBeNull();
+    expect(sharedRows(dialog)).toHaveLength(0);
+  });
+
+  test("a new note after removing its picked song still shows no shared list", async () => {
+    const { user } = await renderWall();
+    const dialog = await newNoteEditor(user);
+
+    await pickSearchResult(user, dialog, /^Inferno(?! \(Live\))/);
+    await user.click(
+      within(dialog).getByRole("button", { name: "Remove song" }),
+    );
+
+    expect(within(dialog).queryByText("From your shared list")).toBeNull();
+    expect(sharedRows(dialog)).toHaveLength(0);
+  });
+
+  test("an existing note after removing its song shows no shared list", async () => {
+    const { user } = await renderWall();
+    const dialog = await openEditorFor(user, /^hello wall/);
+
+    await user.click(
+      within(dialog).getByRole("button", { name: "Remove song" }),
+    );
+
+    expect(within(dialog).queryByText("From your shared list")).toBeNull();
+    expect(sharedRows(dialog)).toHaveLength(0);
+  });
+
+  test("clearing a typed query shows no shared list", async () => {
+    const { user } = await renderWall();
+    const dialog = await openEditorFor(user, /^Empty note/);
+    const search = within(dialog).getByLabelText("Search YouTube Music");
+
+    await user.type(search, "Inf");
+    expect(await within(dialog).findByText("Results")).toBeDefined();
+    await user.clear(search);
+
+    await waitFor(() =>
+      expect(within(dialog).queryByText("Results")).toBeNull(),
+    );
+    expect(within(dialog).queryByText("From your shared list")).toBeNull();
+  });
+});
+
+describe("no-clip-cap R3/R4: clips longer than 30 s in the editor", () => {
+  const endIn = (dialog: HTMLElement) =>
+    within(dialog).getByRole("slider", { name: "End of the part" });
+
+  test("flow 3: a 3-minute song defaults to 0:00 – 3:00; trimming the end to 1:30 saves 0–90", async () => {
+    songDuration.set("vid-inferno", { status: "ready", durationSeconds: 180 });
+    const { user } = await renderWall();
+    const dialog = await newNoteEditor(user);
+
+    await pickSearchResult(user, dialog, /^Inferno(?! \(Live\))/);
+    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 3:00"));
+    expect(clipRange(dialog)).toContain("180s");
+
+    endIn(dialog).focus();
+    // PageDown steps 5 s: 180 − 18 × 5 = 90
+    await user.keyboard("{PageDown}".repeat(18));
+    expect(clipRange(dialog)).toContain("0:00 – 1:30");
+    expect(clipRange(dialog)).toContain("90s");
+    await user.click(stickIt(dialog));
+
+    await waitFor(() =>
+      expect(sent("POST", "/api/moments/notes")).toHaveLength(1),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Edit note" })).toBeNull(),
+    );
+    expect(savedBody("POST", "/api/moments/notes")).toMatchObject({
+      song: inferno,
+      songClip: { startSeconds: 0, endSeconds: 90 },
+    });
+  });
+
+  test("flow 4: the end handle goes past 0:30 up to the song end", async () => {
+    db.notes[0] = {
+      ...db.notes[0],
+      songClip: { startSeconds: 0, endSeconds: 20 },
+    };
+    const { user } = await renderWall();
+    const dialog = await openEditorFor(user, /^hello wall/);
+    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:20"));
+
+    expect(endIn(dialog).getAttribute("aria-valuemax")).toBe("200");
+    endIn(dialog).focus();
+    await user.keyboard("{PageUp}{PageUp}{ArrowRight}");
+    expect(clipRange(dialog)).toContain("0:00 – 0:31");
+    await user.keyboard("{End}");
+    expect(clipRange(dialog)).toContain("0:00 – 3:20");
+  });
+
+  test("flow 5: a stored 30 s clip shows unchanged and can be stretched longer", async () => {
+    db.notes[0] = {
+      ...db.notes[0],
+      songClip: { startSeconds: 0, endSeconds: 30 },
+    };
+    const { user } = await renderWall();
+    const dialog = await openEditorFor(user, /^hello wall/);
+
+    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 0:30"));
+    expect(clipRange(dialog)).toContain("30s");
+    endIn(dialog).focus();
+    await user.keyboard("{End}");
+    expect(clipRange(dialog)).toContain("0:00 – 3:20");
+    await user.click(stickIt(dialog));
+
+    await waitFor(() =>
+      expect(sent("PUT", "/api/moments/notes/n1")).toHaveLength(1),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Edit note" })).toBeNull(),
+    );
+    expect(savedBody("PUT", "/api/moments/notes/n1").songClip).toEqual({
+      startSeconds: 0,
+      endSeconds: 200,
+    });
+  });
+
+  test("R7: a stored clip longer than 30 s opens unchanged", async () => {
+    db.notes[0] = {
+      ...db.notes[0],
+      songClip: { startSeconds: 20, endSeconds: 140 },
+    };
+    const { user } = await renderWall();
+    const dialog = await openEditorFor(user, /^hello wall/);
+
+    await waitFor(() => expect(clipRange(dialog)).toContain("0:20 – 2:20"));
+    expect(clipRange(dialog)).toContain("120s");
+  });
+
+  test("previewing a whole-song default plays the whole song", async () => {
+    const { user } = await renderWall();
+    const dialog = await openEditorFor(user, /^hello wall/);
+    await waitFor(() => expect(clipRange(dialog)).toContain("0:00 – 3:20"));
+
+    await user.click(
+      within(dialog).getByRole("button", { name: "Preview this part" }),
+    );
+
+    expect(songPlayer.play).toHaveBeenCalledWith("vid-inferno", {
+      startSeconds: 0,
+      endSeconds: 200,
+    });
   });
 });

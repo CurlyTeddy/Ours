@@ -8,14 +8,12 @@ import { toast } from "sonner";
 import { Music, Pause, Play, Search, X } from "lucide-react";
 import { getErrorMessage } from "@/lib/error";
 import type {
-  Note,
   NoteSong,
   NoteSongClip,
 } from "@/features/moments/models/responses";
 import { songClipMinSeconds } from "@/features/moments/models/requests";
 import type { SongDuration } from "@/features/moments/hooks/use-song-duration";
 import { Vinyl } from "@/features/moments/components/vinyl";
-import { noteColorStyles } from "@/features/moments/components/note-colors";
 import {
   ClipHeader,
   ClipTrack,
@@ -25,24 +23,6 @@ import {
 
 const fieldLabel =
   "text-xs font-black tracking-[.12em] text-us-muted uppercase max-[900px]:text-[11px]";
-
-// Songs already stuck on notes, one per video, with the clip of the newest note that has it.
-function sharedSongs(notes: Note[]) {
-  const seen = new Set<string>();
-  return notes
-    .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .flatMap((note) => {
-      if (!note.song || seen.has(note.song.videoId)) return [];
-      seen.add(note.song.videoId);
-      return [
-        {
-          song: note.song,
-          songClip: note.songClip,
-          hex: noteColorStyles[note.color].hex,
-        },
-      ];
-    });
-}
 
 function SongRow({
   song,
@@ -83,7 +63,6 @@ function SongField({
   songClip,
   duration,
   labelColor,
-  notes,
   previewing,
   onChange,
   onClipChange,
@@ -94,7 +73,6 @@ function SongField({
   songClip: NoteSongClip | null;
   duration: SongDuration;
   labelColor: string;
-  notes: Note[];
   previewing: boolean;
   onChange: (song: NoteSong | null, songClip: NoteSongClip | null) => void;
   onClipChange: (clip: NoteSongClip) => void;
@@ -117,11 +95,6 @@ function SongField({
     },
   );
 
-  const pick = (picked: NoteSong, pickedClip: NoteSongClip | null) => {
-    onChange(picked, pickedClip);
-    setQuery("");
-  };
-
   const { status, durationSeconds } = duration;
   const loadError =
     status === "error"
@@ -129,8 +102,6 @@ function SongField({
       : status === "ready" && durationSeconds < songClipMinSeconds
         ? `This song is shorter than ${songClipMinSeconds} seconds — pick another`
         : null;
-
-  const shared = query.trim() || song ? [] : sharedSongs(notes);
 
   return (
     <div className="flex flex-col gap-2.5 max-[900px]:gap-2">
@@ -233,25 +204,10 @@ function SongField({
                 key={result.videoId}
                 song={result}
                 hex={labelColor}
-                onPick={() => pick(result, null)}
-              />
-            ))}
-          </div>
-        </>
-      ) : null}
-
-      {shared.length ? (
-        <>
-          <span className="text-xs font-bold text-us-muted">
-            From your shared list
-          </span>
-          <div className="-mt-1 flex flex-col gap-0.5">
-            {shared.map(({ song: sharedSong, songClip: sharedClip, hex }) => (
-              <SongRow
-                key={sharedSong.videoId}
-                song={sharedSong}
-                hex={hex}
-                onPick={() => pick(sharedSong, sharedClip)}
+                onPick={() => {
+                  onChange(result, null);
+                  setQuery("");
+                }}
               />
             ))}
           </div>
